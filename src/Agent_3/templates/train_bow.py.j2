@@ -1,0 +1,43 @@
+Write one complete runnable Python script for Kaggle Disaster Tweets.
+
+Family:
+- {{family}}
+- {{family_note}}
+
+Use this validated spec exactly:
+{{spec_json}}
+
+Required pipeline:
+- load only real train.csv and test.csv from DATA_DIR = os.environ.get("DISASTER_AGENT_DATA_DIR", "data")
+- DRY_RUN = os.environ.get("AGENT_DRY_RUN") == "1"
+- fillna keyword, location, text with ""
+- build one text field from keyword + " [SEP] " + text, else text
+- create X as raw text array and y as target array
+- if DRY_RUN, use head(dry_run_head)
+- define stratify_labels = y if class counts allow, else None
+- use one train_test_split with test_size=val_size, random_state=42, stratify=stratify_labels
+- use sklearn TfidfVectorizer with spec values
+- use LogisticRegression with C from spec
+- predict validation probabilities and test probabilities
+- choose best cutoff by looping over np.linspace(threshold_min, threshold_max, threshold_steps)
+- save columns id,target to submission_path
+- last line exactly:
+  print('METRICS: {"f1": ' + str(round(f1, 4)) + ', "accuracy": ' + str(round(acc, 4)) + '}')
+
+Do not use:
+- torch
+- tensorflow
+- keras
+- K-fold CV
+- mock/demo/sample data
+
+Dataset context:
+{{data_context}}
+
+Family history:
+{{history_summary}}
+
+Session trial summary:
+{{trial_summary}}
+
+Return code only.
