@@ -115,13 +115,19 @@ def run_experiment(code: str, name: str) -> dict:
     full_path = _write_temp_script(code, dry_run=False)
     full_result = _run(full_path, FULL_RUN_TIMEOUT, monitor=True)
     os.unlink(full_path)
+    metrics = _parse_metrics(full_result["stdout"])
+    has_metrics = "f1" in metrics
+    stderr = full_result["stderr"]
+    if full_result["success"] and not has_metrics:
+        stderr = (stderr + "\n" if stderr else "") + "Missing METRICS line or parsable F1 output."
     return {
-        "success": full_result["success"],
+        "success": full_result["success"] and has_metrics,
+        "process_success": full_result["success"],
         "timed_out": full_result["timed_out"],
         "dry_run_failed": False,
-        "metrics": _parse_metrics(full_result["stdout"]),
+        "metrics": metrics,
         "stdout": full_result["stdout"],
-        "stderr": full_result["stderr"],
+        "stderr": stderr,
     }
 
 

@@ -9,7 +9,7 @@ FAMILY = "BoW_advanced"
 
 
 def default_max_runs() -> int:
-    return 5
+    return 4
 
 
 def freeze_after_first_success() -> bool:

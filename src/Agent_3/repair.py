@@ -26,12 +26,36 @@ def _indent_for_span(code: str, start: int) -> str:
     return match.group(0) if match else ""
 
 
-def _format_insert_content(code: str, start: int, content: str) -> str:
+def _line_text_for_position(code: str, start: int) -> str:
+    line_start = code.rfind("\n", 0, start) + 1
+    line_end = code.find("\n", start)
+    if line_end == -1:
+        line_end = len(code)
+    return code[line_start:line_end]
+
+
+def _dedent_block(content: str) -> list[str]:
+    lines = content.splitlines()
+    non_empty = [line for line in lines if line.strip()]
+    if not non_empty:
+        return lines
+    common_indent = min(len(re.match(r"[ \t]*", line).group(0)) for line in non_empty)
+    normalized: list[str] = []
+    for line in lines:
+        if not line.strip():
+            normalized.append("")
+        else:
+            normalized.append(line[common_indent:])
+    return normalized
+
+
+def _format_insert_content(code: str, start: int, content: str, extra_indent: str = "") -> str:
     stripped = content.strip("\n")
     if not stripped:
         return "\n"
-    indent = _indent_for_span(code, start)
-    return "\n".join(f"{indent}{line.lstrip()}" if line.strip() else "" for line in stripped.splitlines()) + "\n"
+    indent = _indent_for_span(code, start) + extra_indent
+    normalized = _dedent_block(stripped)
+    return "\n".join(f"{indent}{line}" if line else "" for line in normalized) + "\n"
 
 
 def apply_edit_plan(code: str, plan: dict | None) -> tuple[str, list[str]]:
@@ -58,18 +82,31 @@ def apply_edit_plan(code: str, plan: dict | None) -> tuple[str, list[str]]:
             start, end = span
             updated = updated[:start] + content + updated[end:]
         elif action == "insert_before":
+            if not content.strip():
+                errors.append(f"Edit {idx} insert_before content was empty or whitespace only.")
+                continue
             if not span:
                 errors.append(f"Edit {idx} target not found for insert_before.")
                 continue
             start, _ = span
             updated = updated[:start] + _format_insert_content(updated, start, content) + updated[start:]
         elif action == "insert_after":
+            if not content.strip():
+                errors.append(f"Edit {idx} insert_after content was empty or whitespace only.")
+                continue
             if not span:
                 errors.append(f"Edit {idx} target not found for insert_after.")
                 continue
             _, end = span
-            prefix = "\n" if end < len(updated) and updated[end] != "\n" else ""
-            updated = updated[:end] + prefix + _format_insert_content(updated, end, content) + updated[end:]
+            insert_at = end
+            prefix = ""
+            if end < len(updated) and updated[end] == "\n":
+                insert_at = end + 1
+            elif end < len(updated) and updated[end] != "\n":
+                prefix = "\n"
+            line_text = _line_text_for_position(updated, end)
+            extra_indent = "    " if line_text.rstrip().endswith(":") else ""
+            updated = updated[:insert_at] + prefix + _format_insert_content(updated, end, content, extra_indent=extra_indent) + updated[insert_at:]
         else:
             errors.append(f"Edit {idx} has unsupported action: {action}")
     return updated, errors
@@ -80,6 +117,7 @@ def request_surgical_repair(
     module: object,
     family: str,
     run_name: str,
+    submission_path: str,
     failed_code: str,
     stderr_text: str,
     stdout_text: str,
@@ -89,7 +127,7 @@ def request_surgical_repair(
 ) -> dict[str, str]:
     prompt = (
         f"Repair attempt {attempt}/{max_attempts} for family: {family}.\n"
-        f"Keep submission path exactly: submissions/{run_name}_submission.csv\n\n"
+        f"Keep submission path exactly: {submission_path}\n\n"
         f"{module.get_repair_prompt()}\n\n"
         "Rules:\n"
         "- patch only the broken region\n"

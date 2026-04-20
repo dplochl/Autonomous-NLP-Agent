@@ -9,7 +9,7 @@ FAMILY = "LSTM"
 
 
 def default_max_runs() -> int:
-    return 5
+    return 4
 
 
 def freeze_after_first_success() -> bool:
@@ -37,6 +37,46 @@ def tune_frozen_code(code: str, spec: dict[str, object], run_name: str) -> str:
     fixed = _replace_assignment(fixed, "learning_rate", repr(float(spec["learning_rate"])))
     fixed = _replace_assignment(fixed, "VAL_SIZE", repr(float(spec["val_size"])))
     fixed = re.sub(
+        r"build_vocab\(train_texts,\s*max_vocab=\d+\)",
+        f"build_vocab(train_texts, max_vocab={int(spec['max_vocab'])})",
+        fixed,
+    )
+    fixed = re.sub(
+        r"text_to_sequence\(text,\s*vocab,\s*\d+\)",
+        f"text_to_sequence(text, vocab, {int(spec['max_len'])})",
+        fixed,
+    )
+    fixed = re.sub(
+        r"train_loader\s*=\s*DataLoader\(\s*train_dataset,\s*batch_size=\d+",
+        f"train_loader = DataLoader(train_dataset, batch_size={int(spec['batch_size'])}",
+        fixed,
+    )
+    fixed = re.sub(
+        r"val_loader\s*=\s*DataLoader\(\s*val_dataset,\s*batch_size=\d+",
+        f"val_loader = DataLoader(val_dataset, batch_size={int(spec['batch_size'])}",
+        fixed,
+    )
+    fixed = re.sub(
+        r"test_loader\s*=\s*DataLoader\(\s*test_dataset,\s*batch_size=\d+",
+        f"test_loader = DataLoader(test_dataset, batch_size={int(spec['batch_size'])}",
+        fixed,
+    )
+    fixed = re.sub(
+        r"model\s*=\s*LSTMClassifier\(\s*len\(vocab\)\s*,\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*[0-9.]+\s*\)",
+        f"model = LSTMClassifier(len(vocab), {int(spec['embedding_dim'])}, {int(spec['hidden_dim'])}, {int(spec['num_layers'])}, {float(spec['dropout'])})",
+        fixed,
+    )
+    fixed = re.sub(
+        r"optimizer\s*=\s*optim\.Adam\(model\.parameters\(\),\s*lr=[0-9.eE+-]+\)",
+        f"optimizer = optim.Adam(model.parameters(), lr={float(spec['learning_rate'])})",
+        fixed,
+    )
+    fixed = re.sub(
+        r"for epoch in range\(\d+\):",
+        f"for epoch in range({int(spec['epochs'])}):",
+        fixed,
+    )
+    fixed = re.sub(
         r"thresholds\s*=\s*np\.linspace\([^)]*\)",
         f"thresholds = np.linspace({float(spec['threshold_min'])}, {float(spec['threshold_max'])}, {int(spec['threshold_steps'])})",
         fixed,
@@ -44,8 +84,18 @@ def tune_frozen_code(code: str, spec: dict[str, object], run_name: str) -> str:
     )
     fixed = re.sub(r"train_df\s*=\s*train_df\.head\(\d+\)", f"train_df = train_df.head({int(spec['dry_run_head'])})", fixed)
     fixed = re.sub(
-        r"(['\"])submissions/[^'\"]+_submission\.csv\1",
-        lambda m: f"{m.group(1)}{spec['submission_path']}{m.group(1)}",
+        r"os\.makedirs\(os\.path\.dirname\((['\"]).*?submission\.csv\1\),\s*exist_ok=True\)",
+        f"os.makedirs(os.path.dirname({spec['submission_path']!r}), exist_ok=True)",
+        fixed,
+    )
+    fixed = re.sub(
+        r"submission_df\.to_csv\((['\"]).*?submission\.csv\1,\s*index=False\)",
+        f"submission_df.to_csv({spec['submission_path']!r}, index=False)",
+        fixed,
+    )
+    fixed = re.sub(
+        r"submission_path\s*=\s*(['\"]).*?submission\.csv\1",
+        f"submission_path = {spec['submission_path']!r}",
         fixed,
     )
     return fixed
@@ -61,7 +111,7 @@ def get_default_spec(name: str, submission_path: str) -> dict[str, object]:
         "num_layers": 1,
         "dropout": 0.3,
         "batch_size": 64,
-        "epochs": 4,
+        "epochs": 3,
         "learning_rate": 0.001,
         "val_size": 0.2,
         "threshold_min": 0.3,
@@ -82,7 +132,7 @@ def get_spec_ranges() -> dict[str, tuple[float, float]]:
         "num_layers": (1, 3),
         "dropout": (0.1, 0.6),
         "batch_size": (16, 128),
-        "epochs": (2, 8),
+        "epochs": (2, 3),
         "learning_rate": (0.0001, 0.01),
         "val_size": (0.1, 0.3),
         "threshold_min": (0.1, 0.6),

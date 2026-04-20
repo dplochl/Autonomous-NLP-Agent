@@ -9,7 +9,7 @@ FAMILY = "BoW"
 
 
 def default_max_runs() -> int:
-    return 5
+    return 4
 
 
 def freeze_after_first_success() -> bool:
@@ -132,9 +132,12 @@ def preflight_issues(code: str, spec: dict[str, object]) -> list[str]:
     for item in required:
         if item not in code:
             issues.append(f"Missing required element: {item}")
+    if "np." in code and "import numpy as np" not in code:
+        issues.append("BoW uses np.* without importing numpy as np.")
     banned = [
         (r"\b(torch|tensorflow|keras|Trainer|AutoModel)\b", "BoW must not use deep learning libraries."),
         (r"\bStratifiedKFold\b", "Use a single validation split instead of K-fold."),
+        (r"stratify_labels\s*=\s*train_df\[['\"]target['\"]\]", "stratify_labels must use the sliced target array, not full train_df['target']."),
     ]
     for pattern, message in banned:
         if re.search(pattern, code, re.IGNORECASE):
@@ -143,8 +146,26 @@ def preflight_issues(code: str, spec: dict[str, object]) -> list[str]:
 
 
 def apply_light_autofixes(code: str, spec: dict[str, object]) -> str:
-    fixed = code.replace("train_test_split(X, y, test_size=VAL_SIZE, random_state=SEED, stratify=y)",
-                         "train_test_split(X, y, test_size=VAL_SIZE, random_state=SEED, stratify=stratify_labels)")
+    fixed = code
+    fixed = re.sub(
+        r"X_train\s*=\s*train_df\[(?P<quote>['\"])(?P<col>[^'\"]+)(?P=quote)\]\.values",
+        lambda m: f"X_train = train_df[{m.group('quote')}{m.group('col')}{m.group('quote')}].astype(str).to_numpy()",
+        fixed,
+    )
+    fixed = re.sub(
+        r"X\s*=\s*train_df\[(?P<quote>['\"])(?P<col>[^'\"]+)(?P=quote)\]\.values",
+        lambda m: f"X = train_df[{m.group('quote')}{m.group('col')}{m.group('quote')}].astype(str).to_numpy()",
+        fixed,
+    )
+    if "np." in fixed and "import numpy as np" not in fixed:
+        if "import pandas as pd\n" in fixed:
+            fixed = fixed.replace("import pandas as pd\n", "import pandas as pd\nimport numpy as np\n", 1)
+        else:
+            fixed = "import numpy as np\n" + fixed
+    fixed = fixed.replace(
+        "train_test_split(X, y, test_size=VAL_SIZE, random_state=SEED, stratify=y)",
+        "train_test_split(X, y, test_size=VAL_SIZE, random_state=SEED, stratify=stratify_labels)",
+    )
     if "stratify_labels = y if" not in fixed and "y = train_df['target'].values" in fixed:
         fixed = fixed.replace(
             "y = train_df['target'].values\n",
@@ -152,6 +173,26 @@ def apply_light_autofixes(code: str, spec: dict[str, object]) -> str:
             "stratify_labels = y if len(np.unique(y)) > 1 and np.min(np.bincount(y.astype(int))) >= 2 else None\n",
             1,
         )
+    if "y_train = train_df['target'].values" in fixed:
+        fixed = re.sub(r"(?m)^stratify_labels\s*=.*$\n?", "", fixed)
+        fixed = fixed.replace(
+            "# Train-test split\n",
+            "# Train-test split\n"
+            "stratify_labels = y_train if len(np.unique(np.asarray(y_train, dtype=int))) > 1 and np.min(np.bincount(np.asarray(y_train, dtype=int))) >= 2 else None\n",
+            1,
+        )
+    elif "y = train_df['target'].values" in fixed:
+        fixed = re.sub(r"(?m)^stratify_labels\s*=.*$\n?", "", fixed)
+        fixed = fixed.replace(
+            "# Train-test split\n",
+            "# Train-test split\n"
+            "stratify_labels = y if len(np.unique(np.asarray(y, dtype=int))) > 1 and np.min(np.bincount(np.asarray(y, dtype=int))) >= 2 else None\n",
+            1,
+        )
+    fixed = fixed.replace(
+        "submission_df.to_csv(submission_path, index=False)",
+        "os.makedirs(os.path.dirname(submission_path), exist_ok=True)\nsubmission_df.to_csv(submission_path, index=False)",
+    )
     return fixed
 
 
@@ -161,4 +202,6 @@ def build_repair_hint(stderr_text: str) -> str:
         "- keep sklearn TF-IDF + LogisticRegression\n"
         "- keep one train/validation split\n"
         "- keep threshold search and METRICS output\n"
+        "- if DRY_RUN slices X_train/y_train, stratify_labels must be based on the sliced y_train too\n"
+        "- if you use np.*, import numpy as np\n"
     )

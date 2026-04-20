@@ -9,7 +9,7 @@ FAMILY = "Transformer"
 
 
 def default_max_runs() -> int:
-    return 5
+    return 4
 
 
 def freeze_after_first_success() -> bool:
@@ -65,9 +65,9 @@ def get_default_spec(name: str, submission_path: str) -> dict[str, object]:
         "weight_decay": 0.01,
         "num_epochs": 2,
         "val_size": 0.2,
-        "threshold_min": 0.1,
-        "threshold_max": 0.9,
-        "threshold_steps": 81,
+        "threshold_min": 0.3,
+        "threshold_max": 0.7,
+        "threshold_steps": 41,
         "dry_run_head": 16,
         "experiment_name": name,
         "submission_path": submission_path,
@@ -81,7 +81,7 @@ def get_spec_ranges() -> dict[str, tuple[float, float]]:
         "eval_batch_size": (8, 32),
         "learning_rate": (1e-6, 5e-4),
         "weight_decay": (0.0, 0.3),
-        "num_epochs": (1, 4),
+        "num_epochs": (1, 3),
         "val_size": (0.1, 0.3),
         "threshold_min": (0.1, 0.6),
         "threshold_max": (0.4, 0.9),
@@ -113,7 +113,7 @@ def get_spec_prompt() -> str:
     return (
         "Return a reliable DistilBERT spec with one validation split, conservative training values, "
         "and no alternative transformer family. Prefer a script that is likely to run on the first try. "
-        "Use broad threshold tuning to maximize F1 rather than a narrow band near 0.5. "
+        "Use threshold tuning over a practical mid-range to maximize F1. "
         "Keep training reproducible with explicit seeding."
     )
 
@@ -122,16 +122,16 @@ def get_search_prompt() -> str:
     return (
         "Search locally around the best transformer settings. Prefer nearby changes in sequence length, "
         "batch size, learning rate, weight decay, or epochs instead of drastic jumps. "
-        "Keep threshold tuning broad enough to search for the true best F1 cutoff. "
+        "Keep threshold tuning in the standard 0.3 to 0.7 range. "
         "Preserve deterministic seeded training and do not wander away from the best successful run."
     )
 
 
 def normalize_spec(spec: dict[str, object]) -> dict[str, object]:
     normalized = dict(spec)
-    normalized["threshold_min"] = 0.1
-    normalized["threshold_max"] = 0.9
-    normalized["threshold_steps"] = max(int(normalized.get("threshold_steps", 81)), 81)
+    normalized["threshold_min"] = 0.3
+    normalized["threshold_max"] = 0.7
+    normalized["threshold_steps"] = 41
     return normalized
 
 
