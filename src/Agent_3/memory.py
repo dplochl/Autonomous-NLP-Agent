@@ -20,14 +20,15 @@ def _safe_f1(record: dict[str, Any]) -> float:
 
 
 class Agent3Memory:
-    def __init__(self, persist: bool = True, log_path: str = LOG_PATH):
+    def __init__(self, persist: bool = True, log_path: str = LOG_PATH, load_existing: bool = False):
         self.persist = persist
         self.log_path = log_path
+        self.load_existing = load_existing
         self.records: list[dict[str, Any]] = []
         self._load()
 
     def _load(self) -> None:
-        if not self.persist:
+        if not self.persist or not self.load_existing:
             self.records = []
             return
         if os.path.exists(self.log_path):

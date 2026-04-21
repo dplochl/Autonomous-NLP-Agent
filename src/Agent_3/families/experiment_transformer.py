@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import re
 
+from families.autofix_utils import fix_text_column_fillna
+
 
 FAMILY = "Transformer"
 
@@ -22,6 +24,67 @@ def _replace_assignment(code: str, name: str, value: str) -> str:
         rf"\g<1>{value}",
         code,
     )
+
+
+def _dataset_class_name(code: str) -> str:
+    match = re.search(r"(?m)^class\s+(\w+)\s*\(\s*Dataset\s*\)\s*:", code)
+    return match.group(1) if match else "TextDataset"
+
+
+def _ensure_submission_makedirs(code: str) -> str:
+    """Make submission directory creation idempotent and indentation-safe."""
+    fixed = re.sub(
+        r"(?m)^[ \t]*os\.makedirs\(os\.path\.dirname\(submission_path\),[ \t]*exist_ok=True\)[ \t]*\n?",
+        "",
+        code,
+    )
+
+    def add_before_to_csv(match: re.Match[str]) -> str:
+        indent = match.group("indent")
+        return (
+            f"{indent}os.makedirs(os.path.dirname(submission_path), exist_ok=True)\n"
+            f"{match.group(0)}"
+        )
+
+    return re.sub(
+        r"(?m)^(?P<indent>[ \t]*)submission_df\.to_csv\(submission_path,\s*index=False\)",
+        add_before_to_csv,
+        fixed,
+        count=1,
+    )
+
+
+def _flatten_tokenizer_tensors(code: str) -> str:
+    fixed = code
+    for variable in ("inputs", "encoding"):
+        fixed = fixed.replace(
+            f"input_ids = {variable}['input_ids']\n",
+            f"input_ids = {variable}['input_ids'].flatten()\n",
+        )
+        fixed = fixed.replace(
+            f'attention_mask = {variable}["attention_mask"]\n',
+            f'attention_mask = {variable}["attention_mask"].flatten()\n',
+        )
+        fixed = fixed.replace(
+            f"attention_mask = {variable}['attention_mask']\n",
+            f"attention_mask = {variable}['attention_mask'].flatten()\n",
+        )
+        fixed = fixed.replace(
+            f'input_ids = {variable}["input_ids"]\n',
+            f'input_ids = {variable}["input_ids"].flatten()\n',
+        )
+    fixed = re.sub(
+        r"torch\.tensor\(\s*input_ids\s*,\s*dtype=torch\.long\s*\)",
+        "input_ids",
+        fixed,
+    )
+    fixed = re.sub(
+        r"torch\.tensor\(\s*attention_mask\s*,\s*dtype=torch\.long\s*\)",
+        "attention_mask",
+        fixed,
+    )
+    fixed = fixed.replace(".flatten().flatten()", ".flatten()")
+    return fixed
 
 
 def tune_frozen_code(code: str, spec: dict[str, object], run_name: str) -> str:
@@ -63,7 +126,7 @@ def get_default_spec(name: str, submission_path: str) -> dict[str, object]:
         "eval_batch_size": 16,
         "learning_rate": 2e-5,
         "weight_decay": 0.01,
-        "num_epochs": 2,
+        "num_epochs": 3,
         "val_size": 0.2,
         "threshold_min": 0.3,
         "threshold_max": 0.7,
@@ -155,7 +218,7 @@ def preflight_issues(code: str, spec: dict[str, object]) -> list[str]:
         (r"train_test_split\(", "Missing required element: train_test_split."),
         (r"stratify_labels\s*=", "Missing required element: stratify_labels fallback."),
         (r"trainer\.predict\((?:val|valid)_dataset\)\.(?:predictions|logits)", "Missing required validation predict call."),
-        (r"trainer\.predict\(test_dataset\)\.(?:predictions|logits)", "Missing required test predict call."),
+        (r"(?:softmax|np\.exp\()", "Missing required stable softmax/probability conversion from logits."),
         (r"METRICS:", "Missing required element: METRICS output."),
     ]
     for pattern, message in required_patterns:
@@ -174,7 +237,8 @@ def preflight_issues(code: str, spec: dict[str, object]) -> list[str]:
 
 
 def apply_light_autofixes(code: str, spec: dict[str, object]) -> str:
-    fixed = code
+    fixed = fix_text_column_fillna(code)
+    dataset_class = _dataset_class_name(fixed)
     if "import torch" not in fixed and "from transformers import" in fixed:
         fixed = fixed.replace("from transformers import", "import torch\nfrom transformers import", 1)
     fixed = fixed.replace(
@@ -231,43 +295,70 @@ def apply_light_autofixes(code: str, spec: dict[str, object]) -> str:
     fixed = fixed.replace("text = self.texts[idx]", "text = str(self.texts[idx])")
     fixed = fixed.replace("text = str(self.texts[idx])", "text = str(self.texts[idx])")
     fixed = fixed.replace("self.labels[idx]", "self.labels[idx]")
+    fixed = re.sub(r"(['\"])ids\1\s*:", "'input_ids':", fixed)
+    fixed = re.sub(r"(['\"])mask\1\s*:", "'attention_mask':", fixed)
+    fixed = _flatten_tokenizer_tensors(fixed)
+    fixed = fixed.replace(".tolist().tolist()", ".tolist()")
+    fixed = fixed.replace("train_texts.tolist()", "train_texts")
+    fixed = fixed.replace("val_texts.tolist()", "val_texts")
+    fixed = fixed.replace("train_labels.tolist()", "train_labels")
+    fixed = fixed.replace("val_labels.tolist()", "val_labels")
+    fixed = fixed.replace("test_df['text'].tolist()", "list(test_df['text'])")
+    fixed = fixed.replace('test_df["text"].tolist()', 'list(test_df["text"])')
     fixed = fixed.replace(
         "train_texts, val_texts, train_labels, val_labels = train_test_split(",
         "train_texts, val_texts, train_labels, val_labels = train_test_split(",
     )
-    fixed = re.sub(
-        r"(train_texts,\s*val_texts,\s*train_labels,\s*val_labels\s*=\s*train_test_split\([\s\S]*?\)\n)",
-        r"\1train_texts = list(train_texts)\nval_texts = list(val_texts)\ntrain_labels = list(train_labels)\nval_labels = list(val_labels)\n",
-        fixed,
-        count=1,
-    )
+    if "train_texts = list(train_texts)" not in fixed:
+        fixed = re.sub(
+            r"(train_texts,\s*val_texts,\s*train_labels,\s*val_labels\s*=\s*train_test_split\([\s\S]*?\)\n)",
+            r"\1train_texts = list(train_texts)\nval_texts = list(val_texts)\ntrain_labels = list(train_labels)\nval_labels = list(val_labels)\n",
+            fixed,
+            count=1,
+        )
     fixed = fixed.replace("trainer.predict(valid_dataset).logits", "trainer.predict(valid_dataset).predictions")
     fixed = fixed.replace("trainer.predict(val_dataset).logits", "trainer.predict(val_dataset).predictions")
     fixed = fixed.replace("trainer.predict(test_dataset).logits", "trainer.predict(test_dataset).predictions")
     fixed = fixed.replace("trainer.predict(test_df['text']).predictions", "trainer.predict(test_dataset).predictions")
-    fixed = fixed.replace("test_dataset = TextDataset(test_df['text'])", "test_dataset = TextDataset(list(test_df['text']))")
+    fixed = re.sub(r"best_threshold\s*=\s*None", "best_threshold = 0.5", fixed)
+    test_dataset_expr = (
+        f"test_dataset = {dataset_class}(list(test_df['text']), labels=None, "
+        f"tokenizer=tokenizer, max_len={int(spec['max_len'])})"
+    )
+    fixed = re.sub(
+        r"(?m)^test_dataset\s*=\s*\w+\(.*test_df\[['\"]text['\"]\].*\).*$",
+        test_dataset_expr,
+        fixed,
+    )
+    while f"{test_dataset_expr}\n{test_dataset_expr}" in fixed:
+        fixed = fixed.replace(f"{test_dataset_expr}\n{test_dataset_expr}", test_dataset_expr)
     fixed = fixed.replace("val_logits = trainer.predict(val_dataset).predictions", "val_logits = trainer.predict(val_dataset).predictions")
     fixed = fixed.replace("test_logits = trainer.predict(test_dataset).predictions", "test_logits = trainer.predict(test_dataset).predictions")
-    if "test_dataset = TextDataset(list(test_df['text']))" not in fixed:
+    if "test_dataset = TextDataset(list(test_df['text']), labels=None" not in fixed:
         fixed = re.sub(
             r"(val_dataset\s*=\s*TextDataset\([^\n]+\)\n)",
-            r"\1test_dataset = TextDataset(list(test_df['text']))\n",
+            rf"\1{test_dataset_expr}\n",
             fixed,
             count=1,
         )
-    if "trainer.predict(test_dataset).predictions" not in fixed and "val_predictions = trainer.predict(val_dataset).predictions" in fixed:
-        fixed = fixed.replace(
-            "val_predictions = trainer.predict(val_dataset).predictions",
-            "val_predictions = trainer.predict(val_dataset).predictions\ntest_predictions = trainer.predict(test_dataset).predictions",
-            1,
-        )
+    fixed = re.sub(
+        r"(\n[ \t]*)label = self\.labels\[idx\]\n([\s\S]*?)\n[ \t]*return \{\n[ \t]*['\"]text['\"]: text,\n[ \t]*['\"]input_ids['\"]: encoding\[['\"]input_ids['\"]\]\.flatten\(\),\n[ \t]*['\"]attention_mask['\"]: encoding\[['\"]attention_mask['\"]\]\.flatten\(\),\n[ \t]*['\"]labels['\"]: torch\.tensor\(label, dtype=torch\.long\)\n[ \t]*\}",
+        (
+            r"\1item = {\n"
+            r"\1    'text': text,\n"
+            r"\1    'input_ids': encoding['input_ids'].flatten(),\n"
+            r"\1    'attention_mask': encoding['attention_mask'].flatten(),\n"
+            r"\1}\n"
+            r"\1if self.labels is not None:\n"
+            r"\1    item['labels'] = torch.tensor(self.labels[idx], dtype=torch.long)\n"
+            r"\1return item"
+        ),
+        fixed,
+        count=1,
+    )
     fixed = fixed.replace("trainer.train()    # Predict validation and test logits", "trainer.train()")
     fixed = fixed.replace("trainer.train()# Predict validation and test logits", "trainer.train()")
-    fixed = fixed.replace(
-        "submission_df.to_csv(submission_path, index=False)",
-        "os.makedirs(os.path.dirname(submission_path), exist_ok=True)\nsubmission_df.to_csv(submission_path, index=False)",
-    )
-    return fixed
+    return _ensure_submission_makedirs(fixed)
 
 
 def build_repair_hint(stderr_text: str) -> str:

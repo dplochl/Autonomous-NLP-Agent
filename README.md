@@ -141,7 +141,7 @@ src/Agent_V2/
 ├── experiment_log.json  # Persistent log of all experiments (auto-generated)
 ├── submissions/      # Kaggle submission CSVs (auto-generated)
 │
-├── disaster_tweets.ipynb  # Manual baseline (DeBERTa fine-tuning)
+├── disaster_tweets.ipynb  # Manual baseline notebook
 └── Untitled-1.py          # Original manual pipeline script
 ```
 
@@ -169,4 +169,3 @@ The agent explores architectures in this order:
 6. Transformer (HuggingFace)
 
 See `src/Agent_V2/ARCHITECTURE.md` for full details and design decisions.
-

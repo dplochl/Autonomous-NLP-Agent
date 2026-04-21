@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import re
 
+from families.autofix_utils import fix_text_column_fillna
+
 
 FAMILY = "BoW_advanced"
 
@@ -156,7 +158,7 @@ def preflight_issues(code: str, spec: dict[str, object]) -> list[str]:
 
 
 def apply_light_autofixes(code: str, spec: dict[str, object]) -> str:
-    fixed = code
+    fixed = fix_text_column_fillna(code)
     if "from scipy.sparse import hstack" not in fixed and "hstack(" in fixed:
         fixed = fixed.replace("from sklearn.feature_extraction.text import TfidfVectorizer\n",
                               "from sklearn.feature_extraction.text import TfidfVectorizer\nfrom scipy.sparse import hstack\n", 1)

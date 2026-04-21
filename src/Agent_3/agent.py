@@ -4,13 +4,17 @@ from __future__ import annotations
 
 import argparse
 import ast
+import atexit
 import os
+import re
 import shutil
+import tempfile
 import time
 from datetime import datetime
 from typing import Any
 
 import pandas as pd
+from sklearn.model_selection import train_test_split
 
 from artifacts import copy_if_exists, create_session_dir, create_run_dir, write_json, write_text
 from generate_spec import generate_initial_spec
@@ -27,6 +31,7 @@ import families.experiment_bow as exp_bow
 import families.experiment_bow_advanced as exp_bow_advanced
 import families.experiment_cnn as exp_cnn
 import families.experiment_lstm as exp_lstm
+import families.experiment_roberta as exp_roberta
 import families.experiment_transformer as exp_transformer
 
 
@@ -36,25 +41,30 @@ MAX_SEARCH_RUNS = int(os.environ.get("AGENT3_MAX_RUNS", "4"))
 MAX_REPAIR_ATTEMPTS = int(os.environ.get("DISASTER_AGENT_MAX_REPAIRS", "8"))
 TOTAL_TIME_BUDGET_SECONDS = int(os.environ.get("AGENT3_TOTAL_TIME_BUDGET_SECONDS", str(80 * 60)))
 SWEEP_BUDGET_FRACTION = float(os.environ.get("AGENT3_SWEEP_BUDGET_FRACTION", "0.65"))
-WINNER_OPTIMIZATION_MAX_RUNS = int(os.environ.get("AGENT3_WINNER_OPTIMIZATION_MAX_RUNS", "6"))
+SWEEP_SAMPLE_ROWS = int(os.environ.get("AGENT3_SWEEP_SAMPLE_ROWS", "4000"))
+FINAL_TRAIN_ROWS = int(os.environ.get("AGENT3_FINAL_TRAIN_ROWS", "10000"))
+VALIDATION_FRACTION = min(max(float(os.environ.get("AGENT3_VALIDATION_FRACTION", "0.2")), 0.05), 0.5)
+TOP_ARCHITECTURES_TO_OPTIMIZE = int(os.environ.get("AGENT3_TOP_ARCHITECTURES_TO_OPTIMIZE", "2"))
+WINNER_OPTIMIZATION_MAX_RUNS = int(os.environ.get("AGENT3_WINNER_OPTIMIZATION_MAX_RUNS", "20"))
 RUN_START_BUFFER_SECONDS = int(os.environ.get("AGENT3_RUN_START_BUFFER_SECONDS", "120"))
 # Measured one-run wall times on 2026-04-20, plus an extra ~120s cushion
 # for up to five repair attempts at roughly 24s each.
 FAMILY_RUN_ESTIMATES = {
-    "bow": 195,
-    "bow_advanced": 255,
-    "cnn": 330,
-    "lstm": 345,
-    "transformer": 690,
+    "bow": 100,
+    "bow_advanced": 200,
+    "cnn": 200,
+    "lstm": 200,
+    "transformer": 500,
+    "roberta": 500,
 }
 
 FAMILY_MODULES = {
-     "transformer": exp_transformer,
+    "transformer": exp_transformer,
+    "roberta": exp_roberta,
     "bow_advanced": exp_bow_advanced,
     "cnn": exp_cnn,
     "lstm": exp_lstm,
     "bow": exp_bow,
-   
 }
 
 
@@ -163,6 +173,116 @@ def load_text_if_exists(path: str | None) -> str | None:
         return f.read()
 
 
+def force_submission_path(code: str, old_path: str | None, new_path: str) -> str:
+    fixed = code
+    if old_path:
+        fixed = fixed.replace(str(old_path), new_path)
+    fixed = re.sub(
+        r"os\.environ\.get\((['\"])DISASTER_AGENT_SUBMISSION_PATH\1,\s*(['\"])[^'\"]*submission\.csv\2\)",
+        repr(new_path),
+        fixed,
+    )
+    fixed = re.sub(
+        r"submission_path\s*=\s*(['\"])[^'\"]*submission[^'\"]*\.csv\1",
+        f"submission_path = {new_path!r}",
+        fixed,
+    )
+    fixed = re.sub(
+        r"(['\"])submissions/[^'\"]+_submission\.csv\1",
+        repr(new_path),
+        fixed,
+    )
+    return fixed
+
+
+def build_final_submission_code(summary: dict[str, Any], public_submission_path: str) -> tuple[str | None, str | None]:
+    best_trial = best_trial_from_summary(summary)
+    if not best_trial:
+        return None, "Could not find the best trial in the selected family summary."
+    session_dir = os.path.join(os.path.dirname(__file__), "runs", summary["session_name"])
+    code = load_text_if_exists(os.path.join(session_dir, "best_train.py"))
+    if not code:
+        return None, "Could not load best_train.py for the selected best run."
+
+    module = FAMILY_MODULES[summary["family_key"]]
+    spec = dict(best_trial.get("spec", {}))
+    old_submission_path = spec.get("submission_path")
+    spec["submission_path"] = public_submission_path
+    spec["experiment_name"] = "best_overall_submission"
+    spec["val_size"] = VALIDATION_FRACTION
+    if hasattr(module, "normalize_spec"):
+        spec = module.normalize_spec(spec)
+    if hasattr(module, "tune_frozen_code"):
+        code = module.tune_frozen_code(code, spec, "best_overall_submission")
+    return force_submission_path(code, old_submission_path if old_submission_path is not None else None, public_submission_path), None
+
+
+def constrain_phase_spec(spec: dict[str, Any]) -> dict[str, Any]:
+    constrained = dict(spec)
+    constrained["val_size"] = VALIDATION_FRACTION
+    return constrained
+
+
+def phase_train_rows(phase_label: str) -> int | None:
+    if phase_label == "sweep":
+        return SWEEP_SAMPLE_ROWS
+    return None
+
+
+def create_fixed_phase_data_dir(
+    phase_label: str,
+    train_rows: int | None,
+    test_rows: int | None = 1,
+    seed: int = 42,
+) -> tuple[str, dict[str, Any]]:
+    train_path, test_path = get_data_paths()
+    train = pd.read_csv(train_path)
+    original_train_rows = len(train)
+    if train_rows and train_rows > 0 and train_rows < len(train):
+        train = train.sample(n=train_rows, random_state=seed).reset_index(drop=True)
+    else:
+        train = train.reset_index(drop=True)
+
+    test = pd.read_csv(test_path)
+    if test_rows is not None:
+        test = test.head(test_rows)
+
+    data_dir = tempfile.mkdtemp(prefix=f"agent3_{phase_label}_fixed_data_")
+    train.to_csv(os.path.join(data_dir, "train.csv"), index=False)
+    test.to_csv(os.path.join(data_dir, "test.csv"), index=False)
+
+    y = train["target"]
+    stratify_labels = y if y.nunique() > 1 and y.value_counts().min() >= 2 else None
+    train_idx, val_idx = train_test_split(
+        train.index,
+        test_size=VALIDATION_FRACTION,
+        random_state=42,
+        stratify=stratify_labels,
+    )
+    train_ids = train.loc[train_idx, "id"].astype(int).tolist() if "id" in train.columns else list(map(int, train_idx))
+    val_ids = train.loc[val_idx, "id"].astype(int).tolist() if "id" in train.columns else list(map(int, val_idx))
+    manifest = {
+        "phase": phase_label,
+        "data_dir": data_dir,
+        "source_train_rows": original_train_rows,
+        "sample_rows": len(train),
+        "validation_fraction": VALIDATION_FRACTION,
+        "split_random_state": 42,
+        "sample_seed": seed,
+        "expected_train_rows": len(train_ids),
+        "expected_validation_rows": len(val_ids),
+        "train_ids": train_ids,
+        "validation_ids": val_ids,
+    }
+    write_json(os.path.join(data_dir, "fixed_split_manifest.json"), manifest)
+    return data_dir, manifest
+
+
+def cleanup_phase_data_dirs(paths: list[str]) -> None:
+    for path in paths:
+        shutil.rmtree(path, ignore_errors=True)
+
+
 def execute_family(
     llm: OllamaClient,
     memory: Agent3Memory,
@@ -172,6 +292,8 @@ def execute_family(
     phase_label: str = "sweep",
     seeded_trial: dict[str, Any] | None = None,
     seeded_code: str | None = None,
+    phase_data_dir: str | None = None,
+    phase_split_manifest: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     module = FAMILY_MODULES[family_key]
     family = module.FAMILY
@@ -185,6 +307,7 @@ def execute_family(
     best_trial: dict[str, Any] | None = None
     best_code: str | None = seeded_code
     frozen_code: str | None = seeded_code
+    first_sweep_success_run: int | None = None
     freeze_after_success = bool(getattr(module, "freeze_after_first_success", lambda: False)())
     if seeded_trial:
         seed_record = dict(seeded_trial)
@@ -240,6 +363,7 @@ def execute_family(
         spec = spec_bundle["spec"]
         if hasattr(module, "normalize_spec"):
             spec = module.normalize_spec(spec)
+        spec = constrain_phase_spec(spec)
         prompt = render_family_prompt(
             module=module,
             spec=spec,
@@ -361,8 +485,16 @@ def execute_family(
                 attempt += 1
                 continue
 
+            train_rows = phase_train_rows(phase_label)
             print("[EXECUTE] Running experiment...")
-            result = run_experiment(run_code, run_name)
+            result = run_experiment(
+                run_code,
+                run_name,
+                train_fraction=1.0,
+                train_rows=None if phase_data_dir else train_rows,
+                write_submission=False,
+                data_dir=phase_data_dir,
+            )
             if result["success"]:
                 break
             if attempt == MAX_REPAIR_ATTEMPTS:
@@ -428,7 +560,8 @@ def execute_family(
                 ]
             ),
         )
-        copy_if_exists(submission_path, os.path.join(run_dir, "predictions.csv"))
+        if os.path.exists(submission_path):
+            os.remove(submission_path)
 
         memory.add_run(family, run_name, run_index, spec, prompt, run_code, result, analysis)
         trial_record = {
@@ -451,6 +584,15 @@ def execute_family(
                     frozen_code = best_code
                     print(f"[Freeze] {family} baseline refreshed from current best successful run.")
         print(f"[Result] run {run_index}/{resolved_max_runs} | success={result.get('success', False)} | metrics={result.get('metrics', {})}")
+        if phase_label == "sweep" and result.get("success"):
+            if first_sweep_success_run is None:
+                first_sweep_success_run = run_index
+            elif run_index > first_sweep_success_run:
+                print(
+                    f"[Sweep] {family} produced a success plus one follow-up run; "
+                    "moving to the next family."
+                )
+                break
 
     session_dir = create_session_dir(session_name)
     summary = {
@@ -459,6 +601,9 @@ def execute_family(
         "session_name": session_name,
         "phase": phase_label,
         "max_runs": resolved_max_runs,
+        "sample_rows": phase_train_rows(phase_label),
+        "validation_fraction": VALIDATION_FRACTION,
+        "fixed_split": phase_split_manifest,
         "best_run_index": best_trial["run_index"] if best_trial else None,
         "best_metrics": best_trial["metrics"] if best_trial else {},
         "best_run_dir": best_trial["run_dir"] if best_trial else None,
@@ -467,9 +612,7 @@ def execute_family(
     write_json(os.path.join(session_dir, "summary.json"), summary)
     if best_trial:
         best_train = os.path.join(best_trial["run_dir"], "train.py")
-        best_predictions = os.path.join(best_trial["run_dir"], "predictions.csv")
         copy_if_exists(best_train, os.path.join(session_dir, "best_train.py"))
-        copy_if_exists(best_predictions, os.path.join(session_dir, "best_predictions.csv"))
         write_json(os.path.join(session_dir, "best_metrics.json"), best_trial["metrics"])
         print(f"[Best] family={family} | run={best_trial['run_index']} | metrics={best_trial['metrics']}")
 
@@ -492,8 +635,22 @@ def main(
             "Start Ollama and ensure the requested model is available.\n"
             f"Details: {exc}"
         ) from exc
-    memory = Agent3Memory(persist=persist)
+    memory = Agent3Memory(persist=persist, load_existing=False)
     public_submissions_dir = reset_public_submissions_dir()
+    phase_data_dirs: list[str] = []
+    atexit.register(cleanup_phase_data_dirs, phase_data_dirs)
+    sweep_data_dir, sweep_split_manifest = create_fixed_phase_data_dir(
+        "sweep",
+        phase_train_rows("sweep"),
+        test_rows=1,
+    )
+    phase_data_dirs.append(sweep_data_dir)
+    print(
+        "[Fixed Split] sweep "
+        f"sample_rows={sweep_split_manifest['sample_rows']} "
+        f"train={sweep_split_manifest['expected_train_rows']} "
+        f"validation={sweep_split_manifest['expected_validation_rows']}"
+    )
     started_at = time.time()
     overall_deadline = started_at + time_budget_seconds
     sweep_deadline = started_at + int(time_budget_seconds * SWEEP_BUDGET_FRACTION) if optimize_winner else overall_deadline
@@ -515,43 +672,78 @@ def main(
                 max_runs=max_runs,
                 stop_after_ts=phase_deadline,
                 phase_label="sweep",
+                phase_data_dir=sweep_data_dir,
+                phase_split_manifest=sweep_split_manifest,
             )
         )
 
     successful = [summary for summary in family_summaries if summary.get("best_run_index") is not None]
     if not successful:
         print("[Overall Best] No family produced a successful run with metrics.")
+        cleanup_phase_data_dirs(phase_data_dirs)
         return
 
-    sweep_best = max(
+    sweep_ranked = sorted(
         successful,
         key=lambda summary: metric_f1({"metrics": summary.get("best_metrics", {})}),
+        reverse=True,
     )
+    sweep_best = sweep_ranked[0]
+    top_sweep_summaries = sweep_ranked[:max(1, TOP_ARCHITECTURES_TO_OPTIMIZE)]
 
-    if optimize_winner and can_start_run(sweep_best["family_key"], overall_deadline):
-        seeded_trial = best_trial_from_summary(sweep_best)
-        seeded_code = load_text_if_exists(os.path.join(os.path.dirname(__file__), "runs", sweep_best["session_name"], "best_train.py"))
-        if seeded_trial and seeded_code:
-            print(
-                f"[Optimize] Starting winner-only optimization for family={sweep_best['family']} "
-                f"with {remaining_seconds(overall_deadline)}s remaining."
+    if optimize_winner:
+        opt_data_dir, opt_split_manifest = create_fixed_phase_data_dir(
+            "opt",
+            phase_train_rows("opt"),
+            test_rows=1,
+        )
+        phase_data_dirs.append(opt_data_dir)
+        print(
+            "[Fixed Split] opt "
+            f"sample_rows={opt_split_manifest['sample_rows']} "
+            f"train={opt_split_manifest['expected_train_rows']} "
+            f"validation={opt_split_manifest['expected_validation_rows']}"
+        )
+        print(
+            "[Optimize] Top sweep architectures: "
+            + ", ".join(
+                f"{summary['family']} f1={metric_f1({'metrics': summary.get('best_metrics', {})}):.4f}"
+                for summary in top_sweep_summaries
             )
-            family_summaries.append(
-                execute_family(
-                    llm,
-                    memory,
-                    sweep_best["family_key"],
-                    max_runs=WINNER_OPTIMIZATION_MAX_RUNS,
-                    stop_after_ts=overall_deadline,
-                    phase_label="opt",
-                    seeded_trial=seeded_trial,
-                    seeded_code=seeded_code,
+        )
+        for idx, selected in enumerate(top_sweep_summaries):
+            slots_left = len(top_sweep_summaries) - idx
+            phase_deadline = time.time() + max(0, remaining_seconds(overall_deadline) // max(slots_left, 1))
+            phase_deadline = min(phase_deadline, overall_deadline)
+            if not can_start_run(selected["family_key"], phase_deadline):
+                print(
+                    f"[Optimize] Skipping family={selected['family']} because only "
+                    f"{remaining_seconds(phase_deadline)}s remain in its allocation."
                 )
-            )
-        else:
-            print("[Optimize] Skipped winner optimization because the best run code/spec could not be loaded.")
-    elif optimize_winner:
-        print(f"[Optimize] Skipped winner optimization because only {remaining_seconds(overall_deadline)}s remain.")
+                continue
+            seeded_trial = best_trial_from_summary(selected)
+            seeded_code = load_text_if_exists(os.path.join(os.path.dirname(__file__), "runs", selected["session_name"], "best_train.py"))
+            if seeded_trial and seeded_code:
+                print(
+                    f"[Optimize] Tuning top architecture {idx + 1}/{len(top_sweep_summaries)}: "
+                    f"family={selected['family']} with {remaining_seconds(phase_deadline)}s allocated."
+                )
+                family_summaries.append(
+                    execute_family(
+                        llm,
+                        memory,
+                        selected["family_key"],
+                        max_runs=WINNER_OPTIMIZATION_MAX_RUNS,
+                        stop_after_ts=phase_deadline,
+                        phase_label="opt",
+                        seeded_trial=seeded_trial,
+                        seeded_code=seeded_code,
+                        phase_data_dir=opt_data_dir,
+                        phase_split_manifest=opt_split_manifest,
+                    )
+                )
+            else:
+                print(f"[Optimize] Skipped family={selected['family']} because its best run code/spec could not be loaded.")
 
     best_overall = max(
         [summary for summary in family_summaries if summary.get("best_run_index") is not None],
@@ -565,23 +757,59 @@ def main(
         "sweep_best_family": sweep_best["family"],
         "sweep_best_run_index": sweep_best["best_run_index"],
         "sweep_best_metrics": sweep_best["best_metrics"],
+        "optimized_families": [summary["family"] for summary in top_sweep_summaries] if optimize_winner else [],
         "best_family": best_overall["family"],
         "best_run_index": best_overall["best_run_index"],
         "best_metrics": best_overall["best_metrics"],
         "family_summaries": family_summaries,
     }
     write_json(os.path.join(os.path.dirname(__file__), "runs", "overall_best.json"), overall_summary)
-    best_session_dir = os.path.join(os.path.dirname(__file__), "runs", best_overall["session_name"])
-    best_predictions = os.path.join(best_session_dir, "best_predictions.csv")
     public_best_submission = os.path.join(public_submissions_dir, "best_overall_submission.csv")
-    if copy_if_exists(best_predictions, public_best_submission):
+    final_code, final_error = build_final_submission_code(best_overall, public_best_submission)
+    final_submission_success = False
+    if final_code:
+        print("[Final Submission] Re-running the selected best model on full data for one test prediction file.")
+        final_result = run_experiment(
+            final_code,
+            "best_overall_submission",
+            train_fraction=1.0,
+            train_rows=FINAL_TRAIN_ROWS,
+            write_submission=True,
+            final_submission=True,
+        )
+        overall_summary["final_submission_result"] = {
+            "success": final_result.get("success", False),
+            "timed_out": final_result.get("timed_out", False),
+            "metrics": final_result.get("metrics", {}),
+        }
+        final_submission_success = bool(final_result.get("success", False))
+        write_text(
+            os.path.join(os.path.dirname(__file__), "runs", "final_submission.log"),
+            "\n".join(
+                [
+                    f"success: {final_result.get('success', False)}",
+                    f"timed_out: {final_result.get('timed_out', False)}",
+                    "",
+                    "[STDOUT]",
+                    final_result.get("stdout", ""),
+                    "",
+                    "[STDERR]",
+                    final_result.get("stderr", ""),
+                ]
+            ),
+        )
+    else:
+        overall_summary["final_submission_result"] = {"success": False, "error": final_error}
+
+    if final_submission_success and os.path.exists(public_best_submission):
         overall_summary["best_submission_path"] = public_best_submission
-        write_json(os.path.join(os.path.dirname(__file__), "runs", "overall_best.json"), overall_summary)
+    write_json(os.path.join(os.path.dirname(__file__), "runs", "overall_best.json"), overall_summary)
     print(
         "[Overall Best] "
         f"family={best_overall['family']} | run={best_overall['best_run_index']} | "
         f"metrics={best_overall['best_metrics']}"
     )
+    cleanup_phase_data_dirs(phase_data_dirs)
 
 
 if __name__ == "__main__":
@@ -591,7 +819,7 @@ if __name__ == "__main__":
     parser.add_argument("--max-runs", type=int)
     parser.add_argument("--time-budget-minutes", type=int, default=80)
     parser.add_argument("--no-winner-optimization", action="store_true")
-    parser.add_argument("--fresh", action="store_true", help="Do not read or write agent3_log.json")
+    parser.add_argument("--fresh", action="store_true", help="Do not write agent3_log.json for this invocation")
     args = parser.parse_args()
     main(
         model=args.model,

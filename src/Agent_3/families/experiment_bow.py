@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import re
 
+from families.autofix_utils import fix_text_column_fillna
+
 
 FAMILY = "BoW"
 
@@ -146,7 +148,7 @@ def preflight_issues(code: str, spec: dict[str, object]) -> list[str]:
 
 
 def apply_light_autofixes(code: str, spec: dict[str, object]) -> str:
-    fixed = code
+    fixed = fix_text_column_fillna(code)
     fixed = re.sub(
         r"X_train\s*=\s*train_df\[(?P<quote>['\"])(?P<col>[^'\"]+)(?P=quote)\]\.values",
         lambda m: f"X_train = train_df[{m.group('quote')}{m.group('col')}{m.group('quote')}].astype(str).to_numpy()",

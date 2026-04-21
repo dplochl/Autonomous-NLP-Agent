@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import re
 
+from families.autofix_utils import fix_text_column_fillna
+
 
 FAMILY = "CNN"
 
@@ -162,7 +164,7 @@ def preflight_issues(code: str, spec: dict[str, object]) -> list[str]:
 
 
 def apply_light_autofixes(code: str, spec: dict[str, object]) -> str:
-    fixed = code
+    fixed = fix_text_column_fillna(code)
     if "F." in fixed and "import torch.nn.functional as F" not in fixed:
         fixed = fixed.replace("import torch.nn as nn\n", "import torch.nn as nn\nimport torch.nn.functional as F\n", 1)
     fixed = fixed.replace(
@@ -194,6 +196,10 @@ def apply_light_autofixes(code: str, spec: dict[str, object]) -> str:
         "test_probs.extend(np.atleast_1d(probs))",
     )
     fixed = fixed.replace(
+        "all_probs.extend(probs)",
+        "all_probs.extend(np.atleast_1d(probs))",
+    )
+    fixed = fixed.replace(
         "val_preds.extend(preds)",
         "val_preds.extend(np.atleast_1d(preds))",
     )
@@ -210,17 +216,17 @@ def apply_light_autofixes(code: str, spec: dict[str, object]) -> str:
         "os.makedirs(os.path.dirname(submission_path), exist_ok=True)\nsubmission_df.to_csv(submission_path, index=False)",
     )
     fixed = re.sub(
-        r"(\n[ \t]*)for (\w+) in loader:\n",
+        r"(\n[ \t]*)for (\w+) in loader:\n(?![ \t]*if isinstance)",
         r"\1for \2 in loader:\n\1    if isinstance(\2, (list, tuple)):\n\1        \2 = \2[0]\n",
         fixed,
     )
     fixed = re.sub(
-        r"(\n[ \t]*)for (\w+) in val_loader:\n",
+        r"(\n[ \t]*)for (\w+) in val_loader:\n(?![ \t]*if isinstance)",
         r"\1for \2 in val_loader:\n\1    if isinstance(\2, (list, tuple)):\n\1        \2 = \2[0]\n",
         fixed,
     )
     fixed = re.sub(
-        r"(\n[ \t]*)for (\w+) in test_loader:\n",
+        r"(\n[ \t]*)for (\w+) in test_loader:\n(?![ \t]*if isinstance)",
         r"\1for \2 in test_loader:\n\1    if isinstance(\2, (list, tuple)):\n\1        \2 = \2[0]\n",
         fixed,
     )

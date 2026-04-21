@@ -133,6 +133,8 @@ def request_surgical_repair(
         "- patch only the broken region\n"
         "- keep the architecture family fixed\n"
         "- keep working code unchanged\n"
+        "- keep test prediction and CSV writing guarded by AGENT_WRITE_SUBMISSION\n"
+        "- keep final full-data retraining guarded by AGENT_FINAL_SUBMISSION\n"
         "- prefer 1-3 edits\n\n"
     )
     if extra_context:

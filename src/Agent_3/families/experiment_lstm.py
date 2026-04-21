@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import re
 
+from families.autofix_utils import fix_text_column_fillna
+
 
 FAMILY = "LSTM"
 
@@ -205,7 +207,7 @@ def preflight_issues(code: str, spec: dict[str, object]) -> list[str]:
 
 
 def apply_light_autofixes(code: str, spec: dict[str, object]) -> str:
-    fixed = code
+    fixed = fix_text_column_fillna(code)
     fixed = fixed.replace(
         "sequence = [vocab.get(word, 0) for word in text.split()]",
         "sequence = [vocab.get(word, 0) for word in text.split()][:max_len]",
@@ -234,6 +236,21 @@ def apply_light_autofixes(code: str, spec: dict[str, object]) -> str:
         "test_probs.extend(outputs)",
         "test_probs.extend(np.atleast_1d(outputs))",
     )
+    fixed = fixed.replace(
+        "val_preds.extend(outputs.numpy())",
+        "val_preds.extend(np.atleast_1d(outputs.numpy()))",
+    )
+    fixed = fixed.replace(
+        "test_preds.extend(outputs.numpy())",
+        "test_preds.extend(np.atleast_1d(outputs.numpy()))",
+    )
+    fixed = re.sub(
+        r"(\n[ \t]*)for (\w+) in ((?:val|test)_loader):\n(?![ \t]*if isinstance)",
+        r"\1for \2 in \3:\n\1    if isinstance(\2, (list, tuple)):\n\1        \2 = \2[0]\n",
+        fixed,
+    )
+    if "final_model.eval()" in fixed and "final_model = model" not in fixed:
+        fixed = fixed.replace("\n# Final submission\n", "\n# Final submission\nfinal_model = model\n", 1)
     fixed = fixed.replace(
         "submission_df.to_csv(submission_path, index=False)",
         "os.makedirs(os.path.dirname(submission_path), exist_ok=True)\nsubmission_df.to_csv(submission_path, index=False)",

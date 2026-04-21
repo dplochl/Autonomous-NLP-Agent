@@ -39,6 +39,18 @@ def _best_successful_trial(trials: list[dict[str, Any]]) -> dict[str, Any] | Non
     return max(successful, key=_safe_f1)
 
 
+def _latest_repeated_f1_trial(trials: list[dict[str, Any]]) -> dict[str, Any] | None:
+    successful = [trial for trial in trials if trial.get("success") and _safe_f1(trial) >= 0]
+    if len(successful) < 2:
+        return None
+    latest = successful[-1]
+    latest_f1 = _safe_f1(latest)
+    for trial in successful[:-1]:
+        if abs(_safe_f1(trial) - latest_f1) < 1e-9:
+            return trial
+    return None
+
+
 def _clamp(value: float, low: float, high: float) -> float:
     return min(max(value, low), high)
 
@@ -163,7 +175,7 @@ def _fallback_mutation(
     ordered_keys: list[str] = []
     if preferred_keys:
         ordered_keys.extend([key for key in preferred_keys if key not in ordered_keys])
-    ordered_keys.extend([key for key in module.get_tunable_keys() if key not in ordered_keys])
+    ordered_keys.extend([key for key in module.get_tunable_keys() if key not in ordered_keys and key != "val_size"])
 
     for key in ordered_keys:
         if key not in ranges or key not in anchor_spec:
@@ -195,7 +207,7 @@ def _ordered_underexplored_keys(
     counts = _key_change_counts(module, trials)
     preferred_rank = {key: idx for idx, key in enumerate(preferred_keys)}
     skip = skip_keys or set()
-    keys = [key for key in module.get_tunable_keys() if key not in skip]
+    keys = [key for key in module.get_tunable_keys() if key not in skip and key != "val_size"]
     return sorted(
         keys,
         key=lambda key: (
@@ -217,7 +229,6 @@ def _optimization_focus_keys(module: object, preferred_keys: list[str]) -> list[
         "threshold_min",
         "threshold_max",
         "threshold_steps",
-        "val_size",
         "max_len",
         "embedding_dim",
         "channels",
@@ -257,8 +268,20 @@ def _ensure_phase_mutation(
     issues: list[str] = []
 
     is_opt = phase == "opt"
-    target_change_count = 2 if is_opt else (3 if len(trials) <= 3 else 2)
-    max_change_count = 2 if is_opt else 4
+    is_language_model = getattr(module, "FAMILY", "") in {"Transformer", "RoBERTa"}
+    if is_opt:
+        if len(trials) <= 4:
+            target_change_count = 2 if is_language_model else 3
+            max_change_count = 3 if is_language_model else 4
+        else:
+            target_change_count = 1
+            max_change_count = 2
+    elif is_language_model:
+        target_change_count = 3 if len(trials) <= 3 else 2
+        max_change_count = 4
+    else:
+        target_change_count = 4 if len(trials) <= 3 else 3
+        max_change_count = 5
     ranges = module.get_spec_ranges()
     ordered_keys = (
         _optimization_focus_keys(module, preferred_keys)
@@ -364,23 +387,24 @@ def propose_next_spec(
     tunable_keys = list(module.get_tunable_keys())
     stagnant_keys = _stagnant_keys(module, trials, best_trial)
     active_tunable_keys = [key for key in tunable_keys if key not in stagnant_keys] or tunable_keys
+    active_tunable_keys = [key for key in active_tunable_keys if key != "val_size"] or [
+        key for key in tunable_keys if key != "val_size"
+    ]
     latest_success = next((trial for trial in reversed(trials) if trial.get("success")), None)
-    repeated_f1 = (
-        latest_success is not None
-        and best_trial is not None
-        and latest_success["run_index"] != best_trial["run_index"]
-        and abs(_safe_f1(latest_success) - _safe_f1(best_trial)) < 1e-9
-    )
+    repeated_match = _latest_repeated_f1_trial(trials)
+    repeated_f1 = latest_success is not None and repeated_match is not None
     stale_changed_keys = []
-    if latest_success is not None and best_trial is not None and latest_success["run_index"] != best_trial["run_index"]:
-        stale_changed_keys = _changed_tunable_keys(module, best_trial["spec"], latest_success["spec"])
+    if latest_success is not None and repeated_match is not None:
+        stale_changed_keys = _changed_tunable_keys(module, repeated_match["spec"], latest_success["spec"])
     phase_rules = (
-        "- this is the winner-optimization phase, so stay near the current best spec\n"
-        "- usually change only 1 to 2 tunable keys\n"
-        "- prefer local optimization keys such as learning_rate, dropout, batch_size, epochs, and threshold settings\n"
+        "- this is the top-architecture optimization phase, so stay near this architecture's current best spec\n"
+        "- usually change 2 to 4 tunable keys because the sweep used the smaller 4k labeled sample\n"
+        "- prefer coordinated local changes such as learning_rate, dropout, batch_size, epochs, weight_decay, sequence length, and threshold settings\n"
+        "- validation size is controlled by the runner and should remain at 0.2\n"
         "- avoid large capacity jumps unless the history strongly suggests they help\n"
     ) if phase == "opt" else (
         "- this is the family sweep phase, so explore different regions of the parameter space\n"
+        "- the runner uses a 4k labeled sample split 80/20 for training/validation\n"
         "- usually change 2 to 4 tunable keys in one coordinated move\n"
         "- with a 5-run budget, cover both model-capacity keys and optimization keys instead of nudging only one key repeatedly\n"
         "- prefer combinations such as sequence/model size + regularization + optimization, for example max_len/channels with learning_rate/dropout/batch_size/epochs\n"
@@ -406,6 +430,7 @@ def propose_next_spec(
         f"Best session trial so far:\n{json.dumps(best_trial, indent=2)}\n\n"
         f"Stagnant keys from equal-F1 or same-prediction runs: {', '.join(sorted(stagnant_keys)) if stagnant_keys else 'none'}\n"
         f"Preferred keys for the next move: {', '.join(active_tunable_keys)}\n"
+        f"Latest equal-F1 matched prior run: {repeated_match['run_index'] if repeated_match else 'none'}\n"
         f"Latest equal-F1 changed keys to avoid repeating: {', '.join(stale_changed_keys) if stale_changed_keys else 'none'}\n"
         f"Repeated best F1 detected: {'yes' if repeated_f1 else 'no'}\n\n"
         "Default if unsure:\n"
@@ -420,6 +445,8 @@ def propose_next_spec(
         ranges=module.get_spec_ranges(),
         fixed_keys=module.get_fixed_spec_keys(),
     )
+    if "val_size" in spec:
+        spec["val_size"] = default_spec.get("val_size", spec["val_size"])
     spec, diversity_issues = _ensure_phase_mutation(
         module=module,
         anchor_spec=best_trial["spec"],
@@ -446,6 +473,18 @@ def propose_next_spec(
         )
         issues.extend(["Repeated F1 triggered a forced move to different tunable keys."])
         issues.extend(extra_issues)
+        spec, diversity_issues = _ensure_phase_mutation(
+            module=module,
+            anchor_spec=best_trial["spec"],
+            proposed_spec=spec,
+            tried_signatures=tried_signatures,
+            run_name=run_name,
+            submission_path=submission_path,
+            trials=trials,
+            preferred_keys=active_tunable_keys,
+            phase=phase,
+        )
+        issues.extend(diversity_issues)
     if _spec_signature(module, spec) in tried_signatures:
         spec, extra_issues = _fallback_mutation(
             module=module,
