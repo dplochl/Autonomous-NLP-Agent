@@ -334,9 +334,9 @@ def apply_light_autofixes(code: str, spec: dict[str, object]) -> str:
         fixed = fixed.replace(f"{test_dataset_expr}\n{test_dataset_expr}", test_dataset_expr)
     fixed = fixed.replace("val_logits = trainer.predict(val_dataset).predictions", "val_logits = trainer.predict(val_dataset).predictions")
     fixed = fixed.replace("test_logits = trainer.predict(test_dataset).predictions", "test_logits = trainer.predict(test_dataset).predictions")
-    if "test_dataset = TextDataset(list(test_df['text']), labels=None" not in fixed:
+    if f"test_dataset = {dataset_class}(list(test_df['text']), labels=None" not in fixed:
         fixed = re.sub(
-            r"(val_dataset\s*=\s*TextDataset\([^\n]+\)\n)",
+            rf"(val_dataset\s*=\s*{dataset_class}\([^\n]+\)\n)",
             rf"\1{test_dataset_expr}\n",
             fixed,
             count=1,

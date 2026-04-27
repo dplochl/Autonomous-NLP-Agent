@@ -29,6 +29,7 @@ from search import propose_next_spec, summarize_trials
 
 import families.experiment_bow as exp_bow
 import families.experiment_bow_advanced as exp_bow_advanced
+import families.experiment_bertweet as exp_bertweet
 import families.experiment_cnn as exp_cnn
 import families.experiment_lstm as exp_lstm
 import families.experiment_roberta as exp_roberta
@@ -56,9 +57,11 @@ FAMILY_RUN_ESTIMATES = {
     "lstm": 200,
     "transformer": 500,
     "roberta": 500,
+    "bertweet": 500,
 }
 
 FAMILY_MODULES = {
+    "bertweet": exp_bertweet,
     "transformer": exp_transformer,
     "roberta": exp_roberta,
     "bow_advanced": exp_bow_advanced,
@@ -188,6 +191,11 @@ def force_submission_path(code: str, old_path: str | None, new_path: str) -> str
         fixed,
     )
     fixed = re.sub(
+        r"((?:['\"])submission_path(?:['\"])\s*:\s*)(['\"])[^'\"]*submission[^'\"]*\.csv\2",
+        rf"\g<1>{new_path!r}",
+        fixed,
+    )
+    fixed = re.sub(
         r"(['\"])submissions/[^'\"]+_submission\.csv\1",
         repr(new_path),
         fixed,
@@ -214,6 +222,8 @@ def build_final_submission_code(summary: dict[str, Any], public_submission_path:
         spec = module.normalize_spec(spec)
     if hasattr(module, "tune_frozen_code"):
         code = module.tune_frozen_code(code, spec, "best_overall_submission")
+    if hasattr(module, "apply_light_autofixes"):
+        code = module.apply_light_autofixes(code, spec)
     return force_submission_path(code, old_submission_path if old_submission_path is not None else None, public_submission_path), None
 
 

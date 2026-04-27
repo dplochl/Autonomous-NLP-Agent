@@ -15,6 +15,7 @@ Families:
 - `lstm`
 - `transformer`
 - `roberta`
+- `bertweet`
 
 How it works:
 1. `generate_spec.py` asks the LLM for a JSON experiment spec.
