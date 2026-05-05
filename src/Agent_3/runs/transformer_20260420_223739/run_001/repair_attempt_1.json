@@ -1,0 +1,12 @@
+```json
+{
+  "diagnosis": "The error is due to calling `tolist()` on a list object which already is a list.",
+  "edits": [
+    {
+      "action": "replace",
+      "target": "train_dataset = TextDataset(train_texts.tolist(), train_labels.tolist())",
+      "content": "train_dataset = TextDataset(train_texts, train_labels)"
+    }
+  ]
+}
+```

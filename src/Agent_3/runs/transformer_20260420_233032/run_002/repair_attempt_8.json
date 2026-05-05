@@ -1,0 +1,12 @@
+```json
+{
+  "diagnosis": "IndexError due to mismatched list lengths in train_texts and train_labels",
+  "edits": [
+    {
+      "action": "replace",
+      "target": "train_texts = train_df['text'].tolist()\nval_texts = val_texts\ntrain_labels = list(train_labels)\nval_labels = list(val_labels)",
+      "content": "train_texts = train_df['text'].tolist()\nval_texts = val_df['text'].tolist()\ntrain_labels = train_df['target'].tolist()\nval_labels = val_df['target'].tolist()"
+    }
+  ]
+}
+```

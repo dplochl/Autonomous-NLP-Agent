@@ -1,0 +1,12 @@
+```json
+{
+  "diagnosis": "Missing import for numpy",
+  "edits": [
+    {
+      "action": "insert_before",
+      "target": "stratify_labels = np.array(y) if len(set(y)) > 1 else None",
+      "content": "import numpy as np\n"
+    }
+  ]
+}
+```

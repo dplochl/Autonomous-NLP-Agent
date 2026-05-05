@@ -1,0 +1,23 @@
+{
+  "architecture": "CNN",
+  "max_vocab": 20000,
+  "max_len": 48,
+  "embedding_dim": 128,
+  "channels": 128,
+  "kernel_sizes": [
+    3,
+    4,
+    5
+  ],
+  "dropout": 0.3,
+  "batch_size": 64,
+  "epochs": 3,
+  "learning_rate": 0.001,
+  "val_size": 0.2,
+  "threshold_min": 0.3,
+  "threshold_max": 0.7,
+  "threshold_steps": 41,
+  "dry_run_head": 200,
+  "experiment_name": "cnn_20260505_162308_run_01",
+  "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/cnn_20260505_162308/run_001/submission.csv"
+}

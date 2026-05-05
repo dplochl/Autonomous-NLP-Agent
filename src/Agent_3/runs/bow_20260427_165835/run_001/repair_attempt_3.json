@@ -1,0 +1,12 @@
+```json
+{
+  "diagnosis": "SyntaxError due to unexpected indent in the submission writing block",
+  "edits": [
+    {
+      "action": "replace",
+      "target": "submission_path = \"/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/bow_20260427_165835/run_001/submission.csv\"\nos.makedirs(os.path.dirname(submission_path), exist_ok=True)\nsubmission_df = pd.DataFrame({'id': test_df['id'], 'target': y_test_pred})\nos.makedirs(os.path.dirname(submission_path), exist_ok=True)\nos.makedirs(os.path.dirname(submission_path), exist_ok=True)\nsubmission_df.to_csv(submission_path, index=False)",
+      "content": "if WRITE_SUBMISSION:\n    submission_path = \"/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/bow_20260427_165835/run_001/submission.csv\"\n    os.makedirs(os.path.dirname(submission_path), exist_ok=True)\n    submission_df = pd.DataFrame({'id': test_df['id'], 'target': y_test_pred})\n    submission_df.to_csv(submission_path, index=False)"
+    }
+  ]
+}
+```

@@ -1,0 +1,12 @@
+```json
+{
+  "diagnosis": "submission_path variable is not defined",
+  "edits": [
+    {
+      "action": "insert_before",
+      "target": "os.makedirs(os.path.dirname(submission_path), exist_ok=True)",
+      "content": "submission_path = \"/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/lstm_20260421_113842/run_002/submission.csv\""
+    }
+  ]
+}
+```

@@ -1,0 +1,147 @@
+{
+  "family": "BoW_advanced",
+  "session_name": "bow_advanced_20260420_182414",
+  "max_runs": 5,
+  "best_run_index": 1,
+  "best_metrics": {
+    "f1": 0.7805,
+    "accuracy": 0.8083
+  },
+  "trials": [
+    {
+      "run_index": 1,
+      "spec": {
+        "architecture": "BoW_advanced",
+        "word_max_features": 25000,
+        "char_max_features": 15000,
+        "word_ngram_max": 3,
+        "char_ngram_min": 2,
+        "char_ngram_max": 4,
+        "min_df": 3,
+        "logreg_c": 5.0,
+        "val_size": 0.2,
+        "threshold_min": 0.3,
+        "threshold_max": 0.7,
+        "threshold_steps": 41,
+        "dry_run_head": 200,
+        "experiment_name": "bow_advanced_20260420_182414_run_01",
+        "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/bow_advanced_20260420_182414/run_001/submission.csv"
+      },
+      "success": true,
+      "metrics": {
+        "f1": 0.7805,
+        "accuracy": 0.8083
+      },
+      "analysis": "The experiment `bow_advanced_20260420_182414_run_01` successfully executed with a BoW (Bag of Words) advanced architecture, achieving an F1 score of 0.7805 and accuracy of 0.8083. The model utilized character-level features with up to 4-gram n-grams and word-level features with up to 3-gram n-grams, which likely contributed to its performance. However, the experiment did not encounter any errors or warnings as indicated by the clean STDERR output. For the next run, consider experimenting with different hyperparameters such as varying the `logreg_c` value or adjusting the `min_df` threshold to see if further improvements in model performance can be achieved. Additionally, exploring other feature extraction techniques like TF-IDF might provide additional insights and potentially better results.",
+      "run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/bow_advanced_20260420_182414/run_001"
+    },
+    {
+      "run_index": 2,
+      "spec": {
+        "architecture": "BoW_advanced",
+        "word_max_features": 13750,
+        "char_max_features": 15000,
+        "word_ngram_max": 3,
+        "char_ngram_min": 2,
+        "char_ngram_max": 4,
+        "min_df": 3,
+        "logreg_c": 5.0,
+        "val_size": 0.2,
+        "threshold_min": 0.3,
+        "threshold_max": 0.7,
+        "threshold_steps": 41,
+        "dry_run_head": 200,
+        "experiment_name": "bow_advanced_20260420_182414_run_02",
+        "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/bow_advanced_20260420_182414/run_002/submission.csv"
+      },
+      "success": true,
+      "metrics": {
+        "f1": 0.7805,
+        "accuracy": 0.8083
+      },
+      "analysis": "The experiment `bow_advanced_20260420_182414_run_02` was successful in achieving a high F1 score of 0.7805 and an accuracy of 0.8083, indicating that the advanced Bag-of-Words (BoW) model with character-level n-grams and logistic regression performed well on the dataset. The use of character-level features up to 4-grams might have contributed to capturing more nuanced patterns in the text data, which is beneficial for tasks like disaster tweet classification where context and subtle linguistic cues are important.\n\nHowever, the experiment did not explore a wide range of hyperparameters, particularly around the logistic regression regularization strength (`logreg_c`) and the size of the validation set (`val_size`). A broader grid search or random search over these parameters could potentially yield even better performance. Additionally, experimenting with different preprocessing techniques, such as stemming or lemmatization, might further enhance the model's ability to generalize.\n\nFor the next run, consider expanding the hyperparameter search space, especially focusing on `logreg_c` and `val_size`, to ensure that the model is not overfitting or underfitting. Implementing additional preprocessing steps could also help in improving the model's robustness and accuracy.",
+      "run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/bow_advanced_20260420_182414/run_002"
+    },
+    {
+      "run_index": 3,
+      "spec": {
+        "architecture": "BoW_advanced",
+        "word_max_features": 36250,
+        "char_max_features": 15000,
+        "word_ngram_max": 3,
+        "char_ngram_min": 2,
+        "char_ngram_max": 4,
+        "min_df": 3,
+        "logreg_c": 5.0,
+        "val_size": 0.2,
+        "threshold_min": 0.3,
+        "threshold_max": 0.7,
+        "threshold_steps": 41,
+        "dry_run_head": 200,
+        "experiment_name": "bow_advanced_20260420_182414_run_03",
+        "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/bow_advanced_20260420_182414/run_003/submission.csv"
+      },
+      "success": true,
+      "metrics": {
+        "f1": 0.7805,
+        "accuracy": 0.8083
+      },
+      "analysis": "The experiment `bow_advanced_20260420_182414_run_03` successfully executed with a BoW (Bag of Words) advanced architecture. The model achieved an F1 score of 0.7805 and accuracy of 0.8083, indicating that the configuration was effective for the task at hand. However, there is room for improvement as the F1 score could be higher, suggesting potential issues with class imbalance or feature extraction. For the next run, consider adjusting the `char_max_features` to a lower value to reduce dimensionality and potentially improve model performance. Additionally, experimenting with different values for `logreg_c` might help in finding a better regularization strength that optimizes both accuracy and F1 score.",
+      "run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/bow_advanced_20260420_182414/run_003"
+    },
+    {
+      "run_index": 4,
+      "spec": {
+        "architecture": "BoW_advanced",
+        "word_max_features": 27500,
+        "char_max_features": 15000,
+        "word_ngram_max": 3,
+        "char_ngram_min": 2,
+        "char_ngram_max": 4,
+        "min_df": 3,
+        "logreg_c": 5.0,
+        "val_size": 0.2,
+        "threshold_min": 0.3,
+        "threshold_max": 0.7,
+        "threshold_steps": 41,
+        "dry_run_head": 200,
+        "experiment_name": "bow_advanced_20260420_182414_run_04",
+        "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/bow_advanced_20260420_182414/run_004/submission.csv"
+      },
+      "success": true,
+      "metrics": {
+        "f1": 0.7805,
+        "accuracy": 0.8083
+      },
+      "analysis": "The experiment `bow_advanced_20260420_182414_run_04` successfully executed with an F1 score of 0.7805 and accuracy of 0.8083, indicating that the model performed reasonably well on the validation set. The use of advanced Bag-of-Words features, including character n-grams up to 4 and word n-grams up to 3, along with a logistic regression classifier tuned by the parameter `C=5.0`, contributed positively to the results. However, there is room for improvement as the F1 score could be higher, suggesting that the model might not be fully capturing the nuances of the data. For the next run, consider experimenting with different hyperparameters such as adjusting the regularization strength (`C`), exploring additional feature engineering techniques, or trying a more complex model architecture to potentially boost performance further.",
+      "run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/bow_advanced_20260420_182414/run_004"
+    },
+    {
+      "run_index": 5,
+      "spec": {
+        "architecture": "BoW_advanced",
+        "word_max_features": 10000,
+        "char_max_features": 15000,
+        "word_ngram_max": 3,
+        "char_ngram_min": 2,
+        "char_ngram_max": 4,
+        "min_df": 3,
+        "logreg_c": 5.0,
+        "val_size": 0.2,
+        "threshold_min": 0.3,
+        "threshold_max": 0.7,
+        "threshold_steps": 41,
+        "dry_run_head": 200,
+        "experiment_name": "bow_advanced_20260420_182414_run_05",
+        "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/bow_advanced_20260420_182414/run_005/submission.csv"
+      },
+      "success": true,
+      "metrics": {
+        "f1": 0.7805,
+        "accuracy": 0.8083
+      },
+      "analysis": "The experiment `bow_advanced_20260420_182414_run_05` successfully executed with an F1 score of 0.7805 and accuracy of 0.8083, indicating a well-performing model in terms of both precision and recall. The use of advanced Bag-of-Words (BoW) techniques, including character n-grams up to 4 and word n-grams up to 3, along with logistic regression regularization parameter `C` set to 5.0, contributed positively to the model's performance. However, the experiment did not explore a wide range of hyperparameters or different architectures, which could potentially lead to further improvements. For the next run, consider expanding the search space for hyperparameters such as `C`, exploring additional feature engineering techniques like TF-IDF, and testing alternative machine learning models to see if they offer better performance on this dataset.",
+      "run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/bow_advanced_20260420_182414/run_005"
+    }
+  ]
+}

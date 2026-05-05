@@ -1,0 +1,12 @@
+```json
+{
+  "diagnosis": "The error is due to the `DisasterTweetDataset` class not correctly handling the input format expected by the model. The model expects either `input_ids` or `inputs_embeds`, but the dataset is returning tensors instead of lists.",
+  "edits": [
+    {
+      "action": "replace",
+      "target": "'ids': torch.tensor(ids, dtype=torch.long),\n                'mask': torch.tensor(mask, dtype=torch.long)",
+      "content": "'input_ids': ids.squeeze(),\n                'attention_mask': mask.squeeze()"
+    }
+  ]
+}
+```

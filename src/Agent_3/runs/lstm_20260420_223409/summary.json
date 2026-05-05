@@ -1,0 +1,38 @@
+{
+  "family_key": "lstm",
+  "family": "LSTM",
+  "session_name": "lstm_20260420_223409",
+  "phase": "sweep",
+  "max_runs": 1,
+  "best_run_index": null,
+  "best_metrics": {},
+  "best_run_dir": null,
+  "trials": [
+    {
+      "run_index": 1,
+      "spec": {
+        "architecture": "LSTM",
+        "max_vocab": 20000,
+        "max_len": 64,
+        "embedding_dim": 128,
+        "hidden_dim": 128,
+        "num_layers": 1,
+        "dropout": 0.3,
+        "batch_size": 64,
+        "epochs": 4,
+        "learning_rate": 0.001,
+        "val_size": 0.2,
+        "threshold_min": 0.3,
+        "threshold_max": 0.7,
+        "threshold_steps": 41,
+        "dry_run_head": 200,
+        "experiment_name": "lstm_20260420_223409_run_01",
+        "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/lstm_20260420_223409/run_001/submission.csv"
+      },
+      "success": false,
+      "metrics": {},
+      "analysis": "The experiment with the LSTM model crashed due to an `IndexError` related to embedding. The configuration specified a batch size of 64, an embedding dimension of 128, and a vocabulary size of 20,000. No metrics were recorded, and the error occurred during the forward pass of the embedding layer.\n\nTo address this issue, the next run should ensure that the input indices do not exceed the vocabulary size. This can be achieved by verifying the preprocessing steps to confirm that all tokenized inputs are within the expected range. Additionally, increasing the `max_vocab` parameter might help if there are rare tokens causing out-of-range errors. It's also important to check for any potential bugs in the data loading or preprocessing pipeline that could lead to invalid indices being passed to the embedding layer.",
+      "run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/lstm_20260420_223409/run_001"
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+```json
+{
+  "diagnosis": "The error is due to the use of a pandas Series for stratification which causes issues with the train_test_split function. The stratify parameter should be an array-like object.",
+  "edits": [
+    {
+      "action": "replace",
+      "target": "stratify_labels = np.array(y) if len(set(y)) > 1 else None",
+      "content": "stratify_labels = y if len(set(y)) > 1 else None"
+    }
+  ]
+}
+```

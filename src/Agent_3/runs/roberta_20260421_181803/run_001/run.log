@@ -1,0 +1,37 @@
+success: True
+timed_out: False
+dry_run_failed: False
+
+[STDOUT]
+{'train_runtime': '214.4', 'train_samples_per_second': '44.77', 'train_steps_per_second': '2.798', 'train_loss': '0.3685', 'epoch': '3'}
+METRICS: {"f1": 0.818, "accuracy": 0.8538}
+
+
+[STDERR]
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+
+Loading weights:   0%|          | 0/197 [00:00<?, ?it/s]
+Loading weights: 100%|██████████| 197/197 [00:00<00:00, 15923.95it/s]
+[1mRobertaForSequenceClassification LOAD REPORT[0m from: roberta-base
+Key                             | Status     | 
+--------------------------------+------------+-
+roberta.embeddings.position_ids | UNEXPECTED | 
+lm_head.bias                    | UNEXPECTED | 
+lm_head.layer_norm.bias         | UNEXPECTED | 
+lm_head.dense.weight            | UNEXPECTED | 
+lm_head.dense.bias              | UNEXPECTED | 
+lm_head.layer_norm.weight       | UNEXPECTED | 
+classifier.out_proj.weight      | MISSING    | 
+classifier.dense.weight         | MISSING    | 
+classifier.dense.bias           | MISSING    | 
+classifier.out_proj.bias        | MISSING    | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+- MISSING:	those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.
+/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/.venv/lib/python3.13/site-packages/torch/utils/data/dataloader.py:775: UserWarning: 'pin_memory' argument is set as true but not supported on MPS now, device pinned memory won't be used.
+  super().__init__(loader)
+
+
+[ANALYSIS]
+The experiment using RoBERTa achieved a successful status with F1 score of 0.818 and accuracy of 0.8538. The training runtime was efficient at approximately 44.77 samples per second. However, there were unexpected issues with loading certain parameters (`lm_head` related) and missing parameters (`classifier` related), which could indicate a mismatch between the pre-trained model and the downstream task configuration. Additionally, a user warning regarding `pin_memory` not being supported on MPS suggests potential inefficiencies in memory handling during data loading. For the next run, it is recommended to ensure compatibility between the pre-trained model and the specific task by addressing the missing parameters and possibly adjusting the training environment settings to optimize performance.

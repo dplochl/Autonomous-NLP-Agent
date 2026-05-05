@@ -1,0 +1,12 @@
+```json
+{
+  "diagnosis": "The `encode_plus` method is deprecated and replaced by `__call__` in the tokenizer API.",
+  "edits": [
+    {
+      "action": "replace",
+      "target": "inputs = self.tokenizer.encode_plus(\n            text,\n            None,\n            add_special_tokens=True,\n            max_length=self.max_len,\n            pad_to_max_length=True,\n            truncation=True,\n            return_tensors='pt'\n        )",
+      "content": "inputs = self.tokenizer(text, padding='max_length', truncation=True, max_length=self.max_len, return_tensors='pt')"
+    }
+  ]
+}
+```

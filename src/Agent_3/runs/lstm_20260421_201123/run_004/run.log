@@ -1,0 +1,15 @@
+success: True
+timed_out: False
+dry_run_failed: False
+
+[STDOUT]
+METRICS: {"f1": 0.5953, "accuracy": 0.4238}
+
+
+[STDERR]
+/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/.venv/lib/python3.13/site-packages/torch/nn/modules/rnn.py:1013: UserWarning: dropout option adds dropout after all but last recurrent layer, so non-zero dropout expects num_layers greater than 1, but got dropout=0.3 and num_layers=1
+  super().__init__("LSTM", *args, **kwargs)
+
+
+[ANALYSIS]
+The experiment "lstm_20260421_201123_run_04" successfully trained an LSTM model with a single layer, achieving an F1 score of 0.5953 and accuracy of 0.4238. The model used a batch size of 64, an embedding dimension of 128, and a learning rate of 0.001 over two epochs. However, the use of dropout with a single layer resulted in a warning, indicating that non-zero dropout expects more than one layer. For the next run, increasing the number of layers to accommodate dropout could improve model performance. Additionally, experimenting with different hyperparameters such as learning rate, batch size, and embedding dimension might further enhance the model's accuracy and F1 score.

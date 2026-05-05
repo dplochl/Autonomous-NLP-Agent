@@ -1,0 +1,12 @@
+```json
+{
+  "diagnosis": "nn module not imported",
+  "edits": [
+    {
+      "action": "insert_after",
+      "target": "import torch",
+      "content": "import torch.nn as nn"
+    }
+  ]
+}
+```

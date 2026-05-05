@@ -1,0 +1,12 @@
+```json
+{
+  "diagnosis": "SyntaxError due to missing comma in dictionary return statement",
+  "edits": [
+    {
+      "action": "replace",
+      "target": "'attention_mask': mask.squeeze()\n        'labels': torch.tensor(label, dtype=torch.long)",
+      "content": "'attention_mask': mask.squeeze(),\n                'labels': torch.tensor(label, dtype=torch.long)"
+    }
+  ]
+}
+```

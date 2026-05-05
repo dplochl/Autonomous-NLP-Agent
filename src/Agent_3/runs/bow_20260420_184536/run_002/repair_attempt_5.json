@@ -1,0 +1,12 @@
+```json
+{
+  "diagnosis": "The error is due to the use of a non-integer index in the train_test_split function. This can happen if stratify_labels contains non-integer values.",
+  "edits": [
+    {
+      "action": "replace",
+      "target": "stratify_labels = y_train.astype(int)",
+      "content": "stratify_labels = y_train"
+    }
+  ]
+}
+```

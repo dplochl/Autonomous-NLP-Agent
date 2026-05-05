@@ -1,0 +1,17 @@
+```json
+{
+  "diagnosis": "Missing embedding_source switch and GloVe support.",
+  "edits": [
+    {
+      "action": "insert_after",
+      "target": "embedding_dim = 100",
+      "content": "embedding_source = os.environ.get('AGENT_EMBEDDING_SOURCE', 'learned')\nif embedding_source == 'glove':\n    glove_path = os.environ.get('AGENT_GLOVE_PATH', '')\n    if not glove_path:\n        raise ValueError('GloVe path must be provided when using GloVe embeddings.')"
+    },
+    {
+      "action": "insert_after",
+      "target": "self.embedding = nn.Embedding(vocab_size, embedding_dim)",
+      "content": "if embedding_source == 'glove':\n    weights_matrix = np.zeros((vocab_size, embedding_dim))\n    with open(glove_path, 'r', encoding='utf-8') as f:\n        for line in f:\n            values = line.split()\n            word = values[0]\n            if word in vocab:\n                vector = np.asarray(values[1:], dtype='float32')\n                weights_matrix[vocab[word]] = vector\n    self.embedding.weight.data.copy_(torch.from_numpy(weights_matrix))"
+    }
+  ]
+}
+```

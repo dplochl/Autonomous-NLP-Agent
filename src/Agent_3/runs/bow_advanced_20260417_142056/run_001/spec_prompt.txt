@@ -1,0 +1,41 @@
+Plan one reliable BoW_advanced experiment spec for the Kaggle Disaster Tweets task.
+
+Return a reliable dual-vectorizer sparse-text spec with one validation split and conservative values.
+
+Return one JSON object only.
+Use these exact keys: architecture, word_max_features, char_max_features, word_ngram_max, char_ngram_min, char_ngram_max, min_df, logreg_c, val_size, threshold_min, threshold_max, threshold_steps, dry_run_head, experiment_name, submission_path
+
+Dataset context:
+DATASET CONTEXT:
+- train.csv: 7613 rows, columns: id, keyword, location, text, target
+- test.csv: 3263 rows, columns: id, keyword, location, text
+- Class balance: 4342 not-disaster (57.0%), 3271 disaster (43.0%)
+- Missing keyword: 0.8%
+- Missing location: 33.3%
+
+
+Recent history:
+- [6] bow_advanced_20260417_112658_run_01 run 1 | F1=N/A | FAILED | The experiment "bow_advanced_20260417_112658_run_01" aimed to utilize an advanced Bag of Words (BoW)
+- [7] bow_advanced_20260417_112658_run_02 run 2 | F1=N/A | FAILED | In this experiment, the BoW_advanced architecture was configured with specific parameters such as ch
+- [8] bow_advanced_20260417_112658_run_03 run 3 | F1=0.7836 | OK | The experiment `bow_advanced_20260417_112658_run_03` successfully executed with a BoW (Bag of Words)
+- [9] bow_advanced_20260417_112658_run_04 run 4 | F1=0.7836 | OK | The experiment `bow_advanced_20260417_112658_run_04` successfully executed with an F1 score of 0.783
+- [10] bow_advanced_20260417_112658_run_05 run 5 | F1=0.7836 | OK | The experiment `bow_advanced_20260417_112658_run_05` successfully executed with an F1 score of 0.783
+
+Default if unsure:
+{
+  "architecture": "BoW_advanced",
+  "word_max_features": 30000,
+  "char_max_features": 20000,
+  "word_ngram_max": 2,
+  "char_ngram_min": 3,
+  "char_ngram_max": 5,
+  "min_df": 2,
+  "logreg_c": 4.0,
+  "val_size": 0.2,
+  "threshold_min": 0.3,
+  "threshold_max": 0.7,
+  "threshold_steps": 41,
+  "dry_run_head": 200,
+  "experiment_name": "bow_advanced_20260417_142056_run_01",
+  "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/bow_advanced_20260417_142056/run_001/submission.csv"
+}

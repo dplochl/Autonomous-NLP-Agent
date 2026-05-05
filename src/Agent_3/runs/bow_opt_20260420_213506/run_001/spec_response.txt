@@ -1,0 +1,15 @@
+{
+  "architecture": "BoW",
+  "vectorizer_type": "tfidf_word",
+  "max_features": 20000,
+  "ngram_max": 2,
+  "min_df": 2,
+  "logreg_c": 3.0,
+  "val_size": 0.2,
+  "threshold_min": 0.3,
+  "threshold_max": 0.7,
+  "threshold_steps": 41,
+  "dry_run_head": 200,
+  "experiment_name": "bow_opt_20260420_213506_run_01",
+  "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/bow_opt_20260420_213506/run_001/submission.csv"
+}

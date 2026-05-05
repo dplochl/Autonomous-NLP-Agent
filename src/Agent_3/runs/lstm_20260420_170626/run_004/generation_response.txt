@@ -1,0 +1,169 @@
+```python
+import os
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import f1_score, accuracy_score
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import Dataset, DataLoader
+
+# Load environment variables
+DATA_DIR = os.environ.get("DISASTER_AGENT_DATA_DIR", "data")
+DRY_RUN = os.environ.get("AGENT_DRY_RUN") == "1"
+
+# Load data
+train_df = pd.read_csv(os.path.join(DATA_DIR, 'train.csv'))
+test_df = pd.read_csv(os.path.join(DATA_DIR, 'test.csv'))
+
+# Fill missing values
+train_df[['keyword', 'location', 'text']] = train_df[['keyword', 'location', 'text']].fillna('')
+test_df[['keyword', 'location', 'text']] = test_df[['keyword', 'location', 'text']].fillna('')
+
+# Build text field
+train_df['text'] = train_df.apply(lambda row: f"{row['keyword']} [SEP] {row['text']}" if pd.notna(row['keyword']) else row['text'], axis=1)
+test_texts = test_df['text'].tolist()
+
+# DRY_RUN handling
+if DRY_RUN:
+    train_df = train_df.head(200)
+
+# Define stratify labels
+stratify_labels = train_df['target'] if len(train_df['target'].unique()) == 2 else None
+
+# Train-test split
+train_texts, val_texts, y_train, y_val = train_test_split(
+    train_df['text'], train_df['target'], test_size=0.2, random_state=42, stratify=stratify_labels
+)
+
+# Build vocabulary and tokenizer
+def build_vocab(texts, max_vocab):
+    word_freq = {}
+    for text in texts:
+        words = text.split()
+        for word in words:
+            if word not in word_freq:
+                word_freq[word] = 0
+            word_freq[word] += 1
+    sorted_words = sorted(word_freq.items(), key=lambda x: x[1], reverse=True)[:max_vocab-2]
+    word_to_idx = {word: idx+2 for idx, (word, _) in enumerate(sorted_words)}
+    word_to_idx['<PAD>'] = 0
+    word_to_idx['<UNK>'] = 1
+    return word_to_idx
+
+vocab = build_vocab(train_texts + val_texts + test_texts, max_vocab=25000)
+
+def text_to_sequence(text, vocab, max_len):
+    sequence = [vocab.get(word, vocab['<UNK>']) for word in text.split()]
+    if len(sequence) > max_len:
+        sequence = sequence[:max_len]
+    return sequence + [vocab['<PAD>']] * (max_len - len(sequence))
+
+# Convert texts to sequences
+train_sequences = np.array([text_to_sequence(text, vocab, 64) for text in train_texts])
+val_sequences = np.array([text_to_sequence(text, vocab, 64) for text in val_texts])
+test_sequences = np.array([text_to_sequence(text, vocab, 64) for text in test_texts])
+
+# Define Dataset and DataLoader
+class TextDataset(Dataset):
+    def __init__(self, sequences, labels=None):
+        self.sequences = sequences
+        self.labels = labels
+
+    def __len__(self):
+        return len(self.sequences)
+
+    def __getitem__(self, idx):
+        sequence = torch.tensor(self.sequences[idx], dtype=torch.long)
+        if self.labels is not None:
+            label = torch.tensor(self.labels[idx], dtype=torch.float32)
+            return sequence, label
+        else:
+            return sequence
+
+train_dataset = TextDataset(train_sequences, y_train)
+val_dataset = TextDataset(val_sequences, y_val)
+test_dataset = TextDataset(test_sequences)
+
+batch_size = 64
+train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+
+# Define LSTM model
+class LSTMClassifier(nn.Module):
+    def __init__(self, vocab_size, embedding_dim, hidden_dim, num_layers, dropout):
+        super(LSTMClassifier, self).__init__()
+        self.embedding = nn.Embedding(vocab_size, embedding_dim)
+        self.lstm = nn.LSTM(embedding_dim, hidden_dim, num_layers=num_layers, bidirectional=True, dropout=dropout, batch_first=True)
+        self.fc = nn.Linear(hidden_dim * 2, 1)
+
+    def forward(self, x):
+        embedded = self.embedding(x)
+        lstm_out, _ = self.lstm(embedded)
+        last_output = lstm_out[:, -1, :]
+        out = self.fc(last_output)
+        return torch.sigmoid(out)
+
+# Model parameters
+vocab_size = len(vocab)
+embedding_dim = 128
+hidden_dim = 128
+num_layers = 1
+dropout = 0.3
+
+model = LSTMClassifier(vocab_size, embedding_dim, hidden_dim, num_layers, dropout)
+criterion = nn.BCELoss()
+optimizer = optim.Adam(model.parameters(), lr=0.001)
+
+# Training loop
+if not DRY_RUN:
+    for epoch in range(4):
+        model.train()
+        for sequences, labels in train_loader:
+            optimizer.zero_grad()
+            outputs = model(sequences)
+            loss = criterion(outputs.squeeze(), labels)
+            loss.backward()
+            optimizer.step()
+
+# Validation probabilities
+model.eval()
+val_probs = []
+with torch.no_grad():
+    for sequences, _ in val_loader:
+        outputs = model(sequences).squeeze().numpy()
+        val_probs.extend(outputs)
+
+# Test probabilities
+test_probs = []
+with torch.no_grad():
+    for sequences in test_loader:
+        outputs = model(sequences).squeeze().numpy()
+        test_probs.extend(outputs)
+
+# Choose best cutoff
+best_f1 = 0
+best_threshold = 0.5
+thresholds = np.linspace(0.3, 0.7, 41)
+for threshold in thresholds:
+    val_preds = (np.array(val_probs) > threshold).astype(int)
+    f1 = f1_score(y_val, val_preds)
+    if f1 > best_f1:
+        best_f1 = f1
+        best_threshold = threshold
+
+# Test predictions with best cutoff
+test_preds = (np.array(test_probs) > best_threshold).astype(int)
+
+# Create submission directory and write CSV
+submission_dir = os.path.dirname(submission_path)
+os.makedirs(submission_dir, exist_ok=True)
+submission_df = pd.DataFrame({'id': test_df['id'], 'target': test_preds})
+submission_df.to_csv(submission_path, index=False)
+
+# Metrics
+acc = accuracy_score(y_val, (np.array(val_probs) > best_threshold).astype(int))
+print('METRICS: {"f1": ' + str(round(best_f1, 4)) + ', "accuracy": ' + str(round(acc, 4)) + '}')
+```

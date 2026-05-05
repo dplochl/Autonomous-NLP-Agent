@@ -1,0 +1,97 @@
+Propose the next CNN experiment spec.
+
+Search the local CNN parameter space around the best successful run. Adjust sequence length, channels, dropout, learning rate, or epochs instead of proposing a completely new design.
+
+Rules:
+- keep the architecture family fixed
+- keep the same overall prompt contract and pipeline shape
+- vary only these tunable keys: max_vocab, max_len, embedding_dim, channels, dropout, batch_size, epochs, learning_rate
+- optimize against the best successful session trial, not the last run
+- keep the best successful spec as the default anchor and mutate it only slightly
+- change at most 2 tunable keys and prefer changing only 1 key
+- do not repeat an exact spec already tried in this session
+- if a run timed out, reduce cost
+- if a run crashed, simplify the risky parameter region
+- if repeated runs get the same F1, switch to different tunable keys instead of repeating weak ones
+- return one JSON object only
+
+Dataset context:
+DATASET CONTEXT:
+- train.csv: 7613 rows, columns: id, keyword, location, text, target
+- test.csv: 3263 rows, columns: id, keyword, location, text
+- Class balance: 4342 not-disaster (57.0%), 3271 disaster (43.0%)
+- Missing keyword: 0.8%
+- Missing location: 33.3%
+
+
+Family history:
+No prior runs.
+
+Session trials so far:
+- run 1: status=OK, f1=0.7159, spec={"architecture": "CNN", "batch_size": 32, "channels": 64, "dropout": 0.2, "dry_run_head": 200, "embedding_dim": 128, "epochs": 3, "experiment_name": "cnn_20260420_214747_run_01", "kernel_sizes": [3, 4, 5], "learning_rate": 0.001, "max_len": 48, "max_vocab": 20000, "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/cnn_20260420_214747/run_001/submission.csv", "threshold_max": 0.7, "threshold_min": 0.3, "threshold_steps": 41, "val_size": 0.2}
+- run 2: status=OK, f1=0.7236, spec={"architecture": "CNN", "batch_size": 32, "channels": 64, "dropout": 0.2, "dry_run_head": 200, "embedding_dim": 128, "epochs": 3, "experiment_name": "cnn_20260420_214747_run_02", "kernel_sizes": [3, 4, 5], "learning_rate": 0.001, "max_len": 50, "max_vocab": 25000, "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/cnn_20260420_214747/run_002/submission.csv", "threshold_max": 0.7, "threshold_min": 0.3, "threshold_steps": 41, "val_size": 0.2}
+
+Best session trial so far:
+{
+  "run_index": 2,
+  "spec": {
+    "architecture": "CNN",
+    "max_vocab": 25000,
+    "max_len": 50,
+    "embedding_dim": 128,
+    "channels": 64,
+    "kernel_sizes": [
+      3,
+      4,
+      5
+    ],
+    "dropout": 0.2,
+    "batch_size": 32,
+    "epochs": 3,
+    "learning_rate": 0.001,
+    "val_size": 0.2,
+    "threshold_min": 0.3,
+    "threshold_max": 0.7,
+    "threshold_steps": 41,
+    "dry_run_head": 200,
+    "experiment_name": "cnn_20260420_214747_run_02",
+    "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/cnn_20260420_214747/run_002/submission.csv"
+  },
+  "success": true,
+  "metrics": {
+    "f1": 0.7236,
+    "accuracy": 0.7426
+  },
+  "analysis": "The experiment `cnn_20260420_214747_run_02` successfully executed a CNN model with specified parameters such as batch size, dropout rate, learning rate, and kernel sizes. The model achieved an F1 score of 0.7236 and accuracy of 0.7426, indicating reasonable performance on the task at hand. However, there is room for improvement as the metrics are not exceptionally high, suggesting potential issues with model complexity or hyperparameter tuning. For the next run, consider increasing the number of epochs to allow the model more time to learn from the data, experimenting with different learning rates and dropout values to prevent overfitting, or adjusting the architecture by adding more convolutional layers or changing the kernel sizes to better capture the features in the input data.",
+  "run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/cnn_20260420_214747/run_002"
+}
+
+Stagnant keys from equal-F1 or same-prediction runs: none
+Preferred keys for the next move: max_vocab, max_len, embedding_dim, channels, dropout, batch_size, epochs, learning_rate
+Latest equal-F1 changed keys to avoid repeating: none
+Repeated best F1 detected: no
+
+Default if unsure:
+{
+  "architecture": "CNN",
+  "max_vocab": 25000,
+  "max_len": 50,
+  "embedding_dim": 128,
+  "channels": 64,
+  "kernel_sizes": [
+    3,
+    4,
+    5
+  ],
+  "dropout": 0.2,
+  "batch_size": 32,
+  "epochs": 3,
+  "learning_rate": 0.001,
+  "val_size": 0.2,
+  "threshold_min": 0.3,
+  "threshold_max": 0.7,
+  "threshold_steps": 41,
+  "dry_run_head": 200,
+  "experiment_name": "cnn_20260420_214747_run_03",
+  "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/cnn_20260420_214747/run_003/submission.csv"
+}

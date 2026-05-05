@@ -1,0 +1,157 @@
+{
+  "family": "LSTM",
+  "session_name": "lstm_20260417_143223",
+  "max_runs": 5,
+  "best_run_index": 1,
+  "best_metrics": {
+    "f1": 0.6008,
+    "accuracy": 0.4294
+  },
+  "trials": [
+    {
+      "run_index": 1,
+      "spec": {
+        "architecture": "LSTM",
+        "max_vocab": 20000,
+        "max_len": 64,
+        "embedding_dim": 128,
+        "hidden_dim": 128,
+        "num_layers": 1,
+        "dropout": 0.3,
+        "batch_size": 64,
+        "epochs": 4,
+        "learning_rate": 0.001,
+        "val_size": 0.2,
+        "threshold_min": 0.3,
+        "threshold_max": 0.7,
+        "threshold_steps": 41,
+        "dry_run_head": 200,
+        "experiment_name": "lstm_20260417_143223_run_01",
+        "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/lstm_20260417_143223/run_001/submission.csv"
+      },
+      "success": true,
+      "metrics": {
+        "f1": 0.6008,
+        "accuracy": 0.4294
+      },
+      "analysis": "The experiment with LSTM architecture achieved a moderate F1 score of 0.6008 and an accuracy of 0.4294, indicating that while there is some level of predictive power, the model's performance could be improved. The use of dropout with only one layer resulted in a warning, suggesting that dropout should either be set to zero or the number of layers increased to more than one to effectively utilize dropout regularization. For the next run, consider increasing the number of LSTM layers to at least two and potentially experimenting with different dropout rates to see if it improves model performance while preventing overfitting. Additionally, exploring other hyperparameters such as learning rate schedules, batch size variations, or different embedding dimensions could further enhance the model's effectiveness.",
+      "run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/lstm_20260417_143223/run_001"
+    },
+    {
+      "run_index": 2,
+      "spec": {
+        "architecture": "LSTM",
+        "max_vocab": 14375,
+        "max_len": 64,
+        "embedding_dim": 128,
+        "hidden_dim": 128,
+        "num_layers": 1,
+        "dropout": 0.3,
+        "batch_size": 64,
+        "epochs": 4,
+        "learning_rate": 0.001,
+        "val_size": 0.2,
+        "threshold_min": 0.3,
+        "threshold_max": 0.7,
+        "threshold_steps": 41,
+        "dry_run_head": 200,
+        "experiment_name": "lstm_20260417_143223_run_02",
+        "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/lstm_20260417_143223/run_002/submission.csv"
+      },
+      "success": true,
+      "metrics": {
+        "f1": 0.6008,
+        "accuracy": 0.4294
+      },
+      "analysis": "The experiment with LSTM architecture achieved a moderate F1 score of 0.6008 and an accuracy of 0.4294, indicating that while there is some level of classification performance, it could be improved. The model used a single layer LSTM with dropout applied after the recurrent layer, which may not have been effective given the low number of layers. For the next run, increasing the number of LSTM layers and adjusting the dropout strategy to better suit multiple layers could potentially enhance performance. Additionally, experimenting with different learning rates or optimizing the embedding dimension might further improve the model's accuracy and F1 score.",
+      "run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/lstm_20260417_143223/run_002"
+    },
+    {
+      "run_index": 3,
+      "spec": {
+        "architecture": "LSTM",
+        "max_vocab": 25625,
+        "max_len": 64,
+        "embedding_dim": 128,
+        "hidden_dim": 128,
+        "num_layers": 1,
+        "dropout": 0.3,
+        "batch_size": 64,
+        "epochs": 4,
+        "learning_rate": 0.001,
+        "val_size": 0.2,
+        "threshold_min": 0.3,
+        "threshold_max": 0.7,
+        "threshold_steps": 41,
+        "dry_run_head": 200,
+        "experiment_name": "lstm_20260417_143223_run_03",
+        "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/lstm_20260417_143223/run_003/submission.csv"
+      },
+      "success": true,
+      "metrics": {
+        "f1": 0.6008,
+        "accuracy": 0.4294
+      },
+      "analysis": "The experiment with LSTM architecture achieved a moderate F1 score of 0.6008 and an accuracy of 0.4294, indicating that it performed reasonably well in classifying disaster tweets. However, the model's performance could be improved as the accuracy is relatively low compared to typical benchmarks for such tasks. The warning about dropout suggests that the current configuration does not utilize dropout effectively due to having only one layer, which might limit its ability to generalize and prevent overfitting. For the next run, consider increasing the number of LSTM layers to at least two to allow dropout to function as intended, potentially enhancing both accuracy and generalization. Additionally, experimenting with different learning rates or adjusting the batch size could further optimize performance.",
+      "run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/lstm_20260417_143223/run_003"
+    },
+    {
+      "run_index": 4,
+      "spec": {
+        "architecture": "LSTM",
+        "max_vocab": 8750,
+        "max_len": 64,
+        "embedding_dim": 128,
+        "hidden_dim": 128,
+        "num_layers": 1,
+        "dropout": 0.3,
+        "batch_size": 64,
+        "epochs": 4,
+        "learning_rate": 0.001,
+        "val_size": 0.2,
+        "threshold_min": 0.3,
+        "threshold_max": 0.7,
+        "threshold_steps": 41,
+        "dry_run_head": 200,
+        "experiment_name": "lstm_20260417_143223_run_04",
+        "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/lstm_20260417_143223/run_004/submission.csv"
+      },
+      "success": true,
+      "metrics": {
+        "f1": 0.6008,
+        "accuracy": 0.4294
+      },
+      "analysis": "The experiment with the LSTM model achieved a moderate F1 score of 0.6008 and an accuracy of 0.4294, indicating that it performed reasonably well in classifying disaster-related tweets. However, the use of dropout with only one layer resulted in a warning, suggesting that the dropout parameter might not be effective as intended. For the next run, increasing the number of layers to more than one would allow the dropout to function properly and potentially improve model performance. Additionally, experimenting with different learning rates or adjusting the batch size could further enhance the model's accuracy and F1 score.",
+      "run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/lstm_20260417_143223/run_004"
+    },
+    {
+      "run_index": 5,
+      "spec": {
+        "architecture": "LSTM",
+        "max_vocab": 31250,
+        "max_len": 64,
+        "embedding_dim": 128,
+        "hidden_dim": 128,
+        "num_layers": 1,
+        "dropout": 0.3,
+        "batch_size": 64,
+        "epochs": 4,
+        "learning_rate": 0.001,
+        "val_size": 0.2,
+        "threshold_min": 0.3,
+        "threshold_max": 0.7,
+        "threshold_steps": 41,
+        "dry_run_head": 200,
+        "experiment_name": "lstm_20260417_143223_run_05",
+        "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/lstm_20260417_143223/run_005/submission.csv"
+      },
+      "success": true,
+      "metrics": {
+        "f1": 0.6008,
+        "accuracy": 0.4294
+      },
+      "analysis": "The experiment with the LSTM model achieved a moderate F1 score of 0.6008 and an accuracy of 0.4294, indicating that the model has some predictive power but is not performing optimally. The warning in the STDERR suggests that the dropout setting might be misconfigured for the single-layer architecture, as dropout is intended to be applied across multiple layers to prevent overfitting. For the next run, consider increasing the number of LSTM layers to at least two and adjusting the dropout rate accordingly to ensure it is effectively utilized. Additionally, experimenting with different learning rates or exploring other regularization techniques could further improve model performance.",
+      "run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/lstm_20260417_143223/run_005"
+    }
+  ]
+}

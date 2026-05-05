@@ -1,0 +1,22 @@
+```json
+{
+  "diagnosis": "Missing required validation predict call and softmax/probability conversion from logits.",
+  "edits": [
+    {
+      "action": "insert_after",
+      "target": "trainer = Trainer(",
+      "content": "    callbacks=[EarlyStoppingCallback(early_stopping_patience=3)]"
+    },
+    {
+      "action": "replace",
+      "target": "val_predictions = trainer.predict(val_texts).predictions",
+      "content": "val_outputs = trainer.predict(val_dataset)\nval_predictions = torch.nn.functional.softmax(torch.tensor(val_outputs.predictions), dim=-1)[:, 1].numpy()"
+    },
+    {
+      "action": "insert_after",
+      "target": "test_predictions = trainer.predict(test_dataset).predictions",
+      "content": "test_predictions = torch.nn.functional.softmax(torch.tensor(test_predictions), dim=-1)[:, 1].numpy()"
+    }
+  ]
+}
+```

@@ -1,0 +1,114 @@
+{
+  "family_key": "cnn",
+  "family": "CNN",
+  "session_name": "cnn_20260420_220250",
+  "phase": "sweep",
+  "max_runs": 3,
+  "best_run_index": 3,
+  "best_metrics": {
+    "f1": 0.7261,
+    "accuracy": 0.7498
+  },
+  "best_run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/cnn_20260420_220250/run_003",
+  "trials": [
+    {
+      "run_index": 1,
+      "spec": {
+        "architecture": "CNN",
+        "max_vocab": 20000,
+        "max_len": 48,
+        "embedding_dim": 128,
+        "channels": 128,
+        "kernel_sizes": [
+          3,
+          4,
+          5
+        ],
+        "dropout": 0.3,
+        "batch_size": 64,
+        "epochs": 4,
+        "learning_rate": 0.001,
+        "val_size": 0.2,
+        "threshold_min": 0.3,
+        "threshold_max": 0.7,
+        "threshold_steps": 41,
+        "dry_run_head": 200,
+        "experiment_name": "cnn_20260420_220250_run_01",
+        "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/cnn_20260420_220250/run_001/submission.csv"
+      },
+      "success": true,
+      "metrics": {
+        "f1": 0.7058,
+        "accuracy": 0.7367
+      },
+      "analysis": "The experiment `cnn_20260420_220250_run_01` successfully trained a CNN model with specified parameters such as architecture, batch size, dropout rate, learning rate, and more. The model achieved an F1 score of 0.7058 and accuracy of 0.7367 on the validation set. However, there were several issues during execution, particularly related to pandas operations where `inplace=True` was incorrectly used in chained assignments, leading to potential data integrity problems. For the next run, it is crucial to address these warnings by ensuring that DataFrame updates are performed correctly without using `inplace=True` in a way that could lead to unintended copies. Additionally, optimizing hyperparameters and exploring different architectures or regularization techniques might further improve model performance.",
+      "run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/cnn_20260420_220250/run_001"
+    },
+    {
+      "run_index": 2,
+      "spec": {
+        "architecture": "CNN",
+        "max_vocab": 18000,
+        "max_len": 56,
+        "embedding_dim": 192,
+        "channels": 144,
+        "kernel_sizes": [
+          3,
+          4,
+          5
+        ],
+        "dropout": 0.25,
+        "batch_size": 56,
+        "epochs": 5,
+        "learning_rate": 0.0008,
+        "val_size": 0.2,
+        "threshold_min": 0.3,
+        "threshold_max": 0.7,
+        "threshold_steps": 41,
+        "dry_run_head": 200,
+        "experiment_name": "cnn_20260420_220250_run_02",
+        "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/cnn_20260420_220250/run_002/submission.csv"
+      },
+      "success": true,
+      "metrics": {
+        "f1": 0.7232,
+        "accuracy": 0.7511
+      },
+      "analysis": "The experiment with CNN architecture succeeded in training a model that achieved an F1 score of 0.7232 and accuracy of 0.7511. However, there were issues with the code related to pandas operations, specifically warnings about chained assignment errors and the misuse of inplace methods. For the next run, it is recommended to address these warnings by modifying the DataFrame update methods as suggested in the error messages, ensuring that changes are made directly on the original DataFrame without relying on the `inplace=True` parameter. Additionally, optimizing the model parameters such as learning rate, batch size, or architecture might further improve performance.",
+      "run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/cnn_20260420_220250/run_002"
+    },
+    {
+      "run_index": 3,
+      "spec": {
+        "architecture": "CNN",
+        "max_vocab": 18000,
+        "max_len": 64,
+        "embedding_dim": 256,
+        "channels": 192,
+        "kernel_sizes": [
+          3,
+          4,
+          5
+        ],
+        "dropout": 0.2,
+        "batch_size": 48,
+        "epochs": 6,
+        "learning_rate": 0.0005,
+        "val_size": 0.2,
+        "threshold_min": 0.3,
+        "threshold_max": 0.7,
+        "threshold_steps": 41,
+        "dry_run_head": 200,
+        "experiment_name": "cnn_20260420_220250_run_03",
+        "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/cnn_20260420_220250/run_003/submission.csv"
+      },
+      "success": true,
+      "metrics": {
+        "f1": 0.7261,
+        "accuracy": 0.7498
+      },
+      "analysis": "The experiment `cnn_20260420_220250_run_03` using a CNN architecture achieved a success status with F1 score of 0.7261 and accuracy of 0.7498. The model was trained for 6 epochs with a batch size of 48, embedding dimension of 256, and utilized dropout regularization to prevent overfitting. However, the experiment encountered issues related to chained assignment errors in pandas operations, specifically when attempting to fill missing values in the 'location' and 'keyword' columns using `inplace=True`. For the next run, it is recommended to address these warnings by modifying the code to avoid chained assignments or by explicitly updating the DataFrame without relying on `inplace=True` methods. Additionally, experimenting with different kernel sizes, learning rates, or dropout values could further improve model performance.",
+      "run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/cnn_20260420_220250/run_003"
+    }
+  ]
+}

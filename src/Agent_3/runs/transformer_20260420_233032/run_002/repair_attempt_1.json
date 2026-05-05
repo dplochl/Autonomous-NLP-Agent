@@ -1,0 +1,12 @@
+```json
+{
+  "diagnosis": "Missing required test predict call.",
+  "edits": [
+    {
+      "action": "insert_after",
+      "target": "trainer.train()",
+      "content": "test_logits = trainer.predict(test_dataset).predictions"
+    }
+  ]
+}
+```

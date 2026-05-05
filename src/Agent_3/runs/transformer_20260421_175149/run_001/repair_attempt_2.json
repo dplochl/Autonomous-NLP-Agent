@@ -1,0 +1,12 @@
+```json
+{
+  "diagnosis": "Missing required validation predict call.",
+  "edits": [
+    {
+      "action": "insert_before",
+      "target": "# Predict test logits\nif WRITE_SUBMISSION:",
+      "content": "\n# Predict validation logits\nval_logits = trainer.predict(val_dataset).predictions"
+    }
+  ]
+}
+```

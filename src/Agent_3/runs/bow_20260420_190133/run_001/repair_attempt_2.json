@@ -1,0 +1,12 @@
+```json
+{
+  "diagnosis": "The error is due to the use of a pandas Series for stratification which causes an issue with the train_test_split function. We need to convert it to a numpy array before using it.",
+  "edits": [
+    {
+      "action": "replace",
+      "target": "stratify_labels = y_train if len(np.unique(np.asarray(y_train, dtype=int))) > 1 and np.min(np.bincount(np.asarray(y_train, dtype=int))) >= 2 else None",
+      "content": "stratify_labels = np.asarray(y_train) if len(np.unique(y_train)) > 1 and np.min(np.bincount(y_train)) >= 2 else None"
+    }
+  ]
+}
+```

@@ -1,0 +1,12 @@
+```json
+{
+  "diagnosis": "Missing required validation predict call.",
+  "edits": [
+    {
+      "action": "insert_after",
+      "target": "trainer.evaluate(eval_dataset=val_dataset)",
+      "content": "val_outputs = trainer.predict(val_dataset)"
+    }
+  ]
+}
+```

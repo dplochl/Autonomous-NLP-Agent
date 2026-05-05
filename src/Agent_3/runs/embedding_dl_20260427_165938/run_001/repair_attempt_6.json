@@ -1,0 +1,12 @@
+```json
+{
+  "diagnosis": "SyntaxError due to missing indentation in the TextDataset class's __getitem__ method.",
+  "edits": [
+    {
+      "action": "insert_after",
+      "target": "if self.labels is not None:",
+      "content": "        "
+    }
+  ]
+}
+```

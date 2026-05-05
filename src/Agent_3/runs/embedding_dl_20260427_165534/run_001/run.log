@@ -1,0 +1,13 @@
+success: False
+timed_out: False
+dry_run_failed: False
+
+[STDOUT]
+
+
+[STDERR]
+Preflight validation failed and repair returned no patch.
+Edit 1 target not found for insert_after.
+
+[ANALYSIS]
+The experiment "embedding_dl_20260427_165534_run_01" from the EmbeddingDL family encountered a crash. The configuration included a learned embedding with a dimension of 100, a hidden layer size of 128, and a dropout rate of 0.35. The preflight validation failed, indicating an issue with the experiment setup that could not be automatically repaired. For the next run, it is crucial to address the specific error related to the target not being found for insertion, which might involve checking the configuration files or dependencies for any missing components. Additionally, reviewing the data preprocessing steps and ensuring compatibility with the model architecture could prevent similar issues in future experiments.

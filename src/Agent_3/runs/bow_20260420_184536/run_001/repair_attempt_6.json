@@ -1,0 +1,12 @@
+```json
+{
+  "diagnosis": "The error is due to the use of a pandas Series for stratification in train_test_split, which expects an array-like object.",
+  "edits": [
+    {
+      "action": "replace",
+      "target": "stratify_labels = y_train",
+      "content": "stratify_labels = y_train.values"
+    }
+  ]
+}
+```

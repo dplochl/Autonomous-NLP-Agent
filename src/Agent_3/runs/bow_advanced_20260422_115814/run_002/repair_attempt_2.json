@@ -1,0 +1,12 @@
+```json
+{
+  "diagnosis": "The code attempts to access the 'values' attribute of a numpy array, which does not exist.",
+  "edits": [
+    {
+      "action": "replace",
+      "target": "stratify_labels = y_train.values if len(set(y_train)) > 1 else None",
+      "content": "stratify_labels = y_train if len(set(y_train)) > 1 else None"
+    }
+  ]
+}
+```

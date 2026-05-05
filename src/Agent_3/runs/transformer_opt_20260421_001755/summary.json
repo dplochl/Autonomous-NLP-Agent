@@ -1,0 +1,205 @@
+{
+  "family_key": "transformer",
+  "family": "Transformer",
+  "session_name": "transformer_opt_20260421_001755",
+  "phase": "opt",
+  "max_runs": 6,
+  "best_run_index": 5,
+  "best_metrics": {
+    "f1": 0.8239,
+    "accuracy": 0.8549
+  },
+  "best_run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/transformer_opt_20260421_001755/run_005",
+  "trials": [
+    {
+      "run_index": 0,
+      "spec": {
+        "architecture": "Transformer",
+        "model_name": "distilbert-base-uncased",
+        "max_len": 104,
+        "train_batch_size": 32,
+        "eval_batch_size": 32,
+        "learning_rate": 3e-05,
+        "weight_decay": 0.001,
+        "num_epochs": 2,
+        "val_size": 0.2,
+        "threshold_min": 0.1,
+        "threshold_max": 0.9,
+        "threshold_steps": 81,
+        "dry_run_head": 16,
+        "experiment_name": "transformer_20260420_233032_run_04",
+        "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/transformer_20260420_233032/run_004/submission.csv"
+      },
+      "success": true,
+      "metrics": {
+        "f1": 0.821,
+        "accuracy": 0.8496
+      },
+      "analysis": "The experiment with the Transformer architecture using the `distilbert-base-uncased` model achieved a successful status with an F1 score of 0.821 and accuracy of 0.8496 after two epochs. The training runtime was efficient, processing samples at a rate of approximately 74 per second. However, there were unexpected issues during the loading of weights, indicating potential discrepancies between the model's expected architecture and the checkpoint used. Additionally, several parameters such as `classifier.bias`, `pre_classifier.bias`, `classifier.weight`, and `pre_classifier.weight` were missing from the checkpoint, which suggests that these layers may need to be re-initialized or fine-tuned further on the downstream task. For the next run, it is recommended to address the unexpected weight loading issues by ensuring compatibility between the model architecture and the checkpoint, and to consider initializing or fine-tuning the missing parameters to improve performance.",
+      "run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/transformer_20260420_233032/run_004",
+      "seeded": true
+    },
+    {
+      "run_index": 1,
+      "spec": {
+        "architecture": "Transformer",
+        "model_name": "distilbert-base-uncased",
+        "max_len": 104,
+        "train_batch_size": 32,
+        "eval_batch_size": 32,
+        "learning_rate": 2.375e-05,
+        "weight_decay": 0.00095,
+        "num_epochs": 2,
+        "val_size": 0.2,
+        "threshold_min": 0.1,
+        "threshold_max": 0.9,
+        "threshold_steps": 81,
+        "dry_run_head": 16,
+        "experiment_name": "transformer_opt_20260421_001755_run_01",
+        "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/transformer_opt_20260421_001755/run_001/submission.csv"
+      },
+      "success": true,
+      "metrics": {
+        "f1": 0.8231,
+        "accuracy": 0.8569
+      },
+      "analysis": "The experiment using a Transformer architecture with the DistilBERT model achieved a successful status, yielding an F1 score of 0.8231 and accuracy of 0.8569. The training runtime was efficient at approximately 137.3 samples per second. However, there were unexpected issues during weight loading, indicating discrepancies between the expected and loaded parameters. Additionally, several parameters such as `pre_classifier.weight`, `classifier.weight`, `classifier.bias`, and `pre_classifier.bias` were missing from the checkpoint, which suggests that these components were newly initialized. For the next run, it is recommended to ensure compatibility between the model architecture and the task by addressing the unexpected weight discrepancies and possibly reinitializing or fine-tuning the missing parameters to better align with the downstream task requirements.",
+      "run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/transformer_opt_20260421_001755/run_001"
+    },
+    {
+      "run_index": 2,
+      "spec": {
+        "architecture": "Transformer",
+        "model_name": "distilbert-base-uncased",
+        "max_len": 104,
+        "train_batch_size": 32,
+        "eval_batch_size": 32,
+        "learning_rate": 2.5e-05,
+        "weight_decay": 0.001,
+        "num_epochs": 2,
+        "val_size": 0.2,
+        "threshold_min": 0.1,
+        "threshold_max": 0.9,
+        "threshold_steps": 81,
+        "dry_run_head": 16,
+        "experiment_name": "transformer_opt_20260421_001755_run_02",
+        "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/transformer_opt_20260421_001755/run_002/submission.csv"
+      },
+      "success": true,
+      "metrics": {
+        "f1": 0.8229,
+        "accuracy": 0.8555
+      },
+      "analysis": "The experiment with the Transformer architecture using the `distilbert-base-uncased` model achieved a success status with an F1 score of 0.8229 and accuracy of 0.8555. The training runtime was efficient, processing samples at a rate of approximately 134.6 per second. However, there were unexpected issues during the loading of weights, indicating discrepancies between the expected and loaded model parameters. Specifically, several parameters like `vocab_layer_norm.bias`, `vocab_transform.weight`, etc., were marked as UNEXPECTED, suggesting potential mismatches or incompatibilities with the intended task or architecture. Additionally, critical parameters such as `classifier.bias` and `pre_classifier.weight` were missing, which could impact the model's performance on downstream tasks. For the next run, it is recommended to address these parameter discrepancies by ensuring compatibility between the model checkpoint and the specific task requirements, possibly by retraining with a more suitable or compatible model variant.",
+      "run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/transformer_opt_20260421_001755/run_002"
+    },
+    {
+      "run_index": 3,
+      "spec": {
+        "architecture": "Transformer",
+        "model_name": "distilbert-base-uncased",
+        "max_len": 104,
+        "train_batch_size": 32,
+        "eval_batch_size": 32,
+        "learning_rate": 2.25625e-05,
+        "weight_decay": 0.00095,
+        "num_epochs": 2,
+        "val_size": 0.2,
+        "threshold_min": 0.1,
+        "threshold_max": 0.9,
+        "threshold_steps": 81,
+        "dry_run_head": 16,
+        "experiment_name": "transformer_opt_20260421_001755_run_03",
+        "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/transformer_opt_20260421_001755/run_003/submission.csv"
+      },
+      "success": true,
+      "metrics": {
+        "f1": 0.822,
+        "accuracy": 0.8536
+      },
+      "analysis": "The experiment with the Transformer architecture using the `distilbert-base-uncased` model achieved a successful status with an F1 score of 0.822 and accuracy of 0.8536 after two epochs. The training runtime was efficient, processing samples at a rate of approximately 136.5 per second. However, there were unexpected discrepancies in loading certain weights, which could be due to differences between the model's original task and the current downstream task. Additionally, several parameters were missing from the checkpoint, indicating that they were newly initialized during this run. For the next iteration, it would be beneficial to address these missing parameters by fine-tuning on the specific downstream task to ensure all weights are appropriately loaded and utilized.",
+      "run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/transformer_opt_20260421_001755/run_003"
+    },
+    {
+      "run_index": 4,
+      "spec": {
+        "architecture": "Transformer",
+        "model_name": "distilbert-base-uncased",
+        "max_len": 104,
+        "train_batch_size": 32,
+        "eval_batch_size": 32,
+        "learning_rate": 2.49375e-05,
+        "weight_decay": 0.00095,
+        "num_epochs": 2,
+        "val_size": 0.2,
+        "threshold_min": 0.1,
+        "threshold_max": 0.9,
+        "threshold_steps": 81,
+        "dry_run_head": 16,
+        "experiment_name": "transformer_opt_20260421_001755_run_04",
+        "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/transformer_opt_20260421_001755/run_004/submission.csv"
+      },
+      "success": true,
+      "metrics": {
+        "f1": 0.8226,
+        "accuracy": 0.8555
+      },
+      "analysis": "The experiment with the Transformer architecture using the `distilbert-base-uncased` model achieved a success status with an F1 score of 0.8226 and accuracy of 0.8555. The training runtime was efficient, processing samples at a rate of approximately 132.7 per second. However, there were unexpected discrepancies in loading weights for certain parameters (`vocab_layer_norm.bias`, `vocab_transform.bias`, etc.) and missing parameters (`pre_classifier.bias`, `classifier.weight`, etc.), which could indicate issues with the model checkpoint or architecture mismatch. Additionally, a warning about unsupported 'pin_memory' on MPS suggests potential inefficiencies in memory handling. For the next run, it is recommended to address the missing parameters by training further on the downstream task and ensuring compatibility between the loaded weights and the expected model architecture.",
+      "run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/transformer_opt_20260421_001755/run_004"
+    },
+    {
+      "run_index": 5,
+      "spec": {
+        "architecture": "Transformer",
+        "model_name": "distilbert-base-uncased",
+        "max_len": 104,
+        "train_batch_size": 32,
+        "eval_batch_size": 32,
+        "learning_rate": 2.625e-05,
+        "weight_decay": 0.0009025,
+        "num_epochs": 2,
+        "val_size": 0.2,
+        "threshold_min": 0.1,
+        "threshold_max": 0.9,
+        "threshold_steps": 81,
+        "dry_run_head": 16,
+        "experiment_name": "transformer_opt_20260421_001755_run_05",
+        "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/transformer_opt_20260421_001755/run_005/submission.csv"
+      },
+      "success": true,
+      "metrics": {
+        "f1": 0.8239,
+        "accuracy": 0.8549
+      },
+      "analysis": "The experiment successfully trained a Transformer model using the DistilBERT architecture with an F1 score of 0.8239 and accuracy of 0.8549 after two epochs. The training runtime was efficient, with a speed of approximately 139.9 samples per second. However, there were unexpected issues during weight loading, indicating potential mismatches between the model's architecture and the checkpoint used. Additionally, several parameters such as `classifier.weight`, `pre_classifier.weight`, and `bias` terms were missing from the loaded weights, which suggests that these components were not initialized properly or were not part of the original checkpoint. For the next run, it is recommended to ensure compatibility between the model architecture and the checkpoint by either using a compatible pre-trained model or initializing the missing parameters appropriately. Additionally, addressing the warning regarding 'pin_memory' on MPS devices could improve memory management efficiency.",
+      "run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/transformer_opt_20260421_001755/run_005"
+    },
+    {
+      "run_index": 6,
+      "spec": {
+        "architecture": "Transformer",
+        "model_name": "distilbert-base-uncased",
+        "max_len": 104,
+        "train_batch_size": 32,
+        "eval_batch_size": 32,
+        "learning_rate": 2.75e-05,
+        "weight_decay": 0.00085,
+        "num_epochs": 2,
+        "val_size": 0.2,
+        "threshold_min": 0.1,
+        "threshold_max": 0.9,
+        "threshold_steps": 81,
+        "dry_run_head": 16,
+        "experiment_name": "transformer_opt_20260421_001755_run_06",
+        "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/transformer_opt_20260421_001755/run_006/submission.csv"
+      },
+      "success": true,
+      "metrics": {
+        "f1": 0.8167,
+        "accuracy": 0.8477
+      },
+      "analysis": "The experiment using a Transformer architecture with the DistilBERT model achieved a successful status, as indicated by its metrics: F1 score of 0.8167 and accuracy of 0.8477. The training runtime was efficient, with approximately 144 samples processed per second. However, there were unexpected issues during weight loading, specifically with parameters related to the vocabulary projector and layer normalization, which could indicate compatibility or configuration mismatches between the model and the task. Additionally, several classifier-related parameters were missing, suggesting that further training on the downstream task is necessary to properly initialize these weights. For the next run, it would be beneficial to address the unexpected weight loading issues by ensuring compatibility between the model and the specific task requirements.",
+      "run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/transformer_opt_20260421_001755/run_006"
+    }
+  ]
+}

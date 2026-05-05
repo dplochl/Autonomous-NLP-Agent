@@ -1,0 +1,38 @@
+success: True
+timed_out: False
+dry_run_failed: False
+
+[STDOUT]
+{'train_runtime': '152.6', 'train_samples_per_second': '119.7', 'train_steps_per_second': '3.755', 'train_loss': '0.3786', 'epoch': '3'}
+METRICS: {"f1": 0.8232, "accuracy": 0.8542}
+
+
+[STDERR]
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+
+Loading weights:   0%|          | 0/100 [00:00<?, ?it/s]
+Loading weights: 100%|██████████| 100/100 [00:00<00:00, 19471.26it/s]
+[1mDistilBertForSequenceClassification LOAD REPORT[0m from: distilbert-base-uncased
+Key                     | Status     | 
+------------------------+------------+-
+vocab_transform.bias    | UNEXPECTED | 
+vocab_transform.weight  | UNEXPECTED | 
+vocab_layer_norm.bias   | UNEXPECTED | 
+vocab_projector.bias    | UNEXPECTED | 
+vocab_layer_norm.weight | UNEXPECTED | 
+pre_classifier.weight   | MISSING    | 
+classifier.weight       | MISSING    | 
+classifier.bias         | MISSING    | 
+pre_classifier.bias     | MISSING    | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+- MISSING:	those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.
+/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/.venv/lib/python3.13/site-packages/torch/utils/data/dataloader.py:775: UserWarning: 'pin_memory' argument is set as true but not supported on MPS now, device pinned memory won't be used.
+  super().__init__(loader)
+
+
+[ANALYSIS]
+The experiment using a Transformer architecture with the DistilBERT model achieved a successful status, as indicated by its completion without errors. The model demonstrated good performance with an F1 score of 0.8232 and accuracy of 0.8542, suggesting that the chosen hyperparameters were effective for this specific task. However, there were several issues noted in the STDERR output, including unexpected parameters during weight loading and missing classifier weights, which could indicate potential mismatches between the pre-trained model and the downstream task. Additionally, a user warning about 'pin_memory' not being supported on MPS (Metal Performance Shaders) suggests that memory pinning for faster data transfer to the GPU is not currently possible with this setup.
+
+For the next run, it would be beneficial to address the missing classifier weights by ensuring that the model architecture matches the downstream task requirements. Additionally, exploring alternative configurations for 'pin_memory' or switching to a different device if MPS support is critical could improve performance and efficiency.

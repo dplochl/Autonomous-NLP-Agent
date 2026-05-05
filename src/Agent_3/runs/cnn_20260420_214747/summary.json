@@ -1,0 +1,180 @@
+{
+  "family_key": "cnn",
+  "family": "CNN",
+  "session_name": "cnn_20260420_214747",
+  "phase": "sweep",
+  "max_runs": 5,
+  "best_run_index": 4,
+  "best_metrics": {
+    "f1": 0.7246,
+    "accuracy": 0.738
+  },
+  "best_run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/cnn_20260420_214747/run_004",
+  "trials": [
+    {
+      "run_index": 1,
+      "spec": {
+        "architecture": "CNN",
+        "max_vocab": 20000,
+        "max_len": 48,
+        "embedding_dim": 128,
+        "channels": 64,
+        "kernel_sizes": [
+          3,
+          4,
+          5
+        ],
+        "dropout": 0.2,
+        "batch_size": 32,
+        "epochs": 3,
+        "learning_rate": 0.001,
+        "val_size": 0.2,
+        "threshold_min": 0.3,
+        "threshold_max": 0.7,
+        "threshold_steps": 41,
+        "dry_run_head": 200,
+        "experiment_name": "cnn_20260420_214747_run_01",
+        "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/cnn_20260420_214747/run_001/submission.csv"
+      },
+      "success": true,
+      "metrics": {
+        "f1": 0.7159,
+        "accuracy": 0.7347
+      },
+      "analysis": "The experiment `cnn_20260420_214747_run_01` successfully trained a CNN model with an F1 score of 0.7159 and accuracy of 0.7347, indicating that the model has moderate performance on the classification task. The use of multiple kernel sizes (3, 4, 5) suggests an attempt to capture features at different scales, which could be beneficial for text classification tasks. However, the relatively low F1 score and accuracy might indicate that the model is not sufficiently complex or that the dataset has inherent challenges that are not well-addressed by the current architecture or hyperparameters.\n\nFor the next run, consider increasing the complexity of the model by adding more layers or using a deeper CNN architecture to better capture hierarchical patterns in the text. Additionally, experimenting with different learning rates, batch sizes, and dropout values might help improve convergence and performance. It could also be beneficial to explore data augmentation techniques or to fine-tune pre-trained models if applicable, as these strategies can often lead to significant improvements in natural language processing tasks.",
+      "run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/cnn_20260420_214747/run_001"
+    },
+    {
+      "run_index": 2,
+      "spec": {
+        "architecture": "CNN",
+        "max_vocab": 25000,
+        "max_len": 50,
+        "embedding_dim": 128,
+        "channels": 64,
+        "kernel_sizes": [
+          3,
+          4,
+          5
+        ],
+        "dropout": 0.2,
+        "batch_size": 32,
+        "epochs": 3,
+        "learning_rate": 0.001,
+        "val_size": 0.2,
+        "threshold_min": 0.3,
+        "threshold_max": 0.7,
+        "threshold_steps": 41,
+        "dry_run_head": 200,
+        "experiment_name": "cnn_20260420_214747_run_02",
+        "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/cnn_20260420_214747/run_002/submission.csv"
+      },
+      "success": true,
+      "metrics": {
+        "f1": 0.7236,
+        "accuracy": 0.7426
+      },
+      "analysis": "The experiment `cnn_20260420_214747_run_02` successfully executed a CNN model with specified parameters such as batch size, dropout rate, learning rate, and kernel sizes. The model achieved an F1 score of 0.7236 and accuracy of 0.7426, indicating reasonable performance on the task at hand. However, there is room for improvement as the metrics are not exceptionally high, suggesting potential issues with model complexity or hyperparameter tuning. For the next run, consider increasing the number of epochs to allow the model more time to learn from the data, experimenting with different learning rates and dropout values to prevent overfitting, or adjusting the architecture by adding more convolutional layers or changing the kernel sizes to better capture the features in the input data.",
+      "run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/cnn_20260420_214747/run_002"
+    },
+    {
+      "run_index": 3,
+      "spec": {
+        "architecture": "CNN",
+        "max_vocab": 19375,
+        "max_len": 50,
+        "embedding_dim": 128,
+        "channels": 64,
+        "kernel_sizes": [
+          3,
+          4,
+          5
+        ],
+        "dropout": 0.2,
+        "batch_size": 32,
+        "epochs": 3,
+        "learning_rate": 0.001,
+        "val_size": 0.2,
+        "threshold_min": 0.3,
+        "threshold_max": 0.7,
+        "threshold_steps": 41,
+        "dry_run_head": 200,
+        "experiment_name": "cnn_20260420_214747_run_03",
+        "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/cnn_20260420_214747/run_003/submission.csv"
+      },
+      "success": true,
+      "metrics": {
+        "f1": 0.7074,
+        "accuracy": 0.7544
+      },
+      "analysis": "The experiment `cnn_20260420_214747_run_03` successfully executed a CNN model with specific hyperparameters. The model achieved an F1 score of 0.7074 and accuracy of 0.7544, indicating moderate performance on the task. The use of multiple kernel sizes (3, 4, 5) suggests that the model is capturing features at different scales, which could be beneficial for text classification tasks. However, there is room for improvement as the F1 score and accuracy are not exceptionally high. For the next run, consider experimenting with a larger number of epochs to allow the model more time to converge, or try adjusting the learning rate to potentially speed up convergence or improve performance. Additionally, exploring different architectures or adding regularization techniques could further enhance the model's ability to generalize.",
+      "run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/cnn_20260420_214747/run_003"
+    },
+    {
+      "run_index": 4,
+      "spec": {
+        "architecture": "CNN",
+        "max_vocab": 30625,
+        "max_len": 50,
+        "embedding_dim": 128,
+        "channels": 64,
+        "kernel_sizes": [
+          3,
+          4,
+          5
+        ],
+        "dropout": 0.2,
+        "batch_size": 32,
+        "epochs": 3,
+        "learning_rate": 0.001,
+        "val_size": 0.2,
+        "threshold_min": 0.3,
+        "threshold_max": 0.7,
+        "threshold_steps": 41,
+        "dry_run_head": 200,
+        "experiment_name": "cnn_20260420_214747_run_04",
+        "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/cnn_20260420_214747/run_004/submission.csv"
+      },
+      "success": true,
+      "metrics": {
+        "f1": 0.7246,
+        "accuracy": 0.738
+      },
+      "analysis": "The experiment `cnn_20260420_214747_run_04` successfully executed with a CNN architecture, achieving an F1 score of 0.7246 and accuracy of 0.738. The model utilized a batch size of 32, dropout rate of 0.2, and employed three different kernel sizes (3, 4, 5) for convolutional layers. However, the experiment did not encounter any errors as indicated by the empty STDERR tail, suggesting that the implementation was stable. For the next run, consider experimenting with a different learning rate or adjusting the number of epochs to potentially improve performance further. Additionally, exploring variations in the dropout rate and kernel sizes might yield better results.",
+      "run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/cnn_20260420_214747/run_004"
+    },
+    {
+      "run_index": 5,
+      "spec": {
+        "architecture": "CNN",
+        "max_vocab": 36250,
+        "max_len": 50,
+        "embedding_dim": 128,
+        "channels": 64,
+        "kernel_sizes": [
+          3,
+          4,
+          5
+        ],
+        "dropout": 0.2,
+        "batch_size": 32,
+        "epochs": 3,
+        "learning_rate": 0.001,
+        "val_size": 0.2,
+        "threshold_min": 0.3,
+        "threshold_max": 0.7,
+        "threshold_steps": 41,
+        "dry_run_head": 200,
+        "experiment_name": "cnn_20260420_214747_run_05",
+        "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/cnn_20260420_214747/run_005/submission.csv"
+      },
+      "success": true,
+      "metrics": {
+        "f1": 0.7087,
+        "accuracy": 0.7695
+      },
+      "analysis": "The experiment `cnn_20260420_214747_run_05` successfully executed a CNN model with specific hyperparameters. The model achieved an F1 score of 0.7087 and accuracy of 0.7695, indicating reasonable performance on the task. However, there is room for improvement as these metrics are not exceptionally high. For the next run, consider increasing the number of epochs to allow the model more time to learn from the data. Additionally, experimenting with different kernel sizes or adjusting the dropout rate might help in optimizing the model's performance further.",
+      "run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/cnn_20260420_214747/run_005"
+    }
+  ]
+}

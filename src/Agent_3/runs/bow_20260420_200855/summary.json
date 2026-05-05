@@ -1,0 +1,40 @@
+{
+  "family_key": "bow",
+  "family": "BoW",
+  "session_name": "bow_20260420_200855",
+  "phase": "sweep",
+  "max_runs": 1,
+  "best_run_index": 1,
+  "best_metrics": {
+    "f1": 0.7764,
+    "accuracy": 0.8207
+  },
+  "best_run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/bow_20260420_200855/run_001",
+  "trials": [
+    {
+      "run_index": 1,
+      "spec": {
+        "architecture": "BoW",
+        "vectorizer_type": "tfidf_word",
+        "max_features": 10000,
+        "ngram_max": 1,
+        "min_df": 5,
+        "logreg_c": 1.0,
+        "val_size": 0.2,
+        "threshold_min": 0.4,
+        "threshold_max": 0.6,
+        "threshold_steps": 21,
+        "dry_run_head": 100,
+        "experiment_name": "bow_20260420_200855_run_01",
+        "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/bow_20260420_200855/run_001/submission.csv"
+      },
+      "success": true,
+      "metrics": {
+        "f1": 0.7764,
+        "accuracy": 0.8207
+      },
+      "analysis": "The experiment `bow_20260420_200855_run_01` successfully executed a Bag of Words (BoW) model with TF-IDF vectorization, achieving an F1 score of 0.7764 and accuracy of 0.8207. The use of TF-IDF for feature extraction likely contributed to the model's performance by effectively weighing the importance of words in the dataset. However, the experiment did not explore different n-gram levels or vectorization techniques, which could potentially improve results. For the next run, consider experimenting with n-grams (e.g., bigrams or trigrams) and other vectorization methods like Count Vectorizer to see if they enhance performance further. Additionally, tuning hyperparameters such as `logreg_c`, `min_df`, and adjusting the threshold range might yield better outcomes.",
+      "run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/bow_20260420_200855/run_001"
+    }
+  ]
+}

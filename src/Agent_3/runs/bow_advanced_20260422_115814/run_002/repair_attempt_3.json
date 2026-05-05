@@ -1,0 +1,17 @@
+```json
+{
+  "diagnosis": "The error is due to the use of a pandas Series where an array-like object is expected in the train_test_split function.",
+  "edits": [
+    {
+      "action": "replace",
+      "target": "X_train = train_df['text'].values",
+      "content": "X_train = train_df['text'].to_numpy()"
+    },
+    {
+      "action": "replace",
+      "target": "y_train = train_df['target'].values",
+      "content": "y_train = train_df['target'].to_numpy()"
+    }
+  ]
+}
+```

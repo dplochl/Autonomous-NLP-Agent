@@ -1,0 +1,43 @@
+success: True
+timed_out: False
+dry_run_failed: False
+
+[STDOUT]
+{'train_runtime': '346.8', 'train_samples_per_second': '52.68', 'train_steps_per_second': '1.652', 'train_loss': '0.3841', 'epoch': '3'}
+Best threshold: 0.45999999999999996, Best F1: 0.8260869565217391
+METRICS: {"f1": 0.8261, "accuracy": 0.8529}
+
+
+[STDERR]
+emoji is not installed, thus not converting emoticons or emojis into text. Install emoji: pip3 install emoji==0.6.0
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+
+Loading weights:   0%|          | 0/197 [00:00<?, ?it/s]
+Loading weights: 100%|██████████| 197/197 [00:00<00:00, 81777.30it/s]
+[1mRobertaForSequenceClassification LOAD REPORT[0m from: vinai/bertweet-base
+Key                             | Status     | 
+--------------------------------+------------+-
+lm_head.dense.weight            | UNEXPECTED | 
+roberta.pooler.dense.bias       | UNEXPECTED | 
+roberta.embeddings.position_ids | UNEXPECTED | 
+roberta.pooler.dense.weight     | UNEXPECTED | 
+lm_head.decoder.weight          | UNEXPECTED | 
+lm_head.layer_norm.bias         | UNEXPECTED | 
+lm_head.bias                    | UNEXPECTED | 
+lm_head.dense.bias              | UNEXPECTED | 
+lm_head.layer_norm.weight       | UNEXPECTED | 
+lm_head.decoder.bias            | UNEXPECTED | 
+classifier.dense.weight         | MISSING    | 
+classifier.dense.bias           | MISSING    | 
+classifier.out_proj.bias        | MISSING    | 
+classifier.out_proj.weight      | MISSING    | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+- MISSING:	those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.
+/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/.venv/lib/python3.13/site-packages/torch/utils/data/dataloader.py:775: UserWarning: 'pin_memory' argument is set as true but not supported on MPS now, device pinned memory won't be used.
+  super().__init__(loader)
+
+
+[ANALYSIS]
+The experiment using BERTweet architecture achieved a success status with an F1 score of 0.8261 and accuracy of 0.8529, indicating that the model performed well on the task. However, there were several unexpected parameters and missing classifier weights during the loading process, which could affect performance if not addressed in future runs. Additionally, a warning about 'pin_memory' argument being unsupported on MPS suggests potential inefficiencies in memory usage. For the next run, it would be beneficial to ensure all necessary parameters are correctly loaded and consider training the model further on the downstream task to initialize missing weights properly.

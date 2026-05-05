@@ -1,0 +1,36 @@
+success: True
+timed_out: False
+dry_run_failed: False
+
+[STDOUT]
+{'train_runtime': '65.41', 'train_samples_per_second': '111.7', 'train_steps_per_second': '3.532', 'train_loss': '0.3763', 'epoch': '3'}
+METRICS: {"f1": 0.8379, "accuracy": 0.8654}
+
+
+[STDERR]
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+
+Loading weights:   0%|          | 0/100 [00:00<?, ?it/s]
+Loading weights: 100%|██████████| 100/100 [00:00<00:00, 17693.01it/s]
+[1mDistilBertForSequenceClassification LOAD REPORT[0m from: distilbert-base-uncased
+Key                     | Status     | 
+------------------------+------------+-
+vocab_layer_norm.weight | UNEXPECTED | 
+vocab_transform.weight  | UNEXPECTED | 
+vocab_projector.bias    | UNEXPECTED | 
+vocab_layer_norm.bias   | UNEXPECTED | 
+vocab_transform.bias    | UNEXPECTED | 
+classifier.bias         | MISSING    | 
+classifier.weight       | MISSING    | 
+pre_classifier.bias     | MISSING    | 
+pre_classifier.weight   | MISSING    | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+- MISSING:	those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.
+/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/.venv/lib/python3.13/site-packages/torch/utils/data/dataloader.py:775: UserWarning: 'pin_memory' argument is set as true but not supported on MPS now, device pinned memory won't be used.
+  super().__init__(loader)
+
+
+[ANALYSIS]
+The experiment using a Transformer architecture with the DistilBERT model achieved success, as indicated by the status. The F1 score of 0.8379 and accuracy of 0.8654 suggest that the model performed well on the classification task. However, there were unexpected issues during weight loading, indicating potential discrepancies between the expected and actual model architecture. Additionally, a user warning about 'pin_memory' not being supported on MPS highlights a compatibility issue with the current setup. For the next run, it would be beneficial to address these warnings by ensuring that all parameters are correctly loaded and considering whether to adjust the device settings or update the PyTorch version to support MPS properly.

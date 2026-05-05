@@ -1,0 +1,44 @@
+{
+  "family_key": "lstm",
+  "family": "LSTM",
+  "session_name": "lstm_20260421_151812",
+  "phase": "sweep",
+  "max_runs": 4,
+  "best_run_index": 1,
+  "best_metrics": {
+    "f1": 0.5968,
+    "accuracy": 0.4253
+  },
+  "best_run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/lstm_20260421_151812/run_001",
+  "trials": [
+    {
+      "run_index": 1,
+      "spec": {
+        "architecture": "LSTM",
+        "max_vocab": 20000,
+        "max_len": 64,
+        "embedding_dim": 128,
+        "hidden_dim": 128,
+        "num_layers": 1,
+        "dropout": 0.3,
+        "batch_size": 64,
+        "epochs": 3,
+        "learning_rate": 0.001,
+        "val_size": 0.2,
+        "threshold_min": 0.3,
+        "threshold_max": 0.7,
+        "threshold_steps": 41,
+        "dry_run_head": 200,
+        "experiment_name": "lstm_20260421_151812_run_01",
+        "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/lstm_20260421_151812/run_001/submission.csv"
+      },
+      "success": true,
+      "metrics": {
+        "f1": 0.5968,
+        "accuracy": 0.4253
+      },
+      "analysis": "The experiment with the LSTM architecture achieved a moderate performance, as indicated by an F1 score of 0.5968 and accuracy of 0.4253. The model was trained for 3 epochs with a batch size of 64, using a single layer with 128 hidden units and an embedding dimension of 128. However, there were several issues during the run: chained assignment errors in data preprocessing steps, which suggest potential problems with how DataFrame copies are being handled; and a user warning about dropout settings, indicating that the dropout parameter is not effective with only one layer. For the next run, consider addressing these warnings by ensuring proper handling of DataFrame operations to avoid copy-on-write issues and increasing the number of LSTM layers to effectively utilize the dropout mechanism.",
+      "run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/lstm_20260421_151812/run_001"
+    }
+  ]
+}

@@ -1,0 +1,118 @@
+success: False
+timed_out: False
+dry_run_failed: True
+
+[STDOUT]
+
+
+[STDERR]
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+
+Loading weights:   0%|          | 0/100 [00:00<?, ?it/s]
+Loading weights: 100%|██████████| 100/100 [00:00<00:00, 17391.48it/s]
+[1mDistilBertForSequenceClassification LOAD REPORT[0m from: distilbert-base-uncased
+Key                     | Status     | 
+------------------------+------------+-
+vocab_layer_norm.weight | UNEXPECTED | 
+vocab_layer_norm.bias   | UNEXPECTED | 
+vocab_projector.bias    | UNEXPECTED | 
+vocab_transform.bias    | UNEXPECTED | 
+vocab_transform.weight  | UNEXPECTED | 
+classifier.weight       | MISSING    | 
+pre_classifier.weight   | MISSING    | 
+classifier.bias         | MISSING    | 
+pre_classifier.bias     | MISSING    | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+- MISSING:	those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.
+`logging_dir` is deprecated and will be removed in v5.2. Please set `TENSORBOARD_LOGGING_DIR` instead.
+/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/.venv/lib/python3.13/site-packages/torch/utils/data/dataloader.py:775: UserWarning: 'pin_memory' argument is set as true but not supported on MPS now, device pinned memory won't be used.
+  super().__init__(loader)
+/var/folders/rp/_q6137ys147f688vnf1knc4w0000gn/T/agent3_vasl63sl.py:95: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.detach().clone() or sourceTensor.detach().clone().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  'input_ids': torch.tensor(input_ids, dtype=torch.long),
+/var/folders/rp/_q6137ys147f688vnf1knc4w0000gn/T/agent3_vasl63sl.py:96: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.detach().clone() or sourceTensor.detach().clone().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  'attention_mask': torch.tensor(attention_mask, dtype=torch.long),
+Traceback (most recent call last):
+  File "/var/folders/rp/_q6137ys147f688vnf1knc4w0000gn/T/agent3_vasl63sl.py", line 135, in <module>
+    val_predictions = trainer.predict(val_dataset).predictions
+                      ~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/.venv/lib/python3.13/site-packages/transformers/trainer.py", line 2857, in predict
+    output = self.evaluation_loop(
+        test_dataloader, description="Prediction", ignore_keys=ignore_keys, metric_key_prefix=metric_key_prefix
+    )
+  File "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/.venv/lib/python3.13/site-packages/transformers/trainer.py", line 2701, in evaluation_loop
+    losses, logits, labels = self.prediction_step(model, inputs, prediction_loss_only, ignore_keys=ignore_keys)
+                             ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/.venv/lib/python3.13/site-packages/transformers/trainer.py", line 2955, in prediction_step
+    loss, outputs = self.compute_loss(
+                    ~~~~~~~~~~~~~~~~~^
+        model, inputs, return_outputs=True, num_items_in_batch=num_items_in_batch
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/.venv/lib/python3.13/site-packages/transformers/trainer.py", line 1979, in compute_loss
+    outputs = model(**inputs)
+  File "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/.venv/lib/python3.13/site-packages/transformers/utils/generic.py", line 876, in wrapper
+    output = func(self, *args, **kwargs)
+  File "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/.venv/lib/python3.13/site-packages/transformers/models/distilbert/modeling_distilbert.py", line 588, in forward
+    distilbert_output = self.distilbert(
+        input_ids=input_ids,
+    ...<4 lines>...
+        **kwargs,
+    )
+  File "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/.venv/lib/python3.13/site-packages/transformers/utils/generic.py", line 952, in wrapper
+    output = func(self, *args, **kwargs)
+  File "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/.venv/lib/python3.13/site-packages/transformers/utils/output_capturing.py", line 248, in wrapper
+    outputs = func(self, *args, **kwargs)
+  File "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/.venv/lib/python3.13/site-packages/transformers/models/distilbert/modeling_distilbert.py", line 415, in forward
+    attention_mask = create_bidirectional_mask(
+        config=self.config,
+        inputs_embeds=embeddings,
+        attention_mask=attention_mask,
+    )
+  File "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/.venv/lib/python3.13/site-packages/transformers/utils/deprecation.py", line 171, in wrapped_func
+    return func(*args, **kwargs)
+  File "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/.venv/lib/python3.13/site-packages/transformers/masking_utils.py", line 1071, in create_bidirectional_mask
+    attention_mask = mask_interface(
+        batch_size=batch_size,
+    ...<12 lines>...
+        device=device,
+    )
+  File "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/.venv/lib/python3.13/site-packages/transformers/masking_utils.py", line 520, in sdpa_mask
+    attention_mask = attention_mask.expand(batch_size, -1, q_length, kv_length)
+RuntimeError: expand(MPSLongType{[4, 1, 1, 128, 128]}, size=[4, -1, 1, 128]): the number of sizes provided (4) must be greater or equal to the number of dimensions in the tensor (5)
+libc++abi: terminating due to uncaught exception of type c10::AcceleratorError: index 88 is out of bounds: 1, range 0 to 1
+Exception raised from index_apply_indices at /Users/runner/work/pytorch/pytorch/pytorch/aten/src/ATen/native/mps/kernels/EmbeddingBag.m:49 (most recent call first):
+frame #0: c10::Error::Error(c10::SourceLocation, std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>) + 52 (0x1197a5320 in libc10.dylib)
+frame #1: c10::AcceleratorError::AcceleratorError(c10::SourceLocation, int, std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>> const&) + 168 (0x12e977248 in libtorch_cpu.dylib)
+frame #2: at::mps::MPSStream::checkLastError() + 136 (0x12e976998 in libtorch_cpu.dylib)
+frame #3: invocation function for block in at::mps::dispatch_sync_with_rethrow(NSObject<OS_dispatch_queue>*, void () block_pointer) + 32 (0x12e977470 in libtorch_cpu.dylib)
+frame #4: _dispatch_client_callout + 16 (0x18b3d8ad4 in libdispatch.dylib)
+frame #5: _dispatch_lane_barrier_sync_invoke_and_complete + 56 (0x18b3ce940 in libdispatch.dylib)
+frame #6: at::mps::dispatch_sync_with_rethrow(NSObject<OS_dispatch_queue>*, void () block_pointer) + 128 (0x12e976ba8 in libtorch_cpu.dylib)
+frame #7: at::mps::HeapAllocator::MPSHeapAllocatorImpl::release_cached_buffers() + 300 (0x12e95d704 in libtorch_cpu.dylib)
+frame #8: at::mps::MPSAllocator::~MPSAllocator() + 56 (0x12e961d4c in libtorch_cpu.dylib)
+frame #9: __cxa_finalize_ranges + 480 (0x18b42f42c in libsystem_c.dylib)
+frame #10: exit + 44 (0x18b42f1ec in libsystem_c.dylib)
+frame #11: dyld4::LibSystemHelpers::getenv(char const*) const + 0 (0x18b17bfc8 in libdyld.dylib)
+frame #12: dyld4::LibSystemHelpersWrapper::exit(int) const + 172 (0x18b1b1f04 in dyld)
+frame #13: start + 7232 (0x18b1b1d84 in dyld)
+
+
+Repair error: Repair plan contained no edits.
+
+[ANALYSIS]
+The experiment "transformer_20260421_175928_run_02" using a Transformer architecture with the DistilBERT model crashed due to an indexing error in the MPS (Metal Performance Shaders) backend of PyTorch. The specific error indicates that there was an attempt to access an index out of bounds, which suggests a mismatch between expected tensor dimensions and actual data provided during the embedding bag operation. Despite the crash, no metrics were recorded, and the repair plan did not suggest any changes to the configuration.
+
+For the next run, it is crucial to ensure compatibility between the model architecture and the MPS backend by verifying that all operations are correctly implemented for this hardware acceleration. Additionally, checking the data preprocessing steps to confirm that tensor dimensions match the expected input sizes could prevent similar indexing errors. Adjusting the batch size or modifying the model configuration might also help in stabilizing the training process.

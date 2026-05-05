@@ -1,0 +1,19 @@
+{
+  "architecture": "LSTM",
+  "max_vocab": 25000,
+  "max_len": 70,
+  "embedding_dim": 150,
+  "hidden_dim": 160,
+  "num_layers": 2,
+  "dropout": 0.4,
+  "batch_size": 32,
+  "epochs": 3,
+  "learning_rate": 0.0005,
+  "val_size": 0.2,
+  "threshold_min": 0.3,
+  "threshold_max": 0.7,
+  "threshold_steps": 41,
+  "dry_run_head": 200,
+  "experiment_name": "lstm_20260427_165404_run_02",
+  "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/lstm_20260427_165404/run_002/submission.csv"
+}

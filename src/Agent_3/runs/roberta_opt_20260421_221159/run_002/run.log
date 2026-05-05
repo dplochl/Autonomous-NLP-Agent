@@ -1,0 +1,37 @@
+success: True
+timed_out: False
+dry_run_failed: False
+
+[STDOUT]
+{'train_runtime': '391.4', 'train_samples_per_second': '46.68', 'train_steps_per_second': '2.92', 'train_loss': '0.3696', 'epoch': '3'}
+METRICS: {"f1": 0.8194, "accuracy": 0.8529}
+
+
+[STDERR]
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+
+Loading weights:   0%|          | 0/197 [00:00<?, ?it/s]
+Loading weights: 100%|██████████| 197/197 [00:00<00:00, 17776.68it/s]
+[1mRobertaForSequenceClassification LOAD REPORT[0m from: roberta-base
+Key                             | Status     | 
+--------------------------------+------------+-
+lm_head.bias                    | UNEXPECTED | 
+lm_head.dense.bias              | UNEXPECTED | 
+roberta.embeddings.position_ids | UNEXPECTED | 
+lm_head.dense.weight            | UNEXPECTED | 
+lm_head.layer_norm.weight       | UNEXPECTED | 
+lm_head.layer_norm.bias         | UNEXPECTED | 
+classifier.dense.weight         | MISSING    | 
+classifier.out_proj.weight      | MISSING    | 
+classifier.out_proj.bias        | MISSING    | 
+classifier.dense.bias           | MISSING    | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+- MISSING:	those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.
+/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/.venv/lib/python3.13/site-packages/torch/utils/data/dataloader.py:775: UserWarning: 'pin_memory' argument is set as true but not supported on MPS now, device pinned memory won't be used.
+  super().__init__(loader)
+
+
+[ANALYSIS]
+The experiment using RoBERTa architecture achieved a successful status with F1 score of 0.8194 and accuracy of 0.8529. The training runtime was efficient at approximately 46.68 samples per second. However, there were unexpected issues with loading weights for certain parameters like `lm_head.bias` and `classifier.dense.weight`, which might indicate compatibility or checkpoint mismatches. Additionally, the 'pin_memory' argument warning suggests a potential issue with memory management on the MPS device. For the next run, consider addressing these weight loading discrepancies by ensuring correct model checkpoints and possibly updating the data loader configuration to handle memory pinning appropriately.

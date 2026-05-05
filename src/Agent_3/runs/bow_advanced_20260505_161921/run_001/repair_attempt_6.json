@@ -1,0 +1,12 @@
+```json
+{
+  "diagnosis": "The error is due to the use of a Pandas Series for stratification which causes issues with indexing. We need to convert it to a NumPy array.",
+  "edits": [
+    {
+      "action": "replace",
+      "target": "stratify_labels = y if len(set(y)) > 1 else None",
+      "content": "stratify_labels = np.array(y) if len(set(y)) > 1 else None"
+    }
+  ]
+}
+```

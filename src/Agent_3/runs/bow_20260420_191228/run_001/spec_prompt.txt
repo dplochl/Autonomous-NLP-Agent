@@ -1,0 +1,51 @@
+Plan one reliable BoW experiment spec for the Kaggle Disaster Tweets task.
+
+Return a reliable sparse-text baseline spec. Prefer conservative TF-IDF settings and a single validation split. Do not propose deep learning or ensembles.
+
+Return one JSON object only.
+Use these exact keys: architecture, vectorizer_type, max_features, ngram_max, min_df, logreg_c, val_size, threshold_min, threshold_max, threshold_steps, dry_run_head, experiment_name, submission_path
+
+Dataset context:
+DATASET CONTEXT:
+- train.csv: 7613 rows, columns: id, keyword, location, text, target
+- test.csv: 3263 rows, columns: id, keyword, location, text
+- Class balance: 4342 not-disaster (57.0%), 3271 disaster (43.0%)
+- Missing keyword: 0.8%
+- Missing location: 33.3%
+
+
+Recent history:
+- [1] bow_20260417_112332_run_01 run 1 | F1=0.7789 | OK | The experiment `bow_20260417_112332_run_01` using a Bag of Words (BoW) architecture with TF-IDF vect
+- [2] bow_20260417_112332_run_02 run 2 | F1=0.7789 | OK | The experiment `bow_20260417_112332_run_02` using a Bag of Words (BoW) architecture with TF-IDF vect
+- [3] bow_20260417_112332_run_03 run 3 | F1=0.7789 | OK | The experiment `bow_20260417_112332_run_03` successfully executed a Bag of Words (BoW) model with TF
+- [4] bow_20260417_112332_run_04 run 4 | F1=0.7789 | OK | The experiment `bow_20260417_112332_run_04` using a Bag of Words (BoW) architecture with TF-IDF vect
+- [5] bow_20260417_112332_run_05 run 5 | F1=0.7789 | OK | The experiment `bow_20260417_112332_run_05` using a Bag of Words (BoW) architecture with TF-IDF vect
+- [26] bow_20260417_141644_run_01 run 1 | F1=0.7808 | OK | The experiment `bow_20260417_141644_run_01` successfully executed a Bag of Words (BoW) model with TF
+- [27] bow_20260417_141644_run_02 run 2 | F1=0.7808 | OK | The experiment `bow_20260417_141644_run_02` using a Bag of Words (BoW) architecture with TF-IDF vect
+- [28] bow_20260417_141644_run_03 run 3 | F1=0.7808 | OK | The experiment `bow_20260417_141644_run_03` using a Bag of Words (BoW) architecture with TF-IDF vect
+- [29] bow_20260417_141644_run_04 run 4 | F1=0.7808 | OK | The experiment **bow_20260417_141644_run_04** successfully executed with a Bag of Words (BoW) archit
+- [30] bow_20260417_141644_run_05 run 5 | F1=0.7808 | OK | The experiment `bow_20260417_141644_run_05` using a Bag of Words (BoW) architecture achieved a succe
+- [59] bow_20260420_181955_run_01 run 1 | F1=0.7789 | OK | The experiment `bow_20260420_181955_run_01` successfully executed a Bag of Words (BoW) model with TF
+- [60] bow_20260420_181955_run_02 run 2 | F1=0.7789 | OK | The experiment `bow_20260420_181955_run_02` using a Bag of Words (BoW) architecture achieved a succe
+- [61] bow_20260420_181955_run_03 run 3 | F1=0.7808 | OK | The experiment `bow_20260420_181955_run_03` using a Bag of Words (BoW) architecture achieved a moder
+- [62] bow_20260420_181955_run_04 run 4 | F1=0.7808 | OK | The experiment `bow_20260420_181955_run_04` using a Bag of Words (BoW) architecture achieved a reaso
+- [63] bow_20260420_181955_run_05 run 5 | F1=0.7808 | OK | The experiment `bow_20260420_181955_run_05` using a Bag of Words (BoW) architecture achieved a succe
+- [69] bow_20260420_184536_run_01 run 1 | F1=N/A | FAILED | In this experiment, the Bag of Words (BoW) model was configured with specific parameters such as a l
+- [70] bow_20260420_184536_run_02 run 2 | F1=N/A | FAILED | The experiment `bow_20260420_184536_run_02` aimed to utilize a Bag of Words (BoW) architecture with 
+
+Default if unsure:
+{
+  "architecture": "BoW",
+  "vectorizer_type": "tfidf_word",
+  "max_features": 20000,
+  "ngram_max": 2,
+  "min_df": 2,
+  "logreg_c": 3.0,
+  "val_size": 0.2,
+  "threshold_min": 0.3,
+  "threshold_max": 0.7,
+  "threshold_steps": 41,
+  "dry_run_head": 200,
+  "experiment_name": "bow_20260420_191228_run_01",
+  "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/bow_20260420_191228/run_001/submission.csv"
+}

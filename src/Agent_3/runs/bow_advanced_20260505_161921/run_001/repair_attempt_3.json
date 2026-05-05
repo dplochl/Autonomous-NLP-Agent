@@ -1,0 +1,12 @@
+```json
+{
+  "diagnosis": "The error is due to the use of a non-integer index in the train_test_split function. This can happen if the input data contains non-integer indices.",
+  "edits": [
+    {
+      "action": "insert_before",
+      "target": "X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42, stratify=stratify_labels)",
+      "content": "train_df.reset_index(drop=True, inplace=True)\ntest_df.reset_index(drop=True, inplace=True)"
+    }
+  ]
+}
+```

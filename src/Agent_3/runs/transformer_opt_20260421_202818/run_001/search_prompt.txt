@@ -1,0 +1,90 @@
+Propose the next Transformer experiment spec.
+
+Search locally around the best transformer settings. Prefer nearby changes in sequence length, batch size, learning rate, weight decay, or epochs instead of drastic jumps. Keep threshold tuning in the standard 0.3 to 0.7 range. Preserve deterministic seeded training and do not wander away from the best successful run.
+
+Rules:
+- keep the architecture family fixed
+- keep the same overall prompt contract and pipeline shape
+- vary only these tunable keys: max_len, train_batch_size, eval_batch_size, learning_rate, weight_decay, num_epochs
+- optimize against the best successful session trial, not the last run
+- keep the best successful spec as the default anchor and mutate it only slightly
+- this is the top-architecture optimization phase, so stay near this architecture's current best spec
+- usually change 2 to 4 tunable keys because the sweep used the smaller 4k labeled sample
+- prefer coordinated local changes such as learning_rate, dropout, batch_size, epochs, weight_decay, sequence length, and threshold settings
+- validation size is controlled by the runner and should remain at 0.2
+- avoid large capacity jumps unless the history strongly suggests they help
+- do not repeat an exact spec already tried in this session
+- if a run timed out, reduce cost
+- if a run crashed, simplify the risky parameter region
+- if repeated runs get the same F1, switch to different tunable keys instead of repeating weak ones
+- return one JSON object only
+
+Dataset context:
+DATASET CONTEXT:
+- train.csv: 7613 rows, columns: id, keyword, location, text, target
+- test.csv: 3263 rows, columns: id, keyword, location, text
+- Class balance: 4342 not-disaster (57.0%), 3271 disaster (43.0%)
+- Missing keyword: 0.8%
+- Missing location: 33.3%
+
+
+Family history:
+- [1] transformer_20260421_193538_run_01 run 1 | F1=0.8109 | OK | The experiment using a Transformer architecture with the DistilBERT model achieved a successful trai
+- [2] transformer_20260421_193538_run_02 run 2 | F1=0.7744 | OK | The experiment with the Transformer architecture using the `distilbert-base-uncased` model achieved 
+
+Session trials so far:
+- run 0: status=OK, f1=0.8109, spec={"architecture": "Transformer", "dry_run_head": 16, "eval_batch_size": 16, "experiment_name": "transformer_20260421_193538_run_01", "learning_rate": 2e-05, "max_len": 128, "model_name": "distilbert-base-uncased", "num_epochs": 3, "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/transformer_20260421_193538/run_001/submission.csv", "threshold_max": 0.7, "threshold_min": 0.3, "threshold_steps": 41, "train_batch_size": 16, "val_size": 0.2, "weight_decay": 0.01}
+
+Best session trial so far:
+{
+  "run_index": 0,
+  "spec": {
+    "architecture": "Transformer",
+    "model_name": "distilbert-base-uncased",
+    "max_len": 128,
+    "train_batch_size": 16,
+    "eval_batch_size": 16,
+    "learning_rate": 2e-05,
+    "weight_decay": 0.01,
+    "num_epochs": 3,
+    "val_size": 0.2,
+    "threshold_min": 0.3,
+    "threshold_max": 0.7,
+    "threshold_steps": 41,
+    "dry_run_head": 16,
+    "experiment_name": "transformer_20260421_193538_run_01",
+    "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/transformer_20260421_193538/run_001/submission.csv"
+  },
+  "success": true,
+  "metrics": {
+    "f1": 0.8109,
+    "accuracy": 0.8525
+  },
+  "analysis": "The experiment using a Transformer architecture with the DistilBERT model achieved a successful training run, as indicated by its status. The model performed well, achieving an F1 score of 0.8109 and accuracy of 0.8525 on the evaluation set. However, there were some issues during the loading of weights, where certain parameters were marked as \"UNEXPECTED\" or \"MISSING,\" suggesting potential discrepancies between the expected and actual model architecture. Additionally, a warning about 'pin_memory' not being supported on MPS (Metal Performance Shaders) indicates that device-specific optimizations might not be fully utilized.\n\nFor the next run, it would be beneficial to address the unexpected and missing parameters by ensuring compatibility with the intended task or reinitializing the model weights appropriately. Furthermore, resolving the 'pin_memory' warning could help optimize memory usage and potentially improve training efficiency.",
+  "run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/transformer_20260421_193538/run_001",
+  "seeded": true
+}
+
+Stagnant keys from equal-F1 or same-prediction runs: none
+Preferred keys for the next move: max_len, train_batch_size, eval_batch_size, learning_rate, weight_decay, num_epochs
+Latest equal-F1 changed keys to avoid repeating: none
+Repeated best F1 detected: no
+
+Default if unsure:
+{
+  "architecture": "Transformer",
+  "model_name": "distilbert-base-uncased",
+  "max_len": 128,
+  "train_batch_size": 16,
+  "eval_batch_size": 16,
+  "learning_rate": 2e-05,
+  "weight_decay": 0.01,
+  "num_epochs": 3,
+  "val_size": 0.2,
+  "threshold_min": 0.3,
+  "threshold_max": 0.7,
+  "threshold_steps": 41,
+  "dry_run_head": 16,
+  "experiment_name": "transformer_opt_20260421_202818_run_01",
+  "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/transformer_opt_20260421_202818/run_001/submission.csv"
+}

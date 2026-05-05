@@ -1,0 +1,44 @@
+{
+  "family_key": "cnn",
+  "family": "CNN",
+  "session_name": "cnn_20260421_165955",
+  "phase": "sweep",
+  "max_runs": 1,
+  "sample_rows": 4000,
+  "validation_fraction": 0.2,
+  "best_run_index": null,
+  "best_metrics": {},
+  "best_run_dir": null,
+  "trials": [
+    {
+      "run_index": 1,
+      "spec": {
+        "architecture": "CNN",
+        "max_vocab": 20000,
+        "max_len": 48,
+        "embedding_dim": 128,
+        "channels": 128,
+        "kernel_sizes": [
+          3,
+          4,
+          5
+        ],
+        "dropout": 0.3,
+        "batch_size": 64,
+        "epochs": 3,
+        "learning_rate": 0.001,
+        "val_size": 0.2,
+        "threshold_min": 0.3,
+        "threshold_max": 0.7,
+        "threshold_steps": 41,
+        "dry_run_head": 200,
+        "experiment_name": "cnn_20260421_165955_run_01",
+        "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/cnn_20260421_165955/run_001/submission.csv"
+      },
+      "success": false,
+      "metrics": {},
+      "analysis": "The experiment \"cnn_20260421_165955_run_01\" was designed to train a Convolutional Neural Network (CNN) model with specific parameters such as batch size, dropout rate, learning rate, and kernel sizes. However, the experiment crashed due to a `SyntaxError` on line 222 of the code, indicating an unexpected indent, which suggests a coding error in the script. No metrics were recorded because the training did not complete successfully.\n\nFor the next run, it is crucial to address the syntax error by reviewing and correcting the indentation at line 222 in the script. Additionally, ensuring that all dependencies are correctly installed and compatible with the Python version being used could prevent similar issues. It would also be beneficial to implement more robust error handling and logging to capture detailed information about any future crashes, aiding in quicker debugging and resolution.",
+      "run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/cnn_20260421_165955/run_001"
+    }
+  ]
+}

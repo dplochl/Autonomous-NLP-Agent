@@ -1,0 +1,12 @@
+```json
+{
+  "diagnosis": "SyntaxError due to missing indented block after 'if' statement",
+  "edits": [
+    {
+      "action": "replace",
+      "target": "if isinstance(sequences, (list, tuple)):\n\n                sequences = sequences[0]",
+      "content": "if isinstance(sequences, (list, tuple)):\n                    sequences = sequences[0]"
+    }
+  ]
+}
+```

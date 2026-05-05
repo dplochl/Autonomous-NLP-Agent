@@ -1,0 +1,37 @@
+success: True
+timed_out: False
+dry_run_failed: False
+
+[STDOUT]
+{'train_runtime': '96.13', 'train_samples_per_second': '99.87', 'train_steps_per_second': '3.121', 'train_loss': '0.3537', 'epoch': '3'}
+METRICS: {"f1": 0.7921, "accuracy": 0.8425}
+
+
+[STDERR]
+
+Loading weights:   0%|          | 0/100 [00:00<?, ?it/s]
+Loading weights: 100%|██████████| 100/100 [00:00<00:00, 13498.66it/s]
+[1mDistilBertForSequenceClassification LOAD REPORT[0m from: distilbert-base-uncased
+Key                     | Status     | 
+------------------------+------------+-
+vocab_layer_norm.weight | UNEXPECTED | 
+vocab_transform.weight  | UNEXPECTED | 
+vocab_layer_norm.bias   | UNEXPECTED | 
+vocab_transform.bias    | UNEXPECTED | 
+vocab_projector.bias    | UNEXPECTED | 
+classifier.bias         | MISSING    | 
+classifier.weight       | MISSING    | 
+pre_classifier.bias     | MISSING    | 
+pre_classifier.weight   | MISSING    | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+- MISSING:	those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.
+/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/.venv/lib/python3.13/site-packages/torch/utils/data/dataloader.py:775: UserWarning: 'pin_memory' argument is set as true but not supported on MPS now, device pinned memory won't be used.
+  super().__init__(loader)
+
+
+[ANALYSIS]
+The experiment with the Transformer architecture using the `distilbert-base-uncased` model achieved a success status with F1 score of 0.7921 and accuracy of 0.8425. The training runtime was efficient at approximately 3 seconds per step, indicating good performance in terms of speed. However, there were unexpected issues with loading weights for certain layers (`vocab_layer_norm.weight`, `vocab_transform.weight`, etc.) and missing parameters (`classifier.bias`, `classifier.weight`, etc.), which could affect the model's fine-tuning on the specific task. Additionally, a warning about unsupported 'pin_memory' argument on MPS device suggests potential inefficiencies in memory usage.
+
+For the next run, it is recommended to address the unexpected weight loading issues by ensuring compatibility between the pre-trained model and the downstream task. Also, initializing or fine-tuning the missing parameters could improve model performance. Furthermore, optimizing the data loader configuration to handle 'pin_memory' appropriately on the MPS device would enhance memory efficiency during training.

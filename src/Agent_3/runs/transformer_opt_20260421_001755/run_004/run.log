@@ -1,0 +1,36 @@
+success: True
+timed_out: False
+dry_run_failed: False
+
+[STDOUT]
+{'train_runtime': '91.8', 'train_samples_per_second': '132.7', 'train_steps_per_second': '4.161', 'train_loss': '0.3915', 'epoch': '2'}
+METRICS: {"f1": 0.8226, "accuracy": 0.8555}
+
+
+[STDERR]
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+
+Loading weights:   0%|          | 0/100 [00:00<?, ?it/s]
+Loading weights: 100%|██████████| 100/100 [00:00<00:00, 13007.61it/s]
+[1mDistilBertForSequenceClassification LOAD REPORT[0m from: distilbert-base-uncased
+Key                     | Status     | 
+------------------------+------------+-
+vocab_layer_norm.bias   | UNEXPECTED | 
+vocab_transform.bias    | UNEXPECTED | 
+vocab_transform.weight  | UNEXPECTED | 
+vocab_layer_norm.weight | UNEXPECTED | 
+vocab_projector.bias    | UNEXPECTED | 
+pre_classifier.bias     | MISSING    | 
+classifier.weight       | MISSING    | 
+classifier.bias         | MISSING    | 
+pre_classifier.weight   | MISSING    | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+- MISSING:	those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.
+/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/.venv/lib/python3.13/site-packages/torch/utils/data/dataloader.py:775: UserWarning: 'pin_memory' argument is set as true but not supported on MPS now, device pinned memory won't be used.
+  super().__init__(loader)
+
+
+[ANALYSIS]
+The experiment with the Transformer architecture using the `distilbert-base-uncased` model achieved a success status with an F1 score of 0.8226 and accuracy of 0.8555. The training runtime was efficient, processing samples at a rate of approximately 132.7 per second. However, there were unexpected discrepancies in loading weights for certain parameters (`vocab_layer_norm.bias`, `vocab_transform.bias`, etc.) and missing parameters (`pre_classifier.bias`, `classifier.weight`, etc.), which could indicate issues with the model checkpoint or architecture mismatch. Additionally, a warning about unsupported 'pin_memory' on MPS suggests potential inefficiencies in memory handling. For the next run, it is recommended to address the missing parameters by training further on the downstream task and ensuring compatibility between the loaded weights and the expected model architecture.

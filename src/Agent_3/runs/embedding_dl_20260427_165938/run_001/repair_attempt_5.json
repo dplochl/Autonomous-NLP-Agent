@@ -1,0 +1,12 @@
+```json
+{
+  "diagnosis": "SyntaxError due to unexpected indent in the TextDataset class definition.",
+  "edits": [
+    {
+      "action": "replace",
+      "target": "if self.labels is not None:\n            return torch.tensor(self.sequences[idx], dtype=torch.long), torch.tensor(self.labels.iloc[idx] if hasattr(self.labels, 'iloc') else self.labels.iloc[idx] if hasattr(self.labels, 'iloc') else self.labels.iloc[idx] if hasattr(self.labels, 'iloc') else self.labels.iloc[idx] if hasattr(self.labels, 'iloc') else self.labels.iloc[idx] if hasattr(self.labels, 'iloc') else self.labels[idx], dtype=torch.float32)\n                else:\nelse:",
+      "content": "if self.labels is not None:\n    return torch.tensor(self.sequences[idx], dtype=torch.long), torch.tensor(self.labels[idx], dtype=torch.float32)\nelse:\n    return torch.tensor(self.sequences[idx], dtype=torch.long)"
+    }
+  ]
+}
+```

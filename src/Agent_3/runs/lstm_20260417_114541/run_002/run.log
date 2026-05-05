@@ -1,0 +1,19 @@
+success: True
+timed_out: False
+dry_run_failed: False
+
+[STDOUT]
+Epoch [1/4], Loss: 0.6852
+Epoch [2/4], Loss: 0.6853
+Epoch [3/4], Loss: 0.6835
+Epoch [4/4], Loss: 0.6844
+METRICS: {"f1": 0.6008, "accuracy": 0.0}
+
+
+[STDERR]
+/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/.venv/lib/python3.13/site-packages/torch/nn/modules/rnn.py:1013: UserWarning: dropout option adds dropout after all but last recurrent layer, so non-zero dropout expects num_layers greater than 1, but got dropout=0.3 and num_layers=1
+  super().__init__("LSTM", *args, **kwargs)
+
+
+[ANALYSIS]
+The experiment with LSTM architecture achieved a moderate F1 score of 0.6008 but had an accuracy of 0.0, indicating that while it performed reasonably well in terms of precision and recall, it failed to correctly classify any instances based on the given threshold settings. The consistent loss values across epochs suggest that the model did not converge effectively, which could be due to the dropout being applied without multiple layers as indicated by the warning message. For the next run, consider increasing the number of LSTM layers to allow for effective dropout regularization and explore different learning rates or batch sizes to improve convergence and classification accuracy.

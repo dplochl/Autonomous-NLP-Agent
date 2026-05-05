@@ -1,0 +1,20 @@
+```json
+{
+  "diagnosis": "The script is missing the METRICS output section.",
+  "edits": [
+    {
+      "action": "insert_after",
+      "target": "print(f\"Best F1 score: {best_f1}, Best threshold: {best_threshold}\")",
+      "content": """
+# Output metrics
+metrics = {
+    'best_f1': best_f1,
+    'best_threshold': best_threshold
+}
+with open(os.path.join(DATA_DIR, 'METRICS.json'), 'w') as f:
+    json.dump(metrics, f)
+"""
+    }
+  ]
+}
+```

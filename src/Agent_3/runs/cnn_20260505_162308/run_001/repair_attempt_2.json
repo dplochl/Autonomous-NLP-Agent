@@ -1,0 +1,12 @@
+```json
+{
+  "diagnosis": "The variable 'submission_df' is not defined in the scope where it is used to write the CSV file.",
+  "edits": [
+    {
+      "action": "insert_before",
+      "target": "if WRITE_SUBMISSION and not DRY_RUN:",
+      "content": "submission_df = pd.DataFrame({\n    'id': test_df['id'],\n    'target': (np.array(test_preds) > best_threshold).astype(int)\n})\n"
+    }
+  ]
+}
+```

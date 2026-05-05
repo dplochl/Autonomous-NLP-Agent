@@ -1,0 +1,13 @@
+success: True
+timed_out: False
+dry_run_failed: False
+
+[STDOUT]
+METRICS: {"f1": 0.7836, "accuracy": 0.8129}
+
+
+[STDERR]
+
+
+[ANALYSIS]
+The experiment `bow_advanced_20260420_192255_run_01` successfully executed with a BoW (Bag of Words) advanced architecture. The model achieved an F1 score of 0.7836 and accuracy of 0.8129, indicating good performance on the validation set. However, the experiment did not encounter any errors as indicated by the empty STDERR tail. For the next run, consider tuning the hyperparameters such as `char_max_features` and `word_max_features` to potentially improve model performance further. Additionally, exploring different n-gram ranges or adjusting the logistic regression regularization strength (`logreg_c`) could yield better results.

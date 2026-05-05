@@ -1,0 +1,12 @@
+```json
+{
+  "diagnosis": "The `TextDataset` class is incorrectly accessing the labels as a list instead of using the index directly.",
+  "edits": [
+    {
+      "action": "replace",
+      "target": "item['labels'] = torch.tensor(self.labels.iloc[idx])",
+      "content": "item['labels'] = torch.tensor(self.labels[idx])"
+    }
+  ]
+}
+```

@@ -1,0 +1,17 @@
+```json
+{
+  "diagnosis": "IndexError due to out-of-range index in embedding layer",
+  "edits": [
+    {
+      "action": "replace",
+      "target": "vocab = {'<PAD>': 0}",
+      "content": "vocab = {'<PAD>': 0, '<UNK>': 1}"
+    },
+    {
+      "action": "replace",
+      "target": "if word not in vocab:",
+      "content": "if word not in vocab and len(vocab) < max_vocab:"
+    }
+  ]
+}
+```

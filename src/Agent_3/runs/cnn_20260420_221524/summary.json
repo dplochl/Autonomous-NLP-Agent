@@ -1,0 +1,81 @@
+{
+  "family_key": "cnn",
+  "family": "CNN",
+  "session_name": "cnn_20260420_221524",
+  "phase": "sweep",
+  "max_runs": 2,
+  "best_run_index": 1,
+  "best_metrics": {
+    "f1": 0.7181,
+    "accuracy": 0.7406
+  },
+  "best_run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/cnn_20260420_221524/run_001",
+  "trials": [
+    {
+      "run_index": 1,
+      "spec": {
+        "architecture": "CNN",
+        "max_vocab": 20000,
+        "max_len": 48,
+        "embedding_dim": 128,
+        "channels": 64,
+        "kernel_sizes": [
+          3,
+          4,
+          5
+        ],
+        "dropout": 0.2,
+        "batch_size": 32,
+        "epochs": 3,
+        "learning_rate": 0.001,
+        "val_size": 0.2,
+        "threshold_min": 0.3,
+        "threshold_max": 0.7,
+        "threshold_steps": 41,
+        "dry_run_head": 200,
+        "experiment_name": "cnn_20260420_221524_run_01",
+        "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/cnn_20260420_221524/run_001/submission.csv"
+      },
+      "success": true,
+      "metrics": {
+        "f1": 0.7181,
+        "accuracy": 0.7406
+      },
+      "analysis": "The experiment `cnn_20260420_221524_run_01` successfully executed a CNN model with specified parameters such as batch size, dropout rate, learning rate, and kernel sizes. The model achieved an F1 score of 0.7181 and accuracy of 0.7406 on the validation set. However, the experiment encountered several `ChainedAssignmentError` warnings related to inplace operations on DataFrame copies, indicating potential issues with data manipulation that could affect reproducibility or performance. For the next run, it is recommended to address these errors by ensuring proper handling of DataFrame updates and avoiding chained assignments that lead to unintended copies. Additionally, experimenting with different hyperparameters such as learning rate schedules, batch normalization, or varying the number of epochs might further improve model performance.",
+      "run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/cnn_20260420_221524/run_001"
+    },
+    {
+      "run_index": 2,
+      "spec": {
+        "architecture": "CNN",
+        "max_vocab": 25000,
+        "max_len": 56,
+        "embedding_dim": 192,
+        "channels": 128,
+        "kernel_sizes": [
+          3,
+          4,
+          5
+        ],
+        "dropout": 0.25,
+        "batch_size": 64,
+        "epochs": 4,
+        "learning_rate": 0.0005,
+        "val_size": 0.2,
+        "threshold_min": 0.3,
+        "threshold_max": 0.7,
+        "threshold_steps": 41,
+        "dry_run_head": 200,
+        "experiment_name": "cnn_20260420_221524_run_02",
+        "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/cnn_20260420_221524/run_002/submission.csv"
+      },
+      "success": true,
+      "metrics": {
+        "f1": 0.7177,
+        "accuracy": 0.7577
+      },
+      "analysis": "The experiment `cnn_20260420_221524_run_02` successfully trained a CNN model with specified parameters such as batch size, dropout rate, learning rate, and kernel sizes. The model achieved an F1 score of 0.7177 and accuracy of 0.7577 on the validation set. However, there were several issues during execution, primarily related to DataFrame operations in pandas. Specifically, chained assignment errors occurred due to incorrect use of `inplace=True` when filling missing values. For the next run, it is crucial to address these errors by modifying the DataFrame update methods as suggested in the error messages, ensuring that changes are applied directly to the original DataFrame without creating copies. Additionally, optimizing hyperparameters such as learning rate and batch size could potentially improve model performance further.",
+      "run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/cnn_20260420_221524/run_002"
+    }
+  ]
+}

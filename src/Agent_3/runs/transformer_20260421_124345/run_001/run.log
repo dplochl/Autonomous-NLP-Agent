@@ -1,0 +1,38 @@
+success: True
+timed_out: False
+dry_run_failed: False
+
+[STDOUT]
+{'train_runtime': '111.7', 'train_samples_per_second': '87.2', 'train_steps_per_second': '5.477', 'train_loss': '0.3404', 'epoch': '4'}
+METRICS: {"f1": 0.8231, "accuracy": 0.8539}
+
+
+[STDERR]
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+
+Loading weights:   0%|          | 0/100 [00:00<?, ?it/s]
+Loading weights: 100%|██████████| 100/100 [00:00<00:00, 20539.17it/s]
+[1mDistilBertForSequenceClassification LOAD REPORT[0m from: distilbert-base-uncased
+Key                     | Status     | 
+------------------------+------------+-
+vocab_projector.bias    | UNEXPECTED | 
+vocab_layer_norm.bias   | UNEXPECTED | 
+vocab_transform.weight  | UNEXPECTED | 
+vocab_layer_norm.weight | UNEXPECTED | 
+vocab_transform.bias    | UNEXPECTED | 
+classifier.bias         | MISSING    | 
+pre_classifier.bias     | MISSING    | 
+pre_classifier.weight   | MISSING    | 
+classifier.weight       | MISSING    | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+- MISSING:	those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.
+/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/.venv/lib/python3.13/site-packages/torch/utils/data/dataloader.py:775: UserWarning: 'pin_memory' argument is set as true but not supported on MPS now, device pinned memory won't be used.
+  super().__init__(loader)
+/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/.venv/lib/python3.13/site-packages/torch/utils/data/dataloader.py:775: UserWarning: 'pin_memory' argument is set as true but not supported on MPS now, device pinned memory won't be used.
+  super().__init__(loader)
+
+
+[ANALYSIS]
+The experiment using a Transformer architecture with the DistilBERT model achieved success, as indicated by its status. The F1 score of 0.8231 and accuracy of 0.8539 suggest that the model performed well on the task at hand. However, there were unexpected issues during the loading of the model parameters, specifically with missing biases and weights for certain layers, which could affect performance if not addressed in future runs. Additionally, there were warnings about unsupported 'pin_memory' arguments when using MPS (Metal Performance Shaders), indicating potential inefficiencies in memory handling on Apple devices. For the next run, it would be beneficial to ensure all model parameters are correctly loaded and consider adjusting the data loading configuration to avoid these warnings, potentially improving overall efficiency and performance.

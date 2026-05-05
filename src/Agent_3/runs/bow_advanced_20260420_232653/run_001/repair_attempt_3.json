@@ -1,0 +1,12 @@
+```json
+{
+  "diagnosis": "The error occurs because the stratify parameter in train_test_split is being passed a pandas Series instead of a numpy array. This causes an issue with indexing during the split.",
+  "edits": [
+    {
+      "action": "replace",
+      "target": "stratify_labels = y if len(set(y)) > 1 else None",
+      "content": "stratify_labels = y.values if len(set(y)) > 1 else None"
+    }
+  ]
+}
+```

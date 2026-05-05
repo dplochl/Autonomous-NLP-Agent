@@ -1,0 +1,12 @@
+```json
+{
+  "diagnosis": "The error occurs because the `text` field in the DataFrame contains float values instead of strings, causing the `split()` method to fail.",
+  "edits": [
+    {
+      "action": "replace",
+      "target": "train_df['text'] = train_df.apply(lambda row: f\"{row['keyword']} [SEP] {row['text']}\" if pd.notna(row['keyword']) else row['text'], axis=1)",
+      "content": "train_df['text'] = train_df.apply(lambda row: str(f\"{row['keyword']} [SEP] {row['text']}\") if pd.notna(row['keyword']) else str(row['text']), axis=1)"
+    }
+  ]
+}
+```

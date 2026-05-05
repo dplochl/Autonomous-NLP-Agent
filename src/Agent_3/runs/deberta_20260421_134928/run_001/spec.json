@@ -1,0 +1,17 @@
+{
+  "architecture": "DeBERTa",
+  "model_name": "microsoft/deberta-v3-small",
+  "max_len": 128,
+  "train_batch_size": 16,
+  "eval_batch_size": 16,
+  "learning_rate": 2e-05,
+  "weight_decay": 0.01,
+  "num_epochs": 3,
+  "val_size": 0.2,
+  "threshold_min": 0.01,
+  "threshold_max": 0.99,
+  "threshold_steps": 99,
+  "dry_run_head": 16,
+  "experiment_name": "deberta_20260421_134928_run_01",
+  "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/deberta_20260421_134928/run_001/submission.csv"
+}

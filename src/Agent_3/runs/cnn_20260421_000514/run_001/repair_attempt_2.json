@@ -1,0 +1,12 @@
+```json
+{
+  "diagnosis": "The `train_test_split` function is incorrectly handling the stratify parameter due to a mismatch in the labels array.",
+  "edits": [
+    {
+      "action": "replace",
+      "target": "train_labels = np.asarray(train_labels)\nval_labels = np.asarray(val_labels)\ntrain_labels = train_df['target'].values\nval_labels = val_df['target'].values",
+      "content": "train_labels = train_df['target'].values\nval_labels = val_df['target'].values"
+    }
+  ]
+}
+```

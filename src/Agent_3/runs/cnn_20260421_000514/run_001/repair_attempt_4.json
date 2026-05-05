@@ -1,0 +1,12 @@
+```json
+{
+  "diagnosis": "The issue is with the train-test split using pandas Series which causes a TypeError during indexing. We need to convert the Series to numpy arrays before splitting.",
+  "edits": [
+    {
+      "action": "replace",
+      "target": "train_df['text'].values, train_df['target'].values, test_size=0.2, random_state=42, stratify=stratify_labels",
+      "content": "train_texts = train_df['text'].to_numpy()\ntrain_labels = train_df['target'].to_numpy()\nval_texts, _, val_labels, _ = train_test_split(train_texts, train_labels, test_size=0.2, random_state=42, stratify=stratify_labels)"
+    }
+  ]
+}
+```

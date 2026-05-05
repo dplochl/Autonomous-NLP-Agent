@@ -1,0 +1,17 @@
+```json
+{
+  "diagnosis": "Missing softmax conversion from logits.",
+  "edits": [
+    {
+      "action": "insert_after",
+      "target": "val_logits = trainer.predict(val_dataset).predictions",
+      "content": "val_probs = torch.softmax(torch.tensor(val_logits), dim=1)[:, 1].numpy()"
+    },
+    {
+      "action": "replace",
+      "target": "val_preds = (val_logits[:, 1] > threshold).astype(int)",
+      "content": "val_preds = (val_probs > threshold).astype(int)"
+    }
+  ]
+}
+```

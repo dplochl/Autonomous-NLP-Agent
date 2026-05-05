@@ -1,0 +1,22 @@
+```json
+{
+  "diagnosis": "AttributeError due to redundant list conversion and incorrect dataset initialization",
+  "edits": [
+    {
+      "action": "replace",
+      "target": "val_dataset = TextDataset(val_texts.tolist(), val_labels.tolist())",
+      "content": "val_dataset = TextDataset(val_texts, val_labels)"
+    },
+    {
+      "action": "insert_before",
+      "target": "train_texts = list(train_texts)",
+      "content": "train_texts = train_df['text'].tolist()"
+    },
+    {
+      "action": "insert_before",
+      "target": "val_texts = list(val_texts)",
+      "content": "val_texts = val_df['text'].tolist()"
+    }
+  ]
+}
+```

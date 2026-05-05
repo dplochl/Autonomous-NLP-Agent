@@ -1,0 +1,89 @@
+Propose the next Transformer experiment spec.
+
+Search locally around the best transformer settings. Prefer nearby changes in sequence length, batch size, learning rate, weight decay, or epochs instead of drastic jumps. Keep threshold tuning broad enough to search for the true best F1 cutoff. Preserve deterministic seeded training and do not wander away from the best successful run.
+
+Rules:
+- keep the architecture family fixed
+- keep the same overall prompt contract and pipeline shape
+- vary only these tunable keys: max_len, train_batch_size, eval_batch_size, learning_rate, weight_decay, num_epochs
+- optimize against the best successful session trial, not the last run
+- keep the best successful spec as the default anchor and mutate it only slightly
+- this is the family sweep phase, so explore different regions of the parameter space
+- usually change 2 to 4 tunable keys in one coordinated move
+- with a 5-run budget, cover both model-capacity keys and optimization keys instead of nudging only one key repeatedly
+- prefer combinations such as sequence/model size + regularization + optimization, for example max_len/channels with learning_rate/dropout/batch_size/epochs
+- do not repeat an exact spec already tried in this session
+- if a run timed out, reduce cost
+- if a run crashed, simplify the risky parameter region
+- if repeated runs get the same F1, switch to different tunable keys instead of repeating weak ones
+- return one JSON object only
+
+Dataset context:
+DATASET CONTEXT:
+- train.csv: 7613 rows, columns: id, keyword, location, text, target
+- test.csv: 3263 rows, columns: id, keyword, location, text
+- Class balance: 4342 not-disaster (57.0%), 3271 disaster (43.0%)
+- Missing keyword: 0.8%
+- Missing location: 33.3%
+
+
+Family history:
+No prior runs.
+
+Session trials so far:
+- run 1: status=OK, f1=0.816, spec={"architecture": "Transformer", "dry_run_head": 16, "eval_batch_size": 16, "experiment_name": "transformer_20260420_225104_run_01", "learning_rate": 2e-05, "max_len": 128, "model_name": "distilbert-base-uncased", "num_epochs": 3, "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/transformer_20260420_225104/run_001/submission.csv", "threshold_max": 0.9, "threshold_min": 0.1, "threshold_steps": 81, "train_batch_size": 16, "val_size": 0.2, "weight_decay": 0.01}
+- run 2: status=OK, f1=0.8055, spec={"architecture": "Transformer", "dry_run_head": 16, "eval_batch_size": 32, "experiment_name": "transformer_20260420_225104_run_02", "learning_rate": 5e-05, "max_len": 192, "model_name": "distilbert-base-uncased", "num_epochs": 4, "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/transformer_20260420_225104/run_002/submission.csv", "threshold_max": 0.9, "threshold_min": 0.1, "threshold_steps": 81, "train_batch_size": 32, "val_size": 0.2, "weight_decay": 0.001}
+- run 3: status=OK, f1=0.8156, spec={"architecture": "Transformer", "dry_run_head": 16, "eval_batch_size": 16, "experiment_name": "transformer_20260420_225104_run_03", "learning_rate": 2e-05, "max_len": 104, "model_name": "distilbert-base-uncased", "num_epochs": 3, "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/transformer_20260420_225104/run_003/submission.csv", "threshold_max": 0.9, "threshold_min": 0.1, "threshold_steps": 81, "train_batch_size": 16, "val_size": 0.2, "weight_decay": 0.01}
+
+Best session trial so far:
+{
+  "run_index": 1,
+  "spec": {
+    "architecture": "Transformer",
+    "model_name": "distilbert-base-uncased",
+    "max_len": 128,
+    "train_batch_size": 16,
+    "eval_batch_size": 16,
+    "learning_rate": 2e-05,
+    "weight_decay": 0.01,
+    "num_epochs": 3,
+    "val_size": 0.2,
+    "threshold_min": 0.1,
+    "threshold_max": 0.9,
+    "threshold_steps": 81,
+    "dry_run_head": 16,
+    "experiment_name": "transformer_20260420_225104_run_01",
+    "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/transformer_20260420_225104/run_001/submission.csv"
+  },
+  "success": true,
+  "metrics": {
+    "f1": 0.816,
+    "accuracy": 0.8516
+  },
+  "analysis": "The experiment successfully trained a Transformer model using the DistilBERT architecture with an F1 score of 0.816 and accuracy of 0.8516 after three epochs. The training runtime was efficient at approximately 263 seconds, processing about 70 samples per second. However, there were unexpected issues during weight loading, indicating potential mismatches between the model's architecture and the checkpoint used. Additionally, several parameters were missing from the checkpoint, which suggests that further training on the downstream task is necessary to fully initialize these weights. For the next run, consider addressing the mismatched parameters by either using a compatible checkpoint or initializing them appropriately within the code.",
+  "run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/transformer_20260420_225104/run_001"
+}
+
+Stagnant keys from equal-F1 or same-prediction runs: none
+Preferred keys for the next move: max_len, train_batch_size, eval_batch_size, learning_rate, weight_decay, num_epochs
+Latest equal-F1 changed keys to avoid repeating: max_len
+Repeated best F1 detected: no
+
+Default if unsure:
+{
+  "architecture": "Transformer",
+  "model_name": "distilbert-base-uncased",
+  "max_len": 128,
+  "train_batch_size": 16,
+  "eval_batch_size": 16,
+  "learning_rate": 2e-05,
+  "weight_decay": 0.01,
+  "num_epochs": 3,
+  "val_size": 0.2,
+  "threshold_min": 0.1,
+  "threshold_max": 0.9,
+  "threshold_steps": 81,
+  "dry_run_head": 16,
+  "experiment_name": "transformer_20260420_225104_run_04",
+  "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/transformer_20260420_225104/run_004/submission.csv"
+}

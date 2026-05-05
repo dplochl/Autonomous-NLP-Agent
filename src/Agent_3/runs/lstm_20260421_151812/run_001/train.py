@@ -1,0 +1,160 @@
+import os
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import f1_score, accuracy_score
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import Dataset, DataLoader
+
+# Load environment variables
+DATA_DIR = os.environ.get("DISASTER_AGENT_DATA_DIR", "data")
+DRY_RUN = os.environ.get("AGENT_DRY_RUN") == "1"
+TRAIN_FRACTION = float(os.environ.get("AGENT_TRAIN_FRACTION", "1.0"))
+SAMPLE_SEED = int(os.environ.get("AGENT_SAMPLE_SEED", "42"))
+
+# Load data
+train_df = pd.read_csv(os.path.join(DATA_DIR, 'train.csv'))
+test_df = pd.read_csv(os.path.join(DATA_DIR, 'test.csv'))
+
+# Preprocess data
+train_df['keyword'].fillna('', inplace=True)
+train_df['location'].fillna('', inplace=True)
+train_df['text'] = train_df.apply(lambda row: f"{row['keyword']} [SEP] {row['text']}" if pd.notna(row['keyword']) else row['text'], axis=1)
+
+test_df['keyword'].fillna('', inplace=True)
+test_df['location'].fillna('', inplace=True)
+test_df['text'] = test_df.apply(lambda row: f"{row['keyword']} [SEP] {row['text']}" if pd.notna(row['keyword']) else row['text'], axis=1)
+
+# DRY_RUN or sample train data
+if DRY_RUN:
+    train_df = train_df.head(200)
+elif TRAIN_FRACTION < 1.0:
+    train_df = train_df.sample(frac=TRAIN_FRACTION, random_state=SAMPLE_SEED).reset_index(drop=True)
+
+# Train-test split
+X_train, X_val, y_train, y_val = train_test_split(train_df['text'], train_df['target'], test_size=0.2, random_state=42, stratify=train_df['target'])
+
+# Tokenizer and vocabulary
+def build_vocab(texts, max_vocab):
+    word_freq = {}
+    for text in texts:
+        words = text.split()
+        for word in words:
+            if word not in word_freq:
+                word_freq[word] = 0
+            word_freq[word] += 1
+
+    sorted_words = sorted(word_freq.items(), key=lambda item: item[1], reverse=True)
+    vocab = {word: idx + 2 for idx, (word, freq) in enumerate(sorted_words[:max_vocab - 2])}
+    vocab['<PAD>'] = 0
+    vocab['<UNK>'] = 1
+    return vocab
+
+vocab = build_vocab(X_train, max_vocab=20000)
+
+def text_to_sequence(text, vocab, max_len):
+    sequence = [vocab.get(word, vocab['<UNK>']) for word in text.split()]
+    if len(sequence) > max_len:
+        sequence = sequence[:max_len]
+    return sequence + [vocab['<PAD>']] * (max_len - len(sequence))
+
+# Convert texts to sequences
+X_train_seq = np.array([text_to_sequence(text, vocab, 64) for text in X_train])
+X_val_seq = np.array([text_to_sequence(text, vocab, 64) for text in X_val])
+test_seq = np.array([text_to_sequence(text, vocab, 64) for text in test_df['text']])
+
+# Dataset and DataLoader
+class TextDataset(Dataset):
+    def __init__(self, sequences, labels=None):
+        self.sequences = sequences
+        self.labels = labels
+
+    def __len__(self):
+        return len(self.sequences)
+
+    def __getitem__(self, idx):
+        sequence = torch.tensor(self.sequences[idx], dtype=torch.long)
+        if self.labels is not None:
+            label = torch.tensor(self.labels.iloc[idx] if hasattr(self.labels, 'iloc') else self.labels[idx], dtype=torch.float32)
+            return sequence, label
+        else:
+            return sequence
+
+train_dataset = TextDataset(X_train_seq, y_train)
+val_dataset = TextDataset(X_val_seq, y_val)
+test_dataset = TextDataset(test_seq)
+
+train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True)
+val_loader = DataLoader(val_dataset, batch_size=64, shuffle=False)
+test_loader = DataLoader(test_dataset, batch_size=64, shuffle=False)
+
+# LSTM model
+class LSTMClassifier(nn.Module):
+    def __init__(self, vocab_size, embedding_dim, hidden_dim, num_layers, dropout):
+        super(LSTMClassifier, self).__init__()
+        self.embedding = nn.Embedding(vocab_size, embedding_dim)
+        self.lstm = nn.LSTM(embedding_dim, hidden_dim, num_layers=num_layers, bidirectional=True, dropout=dropout, batch_first=True)
+        self.fc = nn.Linear(hidden_dim * 2, 1)
+
+    def forward(self, x):
+        embedded = self.embedding(x)
+        lstm_out, _ = self.lstm(embedded)
+        output = self.fc(lstm_out[:, -1])
+        return torch.sigmoid(output)
+
+model = LSTMClassifier(vocab_size=len(vocab), embedding_dim=128, hidden_dim=128, num_layers=1, dropout=0.3)
+criterion = nn.BCELoss()
+optimizer = optim.Adam(model.parameters(), lr=0.001)
+
+# Training
+if not DRY_RUN:
+    for epoch in range(3):
+        model.train()
+        for sequences, labels in train_loader:
+            optimizer.zero_grad()
+            outputs = model(sequences)
+            loss = criterion(outputs.squeeze(), labels)
+            loss.backward()
+            optimizer.step()
+
+# Validation probabilities
+model.eval()
+val_probs = []
+with torch.no_grad():
+    for sequences, _ in val_loader:
+        outputs = model(sequences).squeeze().numpy()
+        val_probs.extend(np.atleast_1d(outputs))
+
+# Test probabilities
+test_probs = []
+with torch.no_grad():
+    for sequences in test_loader:
+        outputs = model(sequences).squeeze().numpy()
+        test_probs.extend(np.atleast_1d(outputs))
+
+# Choose best cutoff
+best_f1 = 0
+best_threshold = 0.5
+for threshold in np.linspace(0.3, 0.7, 41):
+    y_pred_val = (np.array(val_probs) > threshold).astype(int)
+    f1 = f1_score(y_val, y_pred_val)
+    if f1 > best_f1:
+        best_f1 = f1
+        best_threshold = threshold
+
+# Predict test set
+y_pred_test = (np.array(test_probs) > best_threshold).astype(int)
+
+# Save submission
+submission_path = "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/lstm_20260421_151812/run_001/submission.csv"
+os.makedirs(os.path.dirname(submission_path), exist_ok=True)
+submission_df = pd.DataFrame({'id': test_df['id'], 'target': y_pred_test})
+os.makedirs(os.path.dirname(submission_path), exist_ok=True)
+submission_df.to_csv(submission_path, index=False)
+
+# Metrics
+y_pred_val = (np.array(val_probs) > best_threshold).astype(int)
+acc = accuracy_score(y_val, y_pred_val)
+print('METRICS: {"f1": ' + str(round(best_f1, 4)) + ', "accuracy": ' + str(round(acc, 4)) + '}')

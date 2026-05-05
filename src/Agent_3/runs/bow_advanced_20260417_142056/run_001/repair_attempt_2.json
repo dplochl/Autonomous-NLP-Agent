@@ -1,0 +1,12 @@
+```json
+{
+  "diagnosis": "The variable 'np' is not defined. It should be imported from the numpy library.",
+  "edits": [
+    {
+      "action": "insert_after",
+      "target": "import pandas as pd",
+      "content": "import numpy as np"
+    }
+  ]
+}
+```

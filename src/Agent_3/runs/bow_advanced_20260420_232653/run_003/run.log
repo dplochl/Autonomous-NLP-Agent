@@ -1,0 +1,40 @@
+success: False
+timed_out: False
+dry_run_failed: True
+
+[STDOUT]
+
+
+[STDERR]
+Traceback (most recent call last):
+  File "/var/folders/rp/_q6137ys147f688vnf1knc4w0000gn/T/agent3_f63z33rl.py", line 42, in <module>
+    X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.2, random_state=42, stratify=stratify_labels)
+                                     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/.venv/lib/python3.13/site-packages/sklearn/utils/_param_validation.py", line 218, in wrapper
+    return func(*args, **kwargs)
+  File "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/.venv/lib/python3.13/site-packages/sklearn/model_selection/_split.py", line 2950, in train_test_split
+    return list(
+        chain.from_iterable(
+            (_safe_indexing(a, train), _safe_indexing(a, test)) for a in arrays
+        )
+    )
+  File "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/.venv/lib/python3.13/site-packages/sklearn/model_selection/_split.py", line 2952, in <genexpr>
+    (_safe_indexing(a, train), _safe_indexing(a, test)) for a in arrays
+     ~~~~~~~~~~~~~~^^^^^^^^^^
+  File "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/.venv/lib/python3.13/site-packages/sklearn/utils/_indexing.py", line 375, in _safe_indexing
+    return _array_indexing(X, indices, indices_dtype, axis=axis)
+  File "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/.venv/lib/python3.13/site-packages/sklearn/utils/_indexing.py", line 63, in _array_indexing
+    return array[key, ...] if axis == 0 else array[:, key]
+           ~~~~~^^^^^^^^^^
+  File "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/.venv/lib/python3.13/site-packages/pandas/core/arrays/arrow/array.py", line 799, in __getitem__
+    value = self._pa_array[item]
+            ~~~~~~~~~~~~~~^^^^^^
+  File "pyarrow/table.pxi", line 316, in pyarrow.lib.ChunkedArray.__getitem__
+TypeError: only integer scalar arrays can be converted to a scalar index
+
+Repair error: Edit 2 target not found for replace.
+
+[ANALYSIS]
+The experiment "bow_advanced_20260420_232653_run_03" aimed to utilize a Bag of Words (BoW) advanced architecture for processing disaster tweets. The configuration included parameters such as character-level n-grams, word-level n-grams, and logistic regression coefficients. However, the experiment encountered a critical error during execution, resulting in a crash due to an issue with indexing in the scikit-learn library when handling pandas Arrow arrays. Specifically, the error indicates that only integer scalar arrays can be converted to a scalar index, suggesting a mismatch or incorrect data type handling.
+
+For the next run, it is essential to ensure that all input data types are correctly aligned and compatible with the operations being performed. This may involve verifying the integrity of the dataset, ensuring proper preprocessing steps, and possibly updating the library versions to resolve any known bugs or incompatibilities. Additionally, implementing more robust error handling and logging can help identify and address issues earlier in the process.

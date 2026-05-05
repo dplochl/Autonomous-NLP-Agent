@@ -1,0 +1,13 @@
+success: True
+timed_out: False
+dry_run_failed: False
+
+[STDOUT]
+METRICS: {"f1": 0.7805, "accuracy": 0.8083}
+
+
+[STDERR]
+
+
+[ANALYSIS]
+The experiment `bow_advanced_20260420_182414_run_03` successfully executed with a BoW (Bag of Words) advanced architecture. The model achieved an F1 score of 0.7805 and accuracy of 0.8083, indicating that the configuration was effective for the task at hand. However, there is room for improvement as the F1 score could be higher, suggesting potential issues with class imbalance or feature extraction. For the next run, consider adjusting the `char_max_features` to a lower value to reduce dimensionality and potentially improve model performance. Additionally, experimenting with different values for `logreg_c` might help in finding a better regularization strength that optimizes both accuracy and F1 score.

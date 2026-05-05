@@ -1,0 +1,12 @@
+```json
+{
+  "diagnosis": "Missing stratify_labels fallback in train_test_split",
+  "edits": [
+    {
+      "action": "insert_after",
+      "target": "stratify=train_df['target']",
+      "content": ", stratify_labels=train_df['target'].values"
+    }
+  ]
+}
+```

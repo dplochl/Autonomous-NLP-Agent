@@ -1,0 +1,12 @@
+```json
+{
+  "diagnosis": "The variable `stratify_labels` is used before it is defined in the DRY_RUN block.",
+  "edits": [
+    {
+      "action": "insert_before",
+      "target": "if DRY_RUN:",
+      "content": "stratify_labels = y_train"
+    }
+  ]
+}
+```

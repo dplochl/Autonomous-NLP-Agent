@@ -1,0 +1,12 @@
+```json
+{
+  "diagnosis": "Inconsistent number of samples between train_labels and test_preds",
+  "edits": [
+    {
+      "action": "replace",
+      "target": "acc = accuracy_score(train_labels, test_preds)",
+      "content": "acc = accuracy_score(val_labels, val_preds)"
+    }
+  ]
+}
+```

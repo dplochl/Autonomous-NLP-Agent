@@ -1,0 +1,12 @@
+```json
+{
+  "diagnosis": "AttributeError due to incorrect usage of the tokenizer on a list",
+  "edits": [
+    {
+      "action": "replace",
+      "target": "self.encodings = tokenizer(texts.tolist(), truncation=True, padding='max_length', max_length=128)",
+      "content": "self.encodings = tokenizer(texts, truncation=True, padding='max_length', max_length=128)"
+    }
+  ]
+}
+```

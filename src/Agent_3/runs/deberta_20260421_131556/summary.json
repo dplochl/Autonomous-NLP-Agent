@@ -1,0 +1,36 @@
+{
+  "family_key": "deberta",
+  "family": "DeBERTa",
+  "session_name": "deberta_20260421_131556",
+  "phase": "sweep",
+  "max_runs": 1,
+  "best_run_index": null,
+  "best_metrics": {},
+  "best_run_dir": null,
+  "trials": [
+    {
+      "run_index": 1,
+      "spec": {
+        "architecture": "DeBERTa",
+        "model_name": "microsoft/deberta-v3-small",
+        "max_len": 128,
+        "train_batch_size": 16,
+        "eval_batch_size": 16,
+        "learning_rate": 1.5e-05,
+        "weight_decay": 0.01,
+        "num_epochs": 3,
+        "val_size": 0.2,
+        "threshold_min": 0.3,
+        "threshold_max": 0.7,
+        "threshold_steps": 41,
+        "dry_run_head": 16,
+        "experiment_name": "deberta_20260421_131556_run_01",
+        "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/deberta_20260421_131556/run_001/submission.csv"
+      },
+      "success": false,
+      "metrics": {},
+      "analysis": "The experiment with the DeBERTa model crashed due to a ValueError indicating that either `input_ids` or `inputs_embeds` must be specified. The configuration details such as learning rate, batch sizes, and model parameters were correctly set up, but there was an issue in how the input data was being passed to the model. For the next run, it is crucial to ensure that the input data is properly formatted, specifically providing either `input_ids` or `inputs_embeds`. Additionally, reviewing the data preprocessing pipeline to confirm that no data corruption or missing values are causing this error would be beneficial.",
+      "run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/deberta_20260421_131556/run_001"
+    }
+  ]
+}

@@ -1,0 +1,77 @@
+Propose the next BoW experiment spec.
+
+Explore nearby sparse-text settings around the best successful run. If F1 improves, vary max_features, ngrams, or C locally. If performance is flat, try a slightly different feature density before changing thresholds.
+
+Rules:
+- keep the architecture family fixed
+- keep the same overall prompt contract and pipeline shape
+- vary only these tunable keys: max_features, ngram_max, min_df, logreg_c, val_size, threshold_min, threshold_max, threshold_steps
+- optimize against the best successful session trial, not the last run
+- keep the best successful spec as the default anchor and mutate it only slightly
+- change at most 2 tunable keys and prefer changing only 1 key
+- do not repeat an exact spec already tried in this session
+- if a run timed out, reduce cost
+- if a run crashed, simplify the risky parameter region
+- if repeated runs get the same F1, switch to different tunable keys instead of repeating weak ones
+- return one JSON object only
+
+Dataset context:
+DATASET CONTEXT:
+- train.csv: 7613 rows, columns: id, keyword, location, text, target
+- test.csv: 3263 rows, columns: id, keyword, location, text
+- Class balance: 4342 not-disaster (57.0%), 3271 disaster (43.0%)
+- Missing keyword: 0.8%
+- Missing location: 33.3%
+
+
+Family history:
+No prior runs.
+
+Session trials so far:
+- run 1: status=FAILED, f1=N/A, spec={"architecture": "BoW", "dry_run_head": 100, "experiment_name": "bow_20260420_190624_run_01", "logreg_c": 1.0, "max_features": 10000, "min_df": 5, "ngram_max": 1, "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/bow_20260420_190624/run_001/submission.csv", "threshold_max": 0.6, "threshold_min": 0.4, "threshold_steps": 21, "val_size": 0.2, "vectorizer_type": "tfidf_word"}
+
+Best session trial so far:
+{
+  "run_index": 1,
+  "spec": {
+    "architecture": "BoW",
+    "vectorizer_type": "tfidf_word",
+    "max_features": 10000,
+    "ngram_max": 1,
+    "min_df": 5,
+    "logreg_c": 1.0,
+    "val_size": 0.2,
+    "threshold_min": 0.4,
+    "threshold_max": 0.6,
+    "threshold_steps": 21,
+    "dry_run_head": 100,
+    "experiment_name": "bow_20260420_190624_run_01",
+    "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/bow_20260420_190624/run_001/submission.csv"
+  },
+  "success": false,
+  "metrics": {},
+  "analysis": "The experiment \"bow_20260420_190624_run_01\" aimed to utilize a Bag of Words (BoW) architecture for processing disaster tweets. The configuration included parameters such as using TF-IDF vectorization, setting a maximum of 10,000 features, and defining thresholds for classification. However, the experiment encountered a critical error during execution, resulting in a crash due to an undefined variable `stratify_labels` in the code.\n\nTo address this issue, the next run should ensure that the variable `stratify_labels` is properly defined before it is used. This could involve checking if the data loading or preprocessing steps correctly initialize and pass this variable to the relevant parts of the code. Additionally, implementing error handling around the use of `stratify_labels` would help prevent similar crashes in future experiments.",
+  "run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/bow_20260420_190624/run_001"
+}
+
+Stagnant keys from equal-F1 or same-prediction runs: none
+Preferred keys for the next move: max_features, ngram_max, min_df, logreg_c, val_size, threshold_min, threshold_max, threshold_steps
+Latest equal-F1 changed keys to avoid repeating: none
+Repeated best F1 detected: no
+
+Default if unsure:
+{
+  "architecture": "BoW",
+  "vectorizer_type": "tfidf_word",
+  "max_features": 20000,
+  "ngram_max": 2,
+  "min_df": 2,
+  "logreg_c": 3.0,
+  "val_size": 0.2,
+  "threshold_min": 0.3,
+  "threshold_max": 0.7,
+  "threshold_steps": 41,
+  "dry_run_head": 200,
+  "experiment_name": "bow_20260420_190624_run_02",
+  "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/bow_20260420_190624/run_002/submission.csv"
+}

@@ -1,0 +1,17 @@
+```json
+{
+  "diagnosis": "The error indicates that the tensors being stacked in the data collator have different sizes. This is likely due to inconsistent text lengths after preprocessing.",
+  "edits": [
+    {
+      "action": "replace",
+      "target": "train_texts, val_texts, train_labels, val_labels = train_test_split(train_df['text'], y, test_size=0.2, random_state=42, stratify=stratify_labels)",
+      "content": "train_texts, val_texts, train_labels, val_labels = train_test_split(train_df['text'].tolist(), y.tolist(), test_size=0.2, random_state=42, stratify=stratify_labels)"
+    },
+    {
+      "action": "replace",
+      "target": "test_dataset = TweetDataset(list(test_df['text']), labels=None, tokenizer=tokenizer, max_len=128)",
+      "content": "test_dataset = TweetDataset(test_df['text'].tolist(), labels=None, tokenizer=tokenizer, max_len=128)"
+    }
+  ]
+}
+```

@@ -1,0 +1,17 @@
+```json
+{
+  "diagnosis": "The error is due to passing a list instead of a tensor to the embedding layer.",
+  "edits": [
+    {
+      "action": "replace",
+      "target": "batch_texts = torch.tensor(text_to_sequence(self.texts[idx], vocab, spec[\"max_len\"]))",
+      "content": "batch_texts = text_to_sequence(self.texts[idx], vocab, spec[\"max_len\"])"
+    },
+    {
+      "action": "insert_before",
+      "target": "outputs = model(batch_texts).squeeze()",
+      "content": "batch_texts = torch.tensor(batch_texts)"
+    }
+  ]
+}
+```

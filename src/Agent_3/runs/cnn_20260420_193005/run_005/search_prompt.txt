@@ -1,0 +1,108 @@
+Propose the next CNN experiment spec.
+
+Search the local CNN parameter space around the best successful run. Adjust sequence length, channels, dropout, learning rate, or epochs instead of proposing a completely new design.
+
+Rules:
+- keep the architecture family fixed
+- keep the same overall prompt contract and pipeline shape
+- vary only these tunable keys: max_vocab, max_len, embedding_dim, channels, dropout, batch_size, epochs, learning_rate
+- optimize against the best successful session trial, not the last run
+- keep the best successful spec as the default anchor and mutate it only slightly
+- change at most 2 tunable keys and prefer changing only 1 key
+- do not repeat an exact spec already tried in this session
+- if a run timed out, reduce cost
+- if a run crashed, simplify the risky parameter region
+- if repeated runs get the same F1, switch to different tunable keys instead of repeating weak ones
+- return one JSON object only
+
+Dataset context:
+DATASET CONTEXT:
+- train.csv: 7613 rows, columns: id, keyword, location, text, target
+- test.csv: 3263 rows, columns: id, keyword, location, text
+- Class balance: 4342 not-disaster (57.0%), 3271 disaster (43.0%)
+- Missing keyword: 0.8%
+- Missing location: 33.3%
+
+
+Family history:
+- [11] cnn_20260417_113701_run_01 run 1 | F1=0.7243 | OK | The experiment `cnn_20260417_113701_run_01` successfully trained a CNN model with an F1 score of 0.7
+- [12] cnn_20260417_113701_run_02 run 2 | F1=0.7076 | OK | The experiment `cnn_20260417_113701_run_02` successfully executed a CNN model with specified paramet
+- [13] cnn_20260417_113701_run_03 run 3 | F1=0.7059 | OK | The experiment `cnn_20260417_113701_run_03` successfully executed a Convolutional Neural Network (CN
+- [14] cnn_20260417_113701_run_04 run 4 | F1=0.7216 | OK | The experiment `cnn_20260417_113701_run_04` successfully trained a CNN model with an F1 score of 0.7
+- [15] cnn_20260417_113701_run_05 run 5 | F1=0.7209 | OK | The experiment `cnn_20260417_113701_run_05` successfully trained a CNN model with an F1 score of 0.7
+- [36] cnn_20260417_142509_run_01 run 1 | F1=0.7256 | OK | The experiment `cnn_20260417_142509_run_01` successfully executed a CNN model with a batch size of 3
+- [37] cnn_20260417_142509_run_02 run 2 | F1=0.7153 | OK | The experiment `cnn_20260417_142509_run_02` successfully trained a CNN model with a moderate F1 scor
+- [38] cnn_20260417_142509_run_03 run 3 | F1=0.7123 | OK | The experiment `cnn_20260417_142509_run_03` successfully trained a CNN model with an F1 score of 0.7
+- [39] cnn_20260417_142509_run_04 run 4 | F1=0.7004 | OK | The experiment `cnn_20260417_142509_run_04` successfully trained a CNN model with an F1 score of 0.7
+- [40] cnn_20260417_142509_run_05 run 5 | F1=0.7192 | OK | The experiment `cnn_20260417_142509_run_05` successfully trained a CNN model with an F1 score of 0.7
+
+Session trials so far:
+- run 1: status=OK, f1=0.7125, spec={"architecture": "CNN", "batch_size": 32, "channels": 64, "dropout": 0.2, "dry_run_head": 100, "embedding_dim": 128, "epochs": 3, "experiment_name": "cnn_20260420_193005_run_01", "kernel_sizes": [3, 4, 5], "learning_rate": 0.001, "max_len": 48, "max_vocab": 20000, "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/cnn_20260420_193005/run_001/submission.csv", "threshold_max": 0.6, "threshold_min": 0.4, "threshold_steps": 21, "val_size": 0.2}
+- run 2: status=OK, f1=0.7069, spec={"architecture": "CNN", "batch_size": 32, "channels": 64, "dropout": 0.2, "dry_run_head": 100, "embedding_dim": 128, "epochs": 3, "experiment_name": "cnn_20260420_193005_run_02", "kernel_sizes": [3, 4, 5], "learning_rate": 0.001, "max_len": 48, "max_vocab": 14375, "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/cnn_20260420_193005/run_002/submission.csv", "threshold_max": 0.6, "threshold_min": 0.4, "threshold_steps": 21, "val_size": 0.2}
+- run 3: status=OK, f1=0.7285, spec={"architecture": "CNN", "batch_size": 32, "channels": 64, "dropout": 0.2, "dry_run_head": 100, "embedding_dim": 128, "epochs": 3, "experiment_name": "cnn_20260420_193005_run_03", "kernel_sizes": [3, 4, 5], "learning_rate": 0.001, "max_len": 48, "max_vocab": 25625, "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/cnn_20260420_193005/run_003/submission.csv", "threshold_max": 0.6, "threshold_min": 0.4, "threshold_steps": 21, "val_size": 0.2}
+- run 4: status=OK, f1=0.7446, spec={"architecture": "CNN", "batch_size": 32, "channels": 64, "dropout": 0.2, "dry_run_head": 100, "embedding_dim": 128, "epochs": 3, "experiment_name": "cnn_20260420_193005_run_04", "kernel_sizes": [3, 4, 5], "learning_rate": 0.001, "max_len": 48, "max_vocab": 31250, "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/cnn_20260420_193005/run_004/submission.csv", "threshold_max": 0.6, "threshold_min": 0.4, "threshold_steps": 21, "val_size": 0.2}
+
+Best session trial so far:
+{
+  "run_index": 4,
+  "spec": {
+    "architecture": "CNN",
+    "max_vocab": 31250,
+    "max_len": 48,
+    "embedding_dim": 128,
+    "channels": 64,
+    "kernel_sizes": [
+      3,
+      4,
+      5
+    ],
+    "dropout": 0.2,
+    "batch_size": 32,
+    "epochs": 3,
+    "learning_rate": 0.001,
+    "val_size": 0.2,
+    "threshold_min": 0.4,
+    "threshold_max": 0.6,
+    "threshold_steps": 21,
+    "dry_run_head": 100,
+    "experiment_name": "cnn_20260420_193005_run_04",
+    "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/cnn_20260420_193005/run_004/submission.csv"
+  },
+  "success": true,
+  "metrics": {
+    "f1": 0.7446,
+    "accuracy": 0.7676
+  },
+  "analysis": "The experiment `cnn_20260420_193005_run_04` successfully executed a CNN model with promising results, achieving an F1 score of 0.7446 and accuracy of 0.7676. The use of multiple kernel sizes (3, 4, 5) likely contributed to the model's ability to capture different patterns in the data effectively. However, the experiment did not encounter any errors or issues as indicated by the clean STDERR output. For the next run, consider experimenting with a different learning rate schedule or optimizer to potentially improve performance further. Additionally, increasing the number of epochs could help if the model has not yet fully converged.",
+  "run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/cnn_20260420_193005/run_004"
+}
+
+Stagnant keys from equal-F1 or same-prediction runs: none
+Preferred keys for the next move: max_vocab, max_len, embedding_dim, channels, dropout, batch_size, epochs, learning_rate
+Latest equal-F1 changed keys to avoid repeating: none
+Repeated best F1 detected: no
+
+Default if unsure:
+{
+  "architecture": "CNN",
+  "max_vocab": 31250,
+  "max_len": 48,
+  "embedding_dim": 128,
+  "channels": 64,
+  "kernel_sizes": [
+    3,
+    4,
+    5
+  ],
+  "dropout": 0.2,
+  "batch_size": 32,
+  "epochs": 3,
+  "learning_rate": 0.001,
+  "val_size": 0.2,
+  "threshold_min": 0.4,
+  "threshold_max": 0.6,
+  "threshold_steps": 21,
+  "dry_run_head": 100,
+  "experiment_name": "cnn_20260420_193005_run_05",
+  "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/cnn_20260420_193005/run_005/submission.csv"
+}

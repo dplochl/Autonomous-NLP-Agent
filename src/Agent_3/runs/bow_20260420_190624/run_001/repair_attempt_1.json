@@ -1,0 +1,12 @@
+```json
+{
+  "diagnosis": "The error is due to the use of a pandas Series for stratification in train_test_split when DRY_RUN is True. We need to ensure that stratify_labels is sliced based on the reduced y_train.",
+  "edits": [
+    {
+      "action": "insert_after",
+      "target": "if DRY_RUN:",
+      "content": "    stratify_labels = stratify_labels[:100] if stratify_labels is not None else None"
+    }
+  ]
+}
+```

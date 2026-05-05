@@ -1,0 +1,12 @@
+```json
+{
+  "diagnosis": "Variable 'submission_path' is not defined in the scope where it's used.",
+  "edits": [
+    {
+      "action": "insert_before",
+      "target": "submission_dir = os.path.dirname(submission_path)",
+      "content": "submission_path = '/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/cnn_20260420_193005/run_001/submission.csv'"
+    }
+  ]
+}
+```

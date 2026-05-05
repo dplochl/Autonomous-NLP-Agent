@@ -1,0 +1,42 @@
+success: True
+timed_out: False
+dry_run_failed: False
+
+[STDOUT]
+{'train_runtime': '385.9', 'train_samples_per_second': '47.34', 'train_steps_per_second': '2.635', 'train_loss': '0.3982', 'epoch': '3'}
+METRICS: {"f1": 0.8185, "accuracy": 0.8404}
+
+
+[STDERR]
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+emoji is not installed, thus not converting emoticons or emojis into text. Install emoji: pip3 install emoji==0.6.0
+
+Loading weights:   0%|          | 0/197 [00:00<?, ?it/s]
+Loading weights: 100%|██████████| 197/197 [00:00<00:00, 54720.39it/s]
+[1mRobertaForSequenceClassification LOAD REPORT[0m from: vinai/bertweet-base
+Key                             | Status     | 
+--------------------------------+------------+-
+roberta.pooler.dense.bias       | UNEXPECTED | 
+lm_head.dense.bias              | UNEXPECTED | 
+lm_head.layer_norm.bias         | UNEXPECTED | 
+lm_head.bias                    | UNEXPECTED | 
+lm_head.layer_norm.weight       | UNEXPECTED | 
+lm_head.decoder.bias            | UNEXPECTED | 
+roberta.embeddings.position_ids | UNEXPECTED | 
+roberta.pooler.dense.weight     | UNEXPECTED | 
+lm_head.decoder.weight          | UNEXPECTED | 
+lm_head.dense.weight            | UNEXPECTED | 
+classifier.out_proj.weight      | MISSING    | 
+classifier.out_proj.bias        | MISSING    | 
+classifier.dense.bias           | MISSING    | 
+classifier.dense.weight         | MISSING    | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+- MISSING:	those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.
+/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/.venv/lib/python3.13/site-packages/torch/utils/data/dataloader.py:775: UserWarning: 'pin_memory' argument is set as true but not supported on MPS now, device pinned memory won't be used.
+  super().__init__(loader)
+
+
+[ANALYSIS]
+This experiment using the BERTweet architecture achieved a successful training run with an F1 score of 0.8185 and accuracy of 0.8404. The learning rate was set to 1.2e-05, which seems appropriate given the number of epochs (3) and batch sizes used. However, there were several unexpected parameters in the model that were not aligned with the expected architecture, indicating a mismatch between the pre-trained model and the downstream task. Additionally, some critical parameters like `classifier.out_proj.weight` and `classifier.out_proj.bias` were missing, suggesting that the model was not fully initialized for the specific classification task. For the next run, it would be beneficial to ensure that the model is correctly aligned with the downstream task by either using a pre-trained checkpoint that matches the architecture or fine-tuning a model that has been properly initialized for the classification task.

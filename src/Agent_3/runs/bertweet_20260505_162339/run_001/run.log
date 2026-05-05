@@ -1,0 +1,41 @@
+success: True
+timed_out: False
+dry_run_failed: False
+
+[STDOUT]
+{'train_runtime': '654.1', 'train_samples_per_second': '14.68', 'train_steps_per_second': '0.917', 'train_loss': '0.3761', 'epoch': '3'}
+METRICS: {"f1": 0.8212, "accuracy": 0.8562}
+
+
+[STDERR]
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+emoji is not installed, thus not converting emoticons or emojis into text. Install emoji: pip3 install emoji==0.6.0
+
+Loading weights:   0%|          | 0/197 [00:00<?, ?it/s]
+Loading weights: 100%|██████████| 197/197 [00:00<00:00, 51993.32it/s]
+[1mRobertaForSequenceClassification LOAD REPORT[0m from: vinai/bertweet-base
+Key                             | Status     | 
+--------------------------------+------------+-
+lm_head.dense.weight            | UNEXPECTED | 
+roberta.pooler.dense.weight     | UNEXPECTED | 
+lm_head.layer_norm.bias         | UNEXPECTED | 
+lm_head.decoder.weight          | UNEXPECTED | 
+lm_head.layer_norm.weight       | UNEXPECTED | 
+roberta.pooler.dense.bias       | UNEXPECTED | 
+lm_head.decoder.bias            | UNEXPECTED | 
+lm_head.bias                    | UNEXPECTED | 
+roberta.embeddings.position_ids | UNEXPECTED | 
+lm_head.dense.bias              | UNEXPECTED | 
+classifier.out_proj.bias        | MISSING    | 
+classifier.dense.bias           | MISSING    | 
+classifier.dense.weight         | MISSING    | 
+classifier.out_proj.weight      | MISSING    | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+- MISSING:	those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.
+`logging_dir` is deprecated and will be removed in v5.2. Please set `TENSORBOARD_LOGGING_DIR` instead.
+
+
+[ANALYSIS]
+The experiment using the BERTweet architecture achieved a successful run with an F1 score of 0.8212 and accuracy of 0.8562. The training process was efficient, with a runtime of approximately 654 seconds for three epochs. However, there were unexpected discrepancies in certain model parameters (e.g., `lm_head.dense.weight`, `roberta.pooler.dense.weight`) and missing parameters (`classifier.out_proj.bias`, `classifier.dense.bias`, etc.), which could indicate potential issues with the checkpoint or architecture mismatch. For the next run, it is recommended to address these parameter inconsistencies by ensuring compatibility between the model checkpoint and the downstream task, possibly by reinitializing or fine-tuning the missing parameters. Additionally, updating the logging configuration to use `TENSORBOARD_LOGGING_DIR` instead of the deprecated `logging_dir` will help maintain compatibility with future versions of the library.

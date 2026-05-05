@@ -1,0 +1,12 @@
+```json
+{
+  "diagnosis": "The LSTM model's dropout setting is incompatible with the number of layers. The error message indicates that dropout should be zero or num_layers should be greater than 1 when using dropout.",
+  "edits": [
+    {
+      "action": "replace",
+      "target": "num_layers=1, bidirectional=True, dropout=dropout, batch_first=True)",
+      "content": "num_layers=2, bidirectional=True, dropout=0.3, batch_first=True)"
+    }
+  ]
+}
+```

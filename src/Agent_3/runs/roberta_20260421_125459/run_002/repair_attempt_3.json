@@ -1,0 +1,17 @@
+```json
+{
+  "diagnosis": "AttributeError due to incorrect usage of list method",
+  "edits": [
+    {
+      "action": "replace",
+      "target": "train_dataset = TextDataset(train_texts.tolist(), train_labels.tolist(), tokenizer, max_len=128)",
+      "content": "train_dataset = TextDataset(train_texts, train_labels, tokenizer, max_len=128)"
+    },
+    {
+      "action": "replace",
+      "target": "test_logits = trainer.predict(test_df['text'].tolist()).predictions",
+      "content": "test_logits = trainer.predict(test_dataset).predictions"
+    }
+  ]
+}
+```

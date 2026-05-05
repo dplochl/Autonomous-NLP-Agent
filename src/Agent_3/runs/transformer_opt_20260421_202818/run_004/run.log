@@ -1,0 +1,36 @@
+success: True
+timed_out: False
+dry_run_failed: False
+
+[STDOUT]
+{'train_runtime': '103.6', 'train_samples_per_second': '92.67', 'train_steps_per_second': '5.792', 'train_loss': '0.3608', 'epoch': '3'}
+METRICS: {"f1": 0.8013, "accuracy": 0.8475}
+
+
+[STDERR]
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+
+Loading weights:   0%|          | 0/100 [00:00<?, ?it/s]
+Loading weights: 100%|██████████| 100/100 [00:00<00:00, 22416.25it/s]
+[1mDistilBertForSequenceClassification LOAD REPORT[0m from: distilbert-base-uncased
+Key                     | Status     | 
+------------------------+------------+-
+vocab_projector.bias    | UNEXPECTED | 
+vocab_layer_norm.weight | UNEXPECTED | 
+vocab_transform.weight  | UNEXPECTED | 
+vocab_transform.bias    | UNEXPECTED | 
+vocab_layer_norm.bias   | UNEXPECTED | 
+pre_classifier.weight   | MISSING    | 
+classifier.bias         | MISSING    | 
+pre_classifier.bias     | MISSING    | 
+classifier.weight       | MISSING    | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+- MISSING:	those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.
+/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/.venv/lib/python3.13/site-packages/torch/utils/data/dataloader.py:775: UserWarning: 'pin_memory' argument is set as true but not supported on MPS now, device pinned memory won't be used.
+  super().__init__(loader)
+
+
+[ANALYSIS]
+The experiment with the Transformer architecture using the `distilbert-base-uncased` model achieved a success status with an F1 score of 0.8013 and accuracy of 0.8475 after three epochs. The training runtime was efficient, with approximately 92.67 samples processed per second. However, there were unexpected issues during the loading of weights for certain parameters (`vocab_projector.bias`, `vocab_layer_norm.weight`, etc.), which could be due to discrepancies between the model's expected architecture and the checkpoint used. Additionally, several parameters (`pre_classifier.weight`, `classifier.bias`, etc.) were missing from the checkpoint and were initialized anew, suggesting that further training on the downstream task might be beneficial. For the next run, it would be advisable to ensure compatibility between the model architecture and the checkpoint to avoid unexpected weight loading issues, and consider fine-tuning the learning rate or other hyperparameters to potentially improve performance.

@@ -1,0 +1,13 @@
+success: True
+timed_out: False
+dry_run_failed: False
+
+[STDOUT]
+METRICS: {"f1": 0.7785, "accuracy": 0.8076}
+
+
+[STDERR]
+
+
+[ANALYSIS]
+The experiment `bow_advanced_20260420_235840_run_03` successfully executed with a BoW (Bag of Words) advanced architecture. The model achieved an F1 score of 0.7785 and accuracy of 0.8076, indicating good performance on the validation set. However, the character-level n-grams configuration might have been too complex, as indicated by the `char_ngram_max` set to 5 and `char_ngram_min` to 3, which could introduce noise or overfitting. For the next run, consider simplifying the character-level n-grams by reducing the range of `char_ngram_max` and `char_ngram_min`, while also experimenting with different values for `logreg_c` to find a better regularization strength that balances bias and variance. Additionally, exploring other feature extraction techniques or ensemble methods could further enhance model performance.

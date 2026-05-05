@@ -1,0 +1,22 @@
+```json
+{
+  "diagnosis": "Network connectivity issue preventing model and tokenizer download",
+  "edits": [
+    {
+      "action": "insert_before",
+      "target": "tokenizer = AutoTokenizer.from_pretrained(model_name)",
+      "content": "import time\n\ndef retry_download(func, retries=5, delay=10):\n    for attempt in range(retries):\n        try:\n            return func()\n        except Exception as e:\n            print(f'Attempt {attempt + 1} failed: {e}. Retrying in {delay} seconds...')\n            time.sleep(delay)\n    raise Exception('Failed to download after multiple attempts.')\n\n"
+    },
+    {
+      "action": "replace",
+      "target": "tokenizer = AutoTokenizer.from_pretrained(model_name)",
+      "content": "tokenizer = retry_download(lambda: AutoTokenizer.from_pretrained(model_name))"
+    },
+    {
+      "action": "replace",
+      "target": "model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=2)",
+      "content": "model = retry_download(lambda: AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=2))"
+    }
+  ]
+}
+```

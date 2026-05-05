@@ -1,0 +1,32 @@
+success: False
+timed_out: False
+dry_run_failed: True
+
+[STDOUT]
+
+
+[STDERR]
+Traceback (most recent call last):
+  File "/var/folders/rp/_q6137ys147f688vnf1knc4w0000gn/T/agent3_w8_39yt1.py", line 39, in <module>
+    X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.2, random_state=42, stratify=stratify_labels)
+                                     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/.venv/lib/python3.13/site-packages/sklearn/utils/_param_validation.py", line 218, in wrapper
+    return func(*args, **kwargs)
+  File "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/.venv/lib/python3.13/site-packages/sklearn/model_selection/_split.py", line 2945, in train_test_split
+    train, test = next(cv.split(X=arrays[0], y=stratify))
+                  ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/.venv/lib/python3.13/site-packages/sklearn/model_selection/_split.py", line 1927, in split
+    X, y, groups = indexable(X, y, groups)
+                   ~~~~~~~~~^^^^^^^^^^^^^^
+  File "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/.venv/lib/python3.13/site-packages/sklearn/utils/validation.py", line 521, in indexable
+    check_consistent_length(*result)
+    ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/.venv/lib/python3.13/site-packages/sklearn/utils/validation.py", line 464, in check_consistent_length
+    raise ValueError(
+    ...<2 lines>...
+    )
+ValueError: Found input variables with inconsistent numbers of samples: [100, 7613]
+
+
+[ANALYSIS]
+The experiment `bow_20260420_184536_run_02` aimed to utilize a Bag of Words (BoW) architecture with TF-IDF vectorization for processing disaster tweets. The configuration specified a dry run head of 100 samples, indicating an attempt to limit the dataset size for testing purposes. However, the experiment crashed due to a `ValueError`, which occurred because the input variables had inconsistent numbers of samples: one array had 100 samples while another had 7613 samples. This inconsistency likely arose from mismatched data sizes between features (`X_train`) and labels (`y_train`). For the next run, it is crucial to ensure that the feature matrix and label vector have the same number of samples. Additionally, reviewing the data preprocessing steps to confirm that all transformations are correctly applied across both training and validation datasets will be essential to prevent similar issues in future experiments.

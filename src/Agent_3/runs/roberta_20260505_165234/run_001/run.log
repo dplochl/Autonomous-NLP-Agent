@@ -1,0 +1,35 @@
+success: True
+timed_out: False
+dry_run_failed: False
+
+[STDOUT]
+{'train_runtime': '486.2', 'train_samples_per_second': '9.872', 'train_steps_per_second': '0.617', 'train_loss': '0.3933', 'epoch': '3'}
+METRICS: {"f1": 0.75, "accuracy": 0.805}
+
+
+[STDERR]
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+
+Loading weights:   0%|          | 0/197 [00:00<?, ?it/s]
+Loading weights: 100%|██████████| 197/197 [00:00<00:00, 19443.66it/s]
+[1mRobertaForSequenceClassification LOAD REPORT[0m from: roberta-base
+Key                             | Status     | 
+--------------------------------+------------+-
+lm_head.layer_norm.bias         | UNEXPECTED | 
+roberta.embeddings.position_ids | UNEXPECTED | 
+lm_head.dense.weight            | UNEXPECTED | 
+lm_head.layer_norm.weight       | UNEXPECTED | 
+lm_head.bias                    | UNEXPECTED | 
+lm_head.dense.bias              | UNEXPECTED | 
+classifier.dense.bias           | MISSING    | 
+classifier.dense.weight         | MISSING    | 
+classifier.out_proj.bias        | MISSING    | 
+classifier.out_proj.weight      | MISSING    | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+- MISSING:	those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.
+
+
+[ANALYSIS]
+The experiment with the RoBERTa model achieved a reasonable performance, as indicated by an F1 score of 0.75 and accuracy of 0.805. The training process completed successfully within three epochs, with a relatively fast runtime of approximately 486 seconds. However, there were unexpected discrepancies during the loading of weights, specifically with parameters related to the language model head (`lm_head`) that are not typically part of the RoBERTa architecture for sequence classification tasks. Additionally, several classifier-related parameters were missing from the checkpoint, which were newly initialized, suggesting that the model was fine-tuned on a downstream task without these parameters being present in the original checkpoint. For the next run, it is advisable to ensure that the correct checkpoint is used and that all necessary parameters for the classification task are included to avoid unexpected issues during loading.

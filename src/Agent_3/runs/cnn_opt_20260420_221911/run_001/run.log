@@ -1,0 +1,41 @@
+success: True
+timed_out: False
+dry_run_failed: False
+
+[STDOUT]
+METRICS: {"f1": 0.7148, "accuracy": 0.7511}
+
+
+[STDERR]
+/var/folders/rp/_q6137ys147f688vnf1knc4w0000gn/T/agent3_9fmcpze6.py:41: ChainedAssignmentError: A value is being set on a copy of a DataFrame or Series through chained assignment using an inplace method.
+Such inplace method never works to update the original DataFrame or Series, because the intermediate object on which we are setting values always behaves as a copy (due to Copy-on-Write).
+
+For example, when doing 'df[col].method(value, inplace=True)', try using 'df.method({col: value}, inplace=True)' instead, to perform the operation inplace on the original object, or try to avoid an inplace operation using 'df[col] = df[col].method(value)'.
+
+See the documentation for a more detailed explanation: https://pandas.pydata.org/pandas-docs/stable/user_guide/copy_on_write.html
+  train_df['keyword'].fillna('', inplace=True)
+/var/folders/rp/_q6137ys147f688vnf1knc4w0000gn/T/agent3_9fmcpze6.py:42: ChainedAssignmentError: A value is being set on a copy of a DataFrame or Series through chained assignment using an inplace method.
+Such inplace method never works to update the original DataFrame or Series, because the intermediate object on which we are setting values always behaves as a copy (due to Copy-on-Write).
+
+For example, when doing 'df[col].method(value, inplace=True)', try using 'df.method({col: value}, inplace=True)' instead, to perform the operation inplace on the original object, or try to avoid an inplace operation using 'df[col] = df[col].method(value)'.
+
+See the documentation for a more detailed explanation: https://pandas.pydata.org/pandas-docs/stable/user_guide/copy_on_write.html
+  train_df['location'].fillna('', inplace=True)
+/var/folders/rp/_q6137ys147f688vnf1knc4w0000gn/T/agent3_9fmcpze6.py:45: ChainedAssignmentError: A value is being set on a copy of a DataFrame or Series through chained assignment using an inplace method.
+Such inplace method never works to update the original DataFrame or Series, because the intermediate object on which we are setting values always behaves as a copy (due to Copy-on-Write).
+
+For example, when doing 'df[col].method(value, inplace=True)', try using 'df.method({col: value}, inplace=True)' instead, to perform the operation inplace on the original object, or try to avoid an inplace operation using 'df[col] = df[col].method(value)'.
+
+See the documentation for a more detailed explanation: https://pandas.pydata.org/pandas-docs/stable/user_guide/copy_on_write.html
+  test_df['keyword'].fillna('', inplace=True)
+/var/folders/rp/_q6137ys147f688vnf1knc4w0000gn/T/agent3_9fmcpze6.py:46: ChainedAssignmentError: A value is being set on a copy of a DataFrame or Series through chained assignment using an inplace method.
+Such inplace method never works to update the original DataFrame or Series, because the intermediate object on which we are setting values always behaves as a copy (due to Copy-on-Write).
+
+For example, when doing 'df[col].method(value, inplace=True)', try using 'df.method({col: value}, inplace=True)' instead, to perform the operation inplace on the original object, or try to avoid an inplace operation using 'df[col] = df[col].method(value)'.
+
+See the documentation for a more detailed explanation: https://pandas.pydata.org/pandas-docs/stable/user_guide/copy_on_write.html
+  test_df['location'].fillna('', inplace=True)
+
+
+[ANALYSIS]
+The experiment `cnn_opt_20260420_221911_run_01` successfully trained a CNN model with specified parameters such as batch size, learning rate, and kernel sizes. The model achieved an F1 score of 0.7148 and accuracy of 0.7511 on the validation set. However, there were several issues during execution: warnings about chained assignment errors and potential problems with inplace operations in pandas due to Copy-on-Write behavior. For the next run, it is recommended to address these warnings by modifying how DataFrame updates are handled to ensure they operate correctly on the original data structures. Additionally, experimenting with different hyperparameters such as learning rate, dropout rates, or architecture modifications could potentially improve model performance further.

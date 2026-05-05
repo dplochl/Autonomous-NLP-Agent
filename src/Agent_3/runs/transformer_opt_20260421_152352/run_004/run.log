@@ -1,0 +1,36 @@
+success: True
+timed_out: False
+dry_run_failed: False
+
+[STDOUT]
+{'train_runtime': '148.4', 'train_samples_per_second': '123.1', 'train_steps_per_second': '3.861', 'train_loss': '0.351', 'epoch': '3'}
+METRICS: {"f1": 0.8156, "accuracy": 0.8444}
+
+
+[STDERR]
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+
+Loading weights:   0%|          | 0/100 [00:00<?, ?it/s]
+Loading weights: 100%|██████████| 100/100 [00:00<00:00, 14815.10it/s]
+[1mDistilBertForSequenceClassification LOAD REPORT[0m from: distilbert-base-uncased
+Key                     | Status     | 
+------------------------+------------+-
+vocab_transform.weight  | UNEXPECTED | 
+vocab_layer_norm.weight | UNEXPECTED | 
+vocab_transform.bias    | UNEXPECTED | 
+vocab_projector.bias    | UNEXPECTED | 
+vocab_layer_norm.bias   | UNEXPECTED | 
+classifier.weight       | MISSING    | 
+pre_classifier.weight   | MISSING    | 
+pre_classifier.bias     | MISSING    | 
+classifier.bias         | MISSING    | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+- MISSING:	those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.
+/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/.venv/lib/python3.13/site-packages/torch/utils/data/dataloader.py:775: UserWarning: 'pin_memory' argument is set as true but not supported on MPS now, device pinned memory won't be used.
+  super().__init__(loader)
+
+
+[ANALYSIS]
+The experiment with the Transformer architecture using the `distilbert-base-uncased` model achieved a success status, as indicated by the successful training runtime and the generation of a submission file. The model performed well, achieving an F1 score of 0.8156 and accuracy of 0.8444 on the validation set. However, there were some issues during the loading of weights, with several parameters marked as UNEXPECTED or MISSING, which could indicate potential mismatches between the pre-trained model and the downstream task. Additionally, a UserWarning was raised regarding the `pin_memory` argument not being supported on MPS, suggesting that device-specific optimizations might need to be adjusted for better performance. For the next run, it would be beneficial to ensure compatibility between the pre-trained model and the specific task by addressing the UNEXPECTED and MISSING parameters, and potentially revisiting the `pin_memory` setting to optimize memory usage on the target device.

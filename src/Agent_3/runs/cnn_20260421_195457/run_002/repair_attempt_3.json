@@ -1,0 +1,12 @@
+```json
+{
+  "diagnosis": "The error occurs because the validation loader is returning a tuple, and the code attempts to extend `all_preds` with a single integer instead of an iterable.",
+  "edits": [
+    {
+      "action": "replace",
+      "target": "preds = (outputs > threshold).astype(int)",
+      "content": "preds = (outputs > threshold).astype(int).tolist()"
+    }
+  ]
+}
+```

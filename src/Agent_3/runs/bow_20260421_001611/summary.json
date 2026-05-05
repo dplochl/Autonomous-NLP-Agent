@@ -1,0 +1,40 @@
+{
+  "family_key": "bow",
+  "family": "BoW",
+  "session_name": "bow_20260421_001611",
+  "phase": "sweep",
+  "max_runs": 4,
+  "best_run_index": 1,
+  "best_metrics": {
+    "f1": 0.7808,
+    "accuracy": 0.8175
+  },
+  "best_run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/bow_20260421_001611/run_001",
+  "trials": [
+    {
+      "run_index": 1,
+      "spec": {
+        "architecture": "BoW",
+        "vectorizer_type": "tfidf_word",
+        "max_features": 15000,
+        "ngram_max": 2,
+        "min_df": 3,
+        "logreg_c": 1.0,
+        "val_size": 0.2,
+        "threshold_min": 0.4,
+        "threshold_max": 0.6,
+        "threshold_steps": 21,
+        "dry_run_head": 100,
+        "experiment_name": "bow_20260421_001611_run_01",
+        "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/bow_20260421_001611/run_001/submission.csv"
+      },
+      "success": true,
+      "metrics": {
+        "f1": 0.7808,
+        "accuracy": 0.8175
+      },
+      "analysis": "The experiment `bow_20260421_001611_run_01` using a Bag of Words (BoW) architecture achieved a success status with F1 score of 0.7808 and accuracy of 0.8175. The use of TF-IDF vectorization for the word n-grams up to 2, along with a logistic regression classifier parameterized by `C=1.0`, seems effective in capturing the relevant features from the text data. However, the experiment could potentially benefit from further tuning of hyperparameters such as `max_features` and `min_df` to optimize feature selection and reduce dimensionality. For the next run, consider experimenting with different vectorizer types (e.g., CountVectorizer) or adjusting the n-gram range to explore if these changes can lead to improved performance metrics. Additionally, incorporating more sophisticated preprocessing steps like stemming or lemmatization might help in enhancing the model's ability to generalize from the training data.",
+      "run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/bow_20260421_001611/run_001"
+    }
+  ]
+}

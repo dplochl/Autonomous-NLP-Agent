@@ -1,0 +1,12 @@
+```json
+{
+  "diagnosis": "The fully connected layer (fc) output dimension mismatch due to incorrect hidden_dim calculation in the LSTM model.",
+  "edits": [
+    {
+      "action": "replace",
+      "target": "self.fc = nn.Linear(hidden_dim * 2, 1)",
+      "content": "self.fc = nn.Linear(hidden_dim * 4, 1)"
+    }
+  ]
+}
+```

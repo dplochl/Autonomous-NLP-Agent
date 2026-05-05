@@ -1,0 +1,13 @@
+success: True
+timed_out: False
+dry_run_failed: False
+
+[STDOUT]
+METRICS: {"f1": 0.7783, "accuracy": 0.8122}
+
+
+[STDERR]
+
+
+[ANALYSIS]
+The experiment `bow_advanced_20260420_235840_run_02` was successful in achieving a good balance between F1 score (0.7783) and accuracy (0.8122), indicating that the model effectively classified disaster-related tweets. The use of advanced Bag-of-Words features, including character n-grams up to 5 and word n-grams up to 3, along with a logistic regression classifier tuned by `logreg_c` parameter set to 7.0, contributed positively to the results. However, the experiment did not explore the impact of varying the `min_df` parameter beyond its current setting of 2, which might have influenced the model's performance further. For the next run, it would be beneficial to conduct a hyperparameter tuning grid search specifically for `min_df`, as well as experimenting with different combinations of n-gram ranges and feature extraction methods to potentially improve classification accuracy and F1 score.

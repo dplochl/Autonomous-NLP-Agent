@@ -1,0 +1,80 @@
+Write one complete runnable Python script for Kaggle Disaster Tweets.
+
+Family:
+- Transformer
+- Use Hugging Face DistilBERT fine-tuning with AutoTokenizer, AutoModelForSequenceClassification, and Trainer.
+
+Use this validated spec exactly:
+{
+  "architecture": "Transformer",
+  "model_name": "distilbert-base-uncased",
+  "max_len": 152,
+  "train_batch_size": 16,
+  "eval_batch_size": 16,
+  "learning_rate": 1.9e-05,
+  "weight_decay": 0.0095,
+  "num_epochs": 3,
+  "val_size": 0.2,
+  "threshold_min": 0.1,
+  "threshold_max": 0.9,
+  "threshold_steps": 81,
+  "dry_run_head": 16,
+  "experiment_name": "transformer_opt_20260420_234150_run_02",
+  "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/transformer_opt_20260420_234150/run_002/submission.csv"
+}
+
+Required pipeline:
+- use Hugging Face transformers + PyTorch only
+- load only real train.csv and test.csv from DATA_DIR = os.environ.get("DISASTER_AGENT_DATA_DIR", "data")
+- DRY_RUN = os.environ.get("AGENT_DRY_RUN") == "1"
+- fillna keyword, location, text with ""
+- build one text field from keyword + " [SEP] " + text, else text
+- use model_name from spec exactly
+- if DRY_RUN, use head(dry_run_head)
+- define stratify_labels = y if class counts allow, else None
+- use one train_test_split with test_size=val_size, random_state=42, stratify=stratify_labels
+- use AutoTokenizer + AutoModelForSequenceClassification + Trainer + TrainingArguments
+- define a top-level Dataset class over tokenizer outputs
+- build train and validation datasets from the split variables, not from the full train_df
+- tokenize with max_len from spec
+- train with batch sizes, learning rate, weight decay, and num_epochs from spec
+- TrainingArguments must include save_strategy="no", logging_strategy="no", report_to="none", fp16=False, disable_tqdm=True
+- if DRY_RUN, skip trainer.train()
+- use `val_dataset` or `valid_dataset`, either name is fine
+- predict validation logits and test logits with `trainer.predict(...).predictions` preferred
+- convert logits to probabilities with a stable numpy softmax
+- create the submissions directory before writing the CSV
+- choose best cutoff by looping over np.linspace(threshold_min, threshold_max, threshold_steps)
+- save columns id,target to submission_path
+- last line exactly:
+  print('METRICS: {"f1": ' + str(round(f1, 4)) + ', "accuracy": ' + str(round(acc, 4)) + '}')
+
+Do not use:
+- K-fold CV
+- DataLoader
+- TensorDataset
+- datasets.Dataset
+- tensorflow
+- keras
+- mock/demo/sample data
+
+Dataset context:
+DATASET CONTEXT:
+- train.csv: 7613 rows, columns: id, keyword, location, text, target
+- test.csv: 3263 rows, columns: id, keyword, location, text
+- Class balance: 4342 not-disaster (57.0%), 3271 disaster (43.0%)
+- Missing keyword: 0.8%
+- Missing location: 33.3%
+
+Family history:
+- [1] transformer_20260420_225104_run_01 run 1 | F1=0.816 | OK | The experiment successfully trained a Transformer model using the DistilBERT architecture with an F1
+- [2] transformer_20260420_225104_run_02 run 2 | F1=0.8055 | OK | The experiment "transformer_20260420_225104_run_02" using a Transformer architecture with DistilBERT
+- [3] transformer_20260420_225104_run_03 run 3 | F1=0.8156 | OK | The experiment using a Transformer architecture with the DistilBERT model achieved a success status,
+- [4] transformer_20260420_225104_run_04 run 4 | F1=0.8192 | OK | The experiment using a Transformer architecture with the DistilBERT model achieved a success status.
+- [5] transformer_20260420_225104_run_05 run 5 | F1=0.8123 | OK | The experiment using a Transformer architecture with the DistilBERT model achieved a success status,
+
+Session trial summary:
+- run 0: status=OK, f1=0.8192, spec={"architecture": "Transformer", "dry_run_head": 16, "eval_batch_size": 16, "experiment_name": "transformer_20260420_225104_run_04", "learning_rate": 2e-05, "max_len": 152, "model_name": "distilbert-base-uncased", "num_epochs": 3, "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/transformer_20260420_225104/run_004/submission.csv", "threshold_max": 0.9, "threshold_min": 0.1, "threshold_steps": 81, "train_batch_size": 16, "val_size": 0.2, "weight_decay": 0.01}
+- run 1: status=OK, f1=0.8145, spec={"architecture": "Transformer", "dry_run_head": 16, "eval_batch_size": 32, "experiment_name": "transformer_opt_20260420_234150_run_01", "learning_rate": 2e-05, "max_len": 152, "model_name": "distilbert-base-uncased", "num_epochs": 3, "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/transformer_opt_20260420_234150/run_001/submission.csv", "threshold_max": 0.9, "threshold_min": 0.1, "threshold_steps": 81, "train_batch_size": 32, "val_size": 0.2, "weight_decay": 0.01}
+
+Return code only.

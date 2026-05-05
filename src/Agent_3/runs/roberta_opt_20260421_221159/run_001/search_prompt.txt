@@ -1,0 +1,91 @@
+Propose the next RoBERTa experiment spec.
+
+Search locally around the best RoBERTa settings. Prefer nearby changes in sequence length, batch size, learning rate, weight decay, or epochs instead of drastic jumps.
+
+Rules:
+- keep the architecture family fixed
+- keep the same overall prompt contract and pipeline shape
+- vary only these tunable keys: max_len, train_batch_size, eval_batch_size, learning_rate, weight_decay, num_epochs
+- optimize against the best successful session trial, not the last run
+- keep the best successful spec as the default anchor and mutate it only slightly
+- this is the top-architecture optimization phase, so stay near this architecture's current best spec
+- usually change 2 to 4 tunable keys because the sweep used the smaller 4k labeled sample
+- prefer coordinated local changes such as learning_rate, dropout, batch_size, epochs, weight_decay, sequence length, and threshold settings
+- validation size is controlled by the runner and should remain at 0.2
+- avoid large capacity jumps unless the history strongly suggests they help
+- do not repeat an exact spec already tried in this session
+- if a run timed out, reduce cost
+- if a run crashed, simplify the risky parameter region
+- if repeated runs get the same F1, switch to different tunable keys instead of repeating weak ones
+- return one JSON object only
+
+Dataset context:
+DATASET CONTEXT:
+- train.csv: 7613 rows, columns: id, keyword, location, text, target
+- test.csv: 3263 rows, columns: id, keyword, location, text
+- Class balance: 4342 not-disaster (57.0%), 3271 disaster (43.0%)
+- Missing keyword: 0.8%
+- Missing location: 33.3%
+
+
+Family history:
+- [3] roberta_20260421_211723_run_01 run 1 | F1=0.8091 | OK | The experiment using RoBERTa achieved a successful status with an F1 score of 0.8091 and accuracy of
+- [4] roberta_20260421_211723_run_02 run 2 | F1=0.8077 | OK | The experiment using RoBERTa architecture achieved a successful status with an F1 score of 0.8077 an
+
+Session trials so far:
+- run 0: status=OK, f1=0.8091, spec={"architecture": "RoBERTa", "dry_run_head": 16, "eval_batch_size": 16, "experiment_name": "roberta_20260421_211723_run_01", "learning_rate": 1.5e-05, "max_len": 128, "model_name": "roberta-base", "num_epochs": 3, "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/roberta_20260421_211723/run_001/submission.csv", "threshold_max": 0.7, "threshold_min": 0.3, "threshold_steps": 41, "train_batch_size": 16, "val_size": 0.2, "weight_decay": 0.01}
+
+Best session trial so far:
+{
+  "run_index": 0,
+  "spec": {
+    "architecture": "RoBERTa",
+    "model_name": "roberta-base",
+    "max_len": 128,
+    "train_batch_size": 16,
+    "eval_batch_size": 16,
+    "learning_rate": 1.5e-05,
+    "weight_decay": 0.01,
+    "num_epochs": 3,
+    "val_size": 0.2,
+    "threshold_min": 0.3,
+    "threshold_max": 0.7,
+    "threshold_steps": 41,
+    "dry_run_head": 16,
+    "experiment_name": "roberta_20260421_211723_run_01",
+    "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/roberta_20260421_211723/run_001/submission.csv"
+  },
+  "success": true,
+  "metrics": {
+    "f1": 0.8091,
+    "accuracy": 0.8525
+  },
+  "analysis": "The experiment using RoBERTa achieved a successful status with an F1 score of 0.8091 and accuracy of 0.8525. The training process ran smoothly, with a train loss of 0.3707 after three epochs. However, there were unexpected issues during the model loading phase, where certain parameters like `lm_head.bias` and `classifier.out_proj.weight` were either missing or not expected, indicating potential mismatches between the pre-trained model and the downstream task. Additionally, a user warning about unsupported 'pin_memory' on MPS suggests that memory pinning for faster data transfer is not currently supported on this device. For the next run, it would be beneficial to ensure compatibility between the pre-trained model and the specific task by addressing the missing parameters and considering whether the training environment supports the desired features like memory pinning.",
+  "run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/roberta_20260421_211723/run_001",
+  "seeded": true
+}
+
+Stagnant keys from equal-F1 or same-prediction runs: none
+Preferred keys for the next move: max_len, train_batch_size, eval_batch_size, learning_rate, weight_decay, num_epochs
+Latest equal-F1 matched prior run: none
+Latest equal-F1 changed keys to avoid repeating: none
+Repeated best F1 detected: no
+
+Default if unsure:
+{
+  "architecture": "RoBERTa",
+  "model_name": "roberta-base",
+  "max_len": 128,
+  "train_batch_size": 16,
+  "eval_batch_size": 16,
+  "learning_rate": 1.5e-05,
+  "weight_decay": 0.01,
+  "num_epochs": 3,
+  "val_size": 0.2,
+  "threshold_min": 0.3,
+  "threshold_max": 0.7,
+  "threshold_steps": 41,
+  "dry_run_head": 16,
+  "experiment_name": "roberta_opt_20260421_221159_run_01",
+  "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/roberta_opt_20260421_221159/run_001/submission.csv"
+}

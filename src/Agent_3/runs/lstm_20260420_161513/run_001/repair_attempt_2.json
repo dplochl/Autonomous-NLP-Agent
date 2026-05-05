@@ -1,0 +1,12 @@
+```json
+{
+  "diagnosis": "The error occurs because the text data contains float values which do not have a split method.",
+  "edits": [
+    {
+      "action": "replace",
+      "target": "words = text.split()",
+      "content": "words = str(text).split()"
+    }
+  ]
+}
+```

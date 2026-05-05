@@ -1,0 +1,12 @@
+```json
+{
+  "diagnosis": "Inconsistent number of samples in validation predictions and labels",
+  "edits": [
+    {
+      "action": "replace",
+      "target": "val_preds.extend(outputs.numpy())",
+      "content": ""
+    }
+  ]
+}
+```

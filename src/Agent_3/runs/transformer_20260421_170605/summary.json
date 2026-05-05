@@ -1,0 +1,38 @@
+{
+  "family_key": "transformer",
+  "family": "Transformer",
+  "session_name": "transformer_20260421_170605",
+  "phase": "sweep",
+  "max_runs": 1,
+  "sample_rows": 4000,
+  "validation_fraction": 0.2,
+  "best_run_index": null,
+  "best_metrics": {},
+  "best_run_dir": null,
+  "trials": [
+    {
+      "run_index": 1,
+      "spec": {
+        "architecture": "Transformer",
+        "model_name": "distilbert-base-uncased",
+        "max_len": 128,
+        "train_batch_size": 16,
+        "eval_batch_size": 16,
+        "learning_rate": 2e-05,
+        "weight_decay": 0.01,
+        "num_epochs": 3,
+        "val_size": 0.2,
+        "threshold_min": 0.3,
+        "threshold_max": 0.7,
+        "threshold_steps": 41,
+        "dry_run_head": 16,
+        "experiment_name": "transformer_20260421_170605_run_01",
+        "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/transformer_20260421_170605/run_001/submission.csv"
+      },
+      "success": false,
+      "metrics": {},
+      "analysis": "The experiment \"transformer_20260421_170605_run_01\" aimed to train a Transformer model using the DistilBERT architecture. The configuration specified parameters such as batch sizes, learning rate, and validation size. However, the experiment crashed due to a `TypeError` related to invalid values being passed to a float64 dtype during data processing. Specifically, an empty string was encountered where a numeric value was expected.\n\nFor the next run, it is crucial to ensure that all input data is properly preprocessed to avoid such type mismatches. This includes validating and cleaning the dataset to remove or replace any non-numeric values in columns that are expected to contain floats. Additionally, implementing more robust error handling around data loading and preprocessing steps can help prevent similar issues in future experiments.",
+      "run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/transformer_20260421_170605/run_001"
+    }
+  ]
+}

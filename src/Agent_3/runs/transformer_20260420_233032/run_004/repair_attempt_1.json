@@ -1,0 +1,22 @@
+```json
+{
+  "diagnosis": "The error is due to the `tolist()` method being called on a list object.",
+  "edits": [
+    {
+      "action": "replace",
+      "target": "train_encodings = tokenizer(train_texts.tolist(), truncation=True, padding=True, max_length=104)",
+      "content": "train_encodings = tokenizer(train_texts, truncation=True, padding=True, max_length=104)"
+    },
+    {
+      "action": "replace",
+      "target": "val_encodings = tokenizer(val_texts.tolist(), truncation=True, padding=True, max_length=104)",
+      "content": "val_encodings = tokenizer(val_texts, truncation=True, padding=True, max_length=104)"
+    },
+    {
+      "action": "replace",
+      "target": "test_encodings = tokenizer(test_df['text'].tolist(), truncation=True, padding=True, max_length=104)",
+      "content": "test_encodings = tokenizer(test_df['text'], truncation=True, padding=True, max_length=104)"
+    }
+  ]
+}
+```

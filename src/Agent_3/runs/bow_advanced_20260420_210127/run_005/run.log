@@ -1,0 +1,13 @@
+success: True
+timed_out: False
+dry_run_failed: False
+
+[STDOUT]
+METRICS: {"f1": 0.7827, "accuracy": 0.8148}
+
+
+[STDERR]
+
+
+[ANALYSIS]
+The experiment `bow_advanced_20260420_210127_run_05` successfully executed with an F1 score of 0.7827 and accuracy of 0.8148, indicating a good performance in classifying disaster tweets. The use of advanced Bag-of-Words (BoW) techniques, including character-level n-grams up to 5 and word-level n-grams up to 3, along with a logistic regression model tuned by the parameter `logreg_c` set to 4.0, contributed positively to the results. However, the experiment could potentially benefit from further optimization of hyperparameters such as `char_max_features`, `word_max_features`, and the range of thresholds used for classification, which might help in improving the precision and recall metrics. For the next run, consider conducting a grid search or random search over these parameters to find the optimal configuration that maximizes the F1 score while maintaining a reasonable accuracy level.

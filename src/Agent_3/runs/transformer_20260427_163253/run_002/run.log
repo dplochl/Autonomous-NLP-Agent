@@ -1,0 +1,37 @@
+success: True
+timed_out: False
+dry_run_failed: False
+
+[STDOUT]
+{'train_runtime': '87.4', 'train_samples_per_second': '109.8', 'train_steps_per_second': '3.432', 'train_loss': '0.3415', 'epoch': '3'}
+METRICS: {"f1": 0.7878, "accuracy": 0.835}
+
+
+[STDERR]
+
+Loading weights:   0%|          | 0/100 [00:00<?, ?it/s]
+Loading weights: 100%|██████████| 100/100 [00:00<00:00, 20104.03it/s]
+[1mDistilBertForSequenceClassification LOAD REPORT[0m from: distilbert-base-uncased
+Key                     | Status     | 
+------------------------+------------+-
+vocab_transform.weight  | UNEXPECTED | 
+vocab_layer_norm.weight | UNEXPECTED | 
+vocab_layer_norm.bias   | UNEXPECTED | 
+vocab_transform.bias    | UNEXPECTED | 
+vocab_projector.bias    | UNEXPECTED | 
+pre_classifier.bias     | MISSING    | 
+pre_classifier.weight   | MISSING    | 
+classifier.weight       | MISSING    | 
+classifier.bias         | MISSING    | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+- MISSING:	those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.
+/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/.venv/lib/python3.13/site-packages/torch/utils/data/dataloader.py:775: UserWarning: 'pin_memory' argument is set as true but not supported on MPS now, device pinned memory won't be used.
+  super().__init__(loader)
+
+
+[ANALYSIS]
+The experiment with the Transformer architecture using the `distilbert-base-uncased` model achieved a successful status with an F1 score of 0.7878 and accuracy of 0.835. The training runtime was efficient at approximately 109.8 samples per second, indicating good performance on the dataset. However, there were unexpected issues during weight loading, where several parameters like `vocab_transform.weight`, `vocab_layer_norm.weight`, etc., were marked as UNEXPECTED, and some critical parameters such as `pre_classifier.bias` and `classifier.weight` were MISSING, suggesting that these components may not have been properly initialized or loaded. Additionally, there was a warning about the 'pin_memory' argument being set to true but unsupported on MPS, which could affect memory usage efficiency.
+
+For the next run, it is recommended to address the missing parameters by ensuring they are correctly initialized or loaded from a compatible checkpoint. This will help in aligning the model architecture with the training data and potentially improve performance. Additionally, resolving the warning about 'pin_memory' could enhance memory management during training, especially if running on different hardware configurations.

@@ -1,0 +1,37 @@
+success: True
+timed_out: False
+dry_run_failed: False
+
+[STDOUT]
+{'train_runtime': '89.36', 'train_samples_per_second': '136.3', 'train_steps_per_second': '4.275', 'train_loss': '0.4001', 'epoch': '2'}
+METRICS: {"f1": 0.8186, "accuracy": 0.8142}
+
+
+[STDERR]
+
+Loading weights:   0%|          | 0/100 [00:00<?, ?it/s]
+Loading weights: 100%|██████████| 100/100 [00:00<00:00, 16775.20it/s]
+[1mDistilBertForSequenceClassification LOAD REPORT[0m from: distilbert-base-uncased
+Key                     | Status     | 
+------------------------+------------+-
+vocab_projector.bias    | UNEXPECTED | 
+vocab_transform.weight  | UNEXPECTED | 
+vocab_transform.bias    | UNEXPECTED | 
+vocab_layer_norm.weight | UNEXPECTED | 
+vocab_layer_norm.bias   | UNEXPECTED | 
+classifier.bias         | MISSING    | 
+pre_classifier.bias     | MISSING    | 
+pre_classifier.weight   | MISSING    | 
+classifier.weight       | MISSING    | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+- MISSING:	those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.
+/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/.venv/lib/python3.13/site-packages/torch/utils/data/dataloader.py:775: UserWarning: 'pin_memory' argument is set as true but not supported on MPS now, device pinned memory won't be used.
+  super().__init__(loader)
+
+
+[ANALYSIS]
+The experiment with the Transformer architecture using the `distilbert-base-uncased` model achieved a reasonable performance, as indicated by an F1 score of 0.8186 and accuracy of 0.8142. The training process was efficient, with a runtime of approximately 89.36 minutes for two epochs. However, there were unexpected issues during the loading of weights, where several parameters were marked as "UNEXPECTED" or "MISSING," suggesting potential discrepancies between the model's expected architecture and the checkpoint used. Additionally, a user warning about `pin_memory` not being supported on MPS indicates that this feature is currently unavailable on the specific device being used, which might affect memory management during training.
+
+For the next run, it would be beneficial to address the unexpected weight loading issues by ensuring compatibility between the model architecture and the checkpoint. Additionally, exploring alternative methods for handling memory management, such as optimizing data loading or adjusting batch sizes, could help mitigate the impact of the unsupported `pin_memory` feature.

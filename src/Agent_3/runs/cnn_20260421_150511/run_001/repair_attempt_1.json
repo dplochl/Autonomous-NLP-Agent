@@ -1,0 +1,17 @@
+```json
+{
+  "diagnosis": "The evaluation function is trying to extend `all_preds` with a 0-d array instead of a list.",
+  "edits": [
+    {
+      "action": "replace",
+      "target": "outputs = model(sequences).squeeze().numpy()",
+      "content": "outputs = model(sequences).squeeze()"
+    },
+    {
+      "action": "insert_after",
+      "target": "outputs = model(sequences).squeeze()",
+      "content": "outputs = outputs.numpy()"
+    }
+  ]
+}
+```

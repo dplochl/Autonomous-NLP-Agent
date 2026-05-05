@@ -1,0 +1,36 @@
+success: True
+timed_out: False
+dry_run_failed: False
+
+[STDOUT]
+{'train_runtime': '93.65', 'train_samples_per_second': '102.5', 'train_steps_per_second': '6.407', 'train_loss': '0.3674', 'epoch': '3'}
+METRICS: {"f1": 0.812, "accuracy": 0.8512}
+
+
+[STDERR]
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+
+Loading weights:   0%|          | 0/100 [00:00<?, ?it/s]
+Loading weights: 100%|██████████| 100/100 [00:00<00:00, 18590.95it/s]
+[1mDistilBertForSequenceClassification LOAD REPORT[0m from: distilbert-base-uncased
+Key                     | Status     | 
+------------------------+------------+-
+vocab_layer_norm.bias   | UNEXPECTED | 
+vocab_layer_norm.weight | UNEXPECTED | 
+vocab_projector.bias    | UNEXPECTED | 
+vocab_transform.bias    | UNEXPECTED | 
+vocab_transform.weight  | UNEXPECTED | 
+pre_classifier.weight   | MISSING    | 
+pre_classifier.bias     | MISSING    | 
+classifier.bias         | MISSING    | 
+classifier.weight       | MISSING    | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+- MISSING:	those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.
+/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/.venv/lib/python3.13/site-packages/torch/utils/data/dataloader.py:775: UserWarning: 'pin_memory' argument is set as true but not supported on MPS now, device pinned memory won't be used.
+  super().__init__(loader)
+
+
+[ANALYSIS]
+The experiment with the Transformer architecture using the `distilbert-base-uncased` model achieved a successful execution, as indicated by its status. The model trained for three epochs with a learning rate of 2e-05, achieving an F1 score of 0.812 and accuracy of 0.8512 on the evaluation set. However, there were unexpected issues during weight loading, where certain parameters like `vocab_layer_norm.bias` and `vocab_transform.weight` were marked as "UNEXPECTED," suggesting potential mismatches between the model's expected architecture and the loaded weights. Additionally, several parameters such as `pre_classifier.weight`, `classifier.bias`, and `classifier.weight` were missing from the checkpoint and were initialized anew, which might indicate that the model was not fine-tuned on a similar task before. For the next run, it would be beneficial to ensure that the model is correctly aligned with the intended downstream task by verifying the compatibility of the loaded weights and possibly reinitializing or fine-tuning the missing parameters.

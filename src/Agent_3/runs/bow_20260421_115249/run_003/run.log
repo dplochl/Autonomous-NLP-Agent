@@ -1,0 +1,13 @@
+success: True
+timed_out: False
+dry_run_failed: False
+
+[STDOUT]
+METRICS: {"f1": 0.7781, "accuracy": 0.8162}
+
+
+[STDERR]
+
+
+[ANALYSIS]
+The experiment `bow_20260421_115249_run_03` using a Bag of Words (BoW) architecture achieved a success status with F1 score of 0.7781 and accuracy of 0.8162. The use of TF-IDF vectorization for word-level features, combined with a logistic regression classifier tuned to C=0.75, likely contributed positively to the model's performance. However, the experiment could have benefited from exploring different n-gram ranges or experimenting with other vectorizer types like CountVectorizer to see if they improve the results further. For the next run, consider varying the `ngram_max` parameter and testing additional preprocessing steps such as stemming or lemmatization to potentially enhance feature extraction and model accuracy.

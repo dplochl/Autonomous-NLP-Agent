@@ -1,0 +1,17 @@
+{
+  "architecture": "BoW_advanced",
+  "word_max_features": 27000,
+  "char_max_features": 14000,
+  "word_ngram_max": 3,
+  "char_ngram_min": 3,
+  "char_ngram_max": 5,
+  "min_df": 2,
+  "logreg_c": 6.0,
+  "val_size": 0.2,
+  "threshold_min": 0.3,
+  "threshold_max": 0.7,
+  "threshold_steps": 41,
+  "dry_run_head": 150,
+  "experiment_name": "bow_advanced_20260420_235840_run_03",
+  "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/bow_advanced_20260420_235840/run_003/submission.csv"
+}

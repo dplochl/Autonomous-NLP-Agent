@@ -1,0 +1,12 @@
+```json
+{
+  "diagnosis": "The error occurs because the model's output is being squeezed twice, resulting in a 0-d array when extending the list.",
+  "edits": [
+    {
+      "action": "replace",
+      "target": "outputs = outputs.squeeze().cpu().numpy()\n        outputs = outputs.squeeze()",
+      "content": "outputs = outputs.squeeze().cpu().numpy()"
+    }
+  ]
+}
+```

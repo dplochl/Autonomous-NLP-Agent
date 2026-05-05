@@ -1,0 +1,19 @@
+{
+  "architecture": "LSTM",
+  "max_vocab": 25625,
+  "max_len": 64,
+  "embedding_dim": 128,
+  "hidden_dim": 128,
+  "num_layers": 1,
+  "dropout": 0.3,
+  "batch_size": 64,
+  "epochs": 4,
+  "learning_rate": 0.001,
+  "val_size": 0.2,
+  "threshold_min": 0.3,
+  "threshold_max": 0.7,
+  "threshold_steps": 41,
+  "dry_run_head": 200,
+  "experiment_name": "lstm_20260417_114541_run_03",
+  "submission_path": "submissions/lstm_20260417_114541_run_03_submission.csv"
+}

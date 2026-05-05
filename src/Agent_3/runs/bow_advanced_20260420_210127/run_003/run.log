@@ -1,0 +1,13 @@
+success: True
+timed_out: False
+dry_run_failed: False
+
+[STDOUT]
+METRICS: {"f1": 0.7839, "accuracy": 0.8168}
+
+
+[STDERR]
+
+
+[ANALYSIS]
+The experiment `bow_advanced_20260420_210127_run_03` successfully executed with an F1 score of 0.7839 and accuracy of 0.8168, indicating that the advanced Bag-of-Words (BoW) model performed reasonably well on the dataset. The use of character-level features up to 5-grams and word-level features with a maximum of 30,000 features suggests that capturing both local and global text patterns was effective. However, there is room for improvement as the F1 score could be higher, suggesting potential issues with class imbalance or feature relevance. For the next run, consider experimenting with different regularization strengths (`logreg_c`), adjusting the minimum document frequency (`min_df`), or exploring additional feature extraction techniques to enhance model performance further.

@@ -1,0 +1,89 @@
+Propose the next LSTM experiment spec.
+
+For the first two LSTM code-generation runs, explore more broadly with high-impact hyperparameters. After freeze, search locally around the best successful LSTM settings. Favor learning rate, hidden size, max length, dropout, and epochs before lower-impact knobs.
+
+Rules:
+- keep the architecture family fixed
+- keep the same overall prompt contract and pipeline shape
+- vary only these tunable keys: max_vocab, max_len, embedding_dim, hidden_dim, num_layers, dropout, batch_size, epochs, learning_rate
+- optimize against the best successful session trial, not the last run
+- keep the best successful spec as the default anchor and mutate it only slightly
+- change at most 2 tunable keys and prefer changing 1 key(s)
+- if frozen code is active, make smaller moves than before freeze
+- do not repeat an exact spec already tried in this session
+- if a run timed out, reduce cost
+- if a run crashed, simplify the risky parameter region
+- return one JSON object only
+
+Dataset context:
+DATASET CONTEXT:
+- train.csv: 7613 rows, columns: id, keyword, location, text, target
+- test.csv: 3263 rows, columns: id, keyword, location, text
+- Class balance: 4342 not-disaster (57.0%), 3271 disaster (43.0%)
+- Missing keyword: 0.8%
+- Missing location: 33.3%
+
+
+Family history:
+No prior runs.
+
+Session trials so far:
+- run 1: status=OK, f1=0.6008, spec={"architecture": "LSTM", "batch_size": 64, "dropout": 0.3, "dry_run_head": 200, "embedding_dim": 128, "epochs": 4, "experiment_name": "lstm_20260420_164923_run_01", "hidden_dim": 128, "learning_rate": 0.001, "max_len": 64, "max_vocab": 20000, "num_layers": 1, "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/lstm_20260420_164923/run_001/submission.csv", "threshold_max": 0.7, "threshold_min": 0.3, "threshold_steps": 41, "val_size": 0.2}
+- run 2: status=OK, f1=0.6008, spec={"architecture": "LSTM", "batch_size": 64, "dropout": 0.3, "dry_run_head": 200, "embedding_dim": 128, "epochs": 6, "experiment_name": "lstm_20260420_164923_run_02", "hidden_dim": 256, "learning_rate": 0.0005, "max_len": 128, "max_vocab": 20000, "num_layers": 1, "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/lstm_20260420_164923/run_002/submission.csv", "threshold_max": 0.7, "threshold_min": 0.3, "threshold_steps": 41, "val_size": 0.2}
+- run 3: status=OK, f1=0.6008, spec={"architecture": "LSTM", "batch_size": 64, "dropout": 0.3, "dry_run_head": 200, "embedding_dim": 128, "epochs": 4, "experiment_name": "lstm_20260420_164923_run_03", "hidden_dim": 128, "learning_rate": 0.001, "max_len": 128, "max_vocab": 20000, "num_layers": 1, "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/lstm_20260420_164923/run_003/submission.csv", "threshold_max": 0.7, "threshold_min": 0.3, "threshold_steps": 41, "val_size": 0.2}
+
+Best session trial so far:
+{
+  "run_index": 1,
+  "spec": {
+    "architecture": "LSTM",
+    "max_vocab": 20000,
+    "max_len": 64,
+    "embedding_dim": 128,
+    "hidden_dim": 128,
+    "num_layers": 1,
+    "dropout": 0.3,
+    "batch_size": 64,
+    "epochs": 4,
+    "learning_rate": 0.001,
+    "val_size": 0.2,
+    "threshold_min": 0.3,
+    "threshold_max": 0.7,
+    "threshold_steps": 41,
+    "dry_run_head": 200,
+    "experiment_name": "lstm_20260420_164923_run_01",
+    "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/lstm_20260420_164923/run_001/submission.csv"
+  },
+  "success": true,
+  "metrics": {
+    "f1": 0.6008,
+    "accuracy": 1.0
+  },
+  "analysis": "The experiment with the LSTM model achieved a high accuracy of 1.0 but had an F1 score of only 0.6008, indicating that while it correctly classified many instances, it struggled with precision or recall. The warning about dropout suggests that the dropout rate was set to 0.3 with only one layer, which might not be effective for regularization. For the next run, consider increasing the number of layers to utilize dropout effectively and explore different architectures like GRU or BiLSTM to see if they improve performance. Additionally, tuning hyperparameters such as learning rate, batch size, and embedding dimensions could further enhance model accuracy and F1 score.",
+  "run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/lstm_20260420_164923/run_001"
+}
+
+Dead tunable keys to avoid because prior changes did not move the outcome: none
+
+Prioritize these high-impact keys first: learning_rate, hidden_dim, max_len, dropout, epochs
+
+Default if unsure:
+{
+  "architecture": "LSTM",
+  "max_vocab": 20000,
+  "max_len": 64,
+  "embedding_dim": 128,
+  "hidden_dim": 128,
+  "num_layers": 1,
+  "dropout": 0.3,
+  "batch_size": 64,
+  "epochs": 4,
+  "learning_rate": 0.001,
+  "val_size": 0.2,
+  "threshold_min": 0.3,
+  "threshold_max": 0.7,
+  "threshold_steps": 41,
+  "dry_run_head": 200,
+  "experiment_name": "lstm_20260420_164923_run_04",
+  "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/lstm_20260420_164923/run_004/submission.csv"
+}

@@ -1,0 +1,39 @@
+success: False
+timed_out: False
+dry_run_failed: True
+
+[STDOUT]
+
+
+[STDERR]
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+
+Loading weights:   0%|          | 0/197 [00:00<?, ?it/s]
+Loading weights: 100%|██████████| 197/197 [00:00<00:00, 14362.81it/s]
+[1mRobertaForSequenceClassification LOAD REPORT[0m from: roberta-base
+Key                             | Status     | 
+--------------------------------+------------+-
+lm_head.layer_norm.bias         | UNEXPECTED | 
+lm_head.dense.weight            | UNEXPECTED | 
+lm_head.layer_norm.weight       | UNEXPECTED | 
+roberta.embeddings.position_ids | UNEXPECTED | 
+lm_head.dense.bias              | UNEXPECTED | 
+lm_head.bias                    | UNEXPECTED | 
+classifier.dense.bias           | MISSING    | 
+classifier.out_proj.bias        | MISSING    | 
+classifier.out_proj.weight      | MISSING    | 
+classifier.dense.weight         | MISSING    | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+- MISSING:	those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.
+Traceback (most recent call last):
+  File "/var/folders/rp/_q6137ys147f688vnf1knc4w0000gn/T/agent3_gf8jtfd2.py", line 117, in <module>
+    test_dataset = TextDataset(list(test_df['text']))
+TypeError: TextDataset.__init__() missing 3 required positional arguments: 'labels', 'tokenizer', and 'max_len'
+
+
+[ANALYSIS]
+The experiment with the RoBERTa model crashed due to a `TypeError` indicating that the `TextDataset.__init__()` method was missing three required positional arguments: 'labels', 'tokenizer', and 'max_len'. The error suggests an issue in how the dataset is being initialized, possibly because these parameters were not provided or correctly passed. Additionally, there were several unexpected and missing parameters during model loading, which could indicate a mismatch between the expected and actual model architecture or checkpoint.
+
+To address these issues for the next run, ensure that the `TextDataset` class is properly instantiated with all required arguments, including 'labels', 'tokenizer', and 'max_len'. It would also be beneficial to verify the compatibility of the model checkpoint with the specified architecture and task. Addressing the unexpected and missing parameters by either correcting the checkpoint or aligning the model configuration with the expected architecture should help stabilize the experiment.

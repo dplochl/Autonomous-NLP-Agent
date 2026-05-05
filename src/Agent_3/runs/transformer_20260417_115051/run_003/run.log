@@ -1,0 +1,36 @@
+success: True
+timed_out: False
+dry_run_failed: False
+
+[STDOUT]
+{'train_runtime': '92.01', 'train_samples_per_second': '132.4', 'train_steps_per_second': '4.152', 'train_loss': '0.3973', 'epoch': '2'}
+METRICS: {"f1": 0.8209, "accuracy": 0.8207}
+
+
+[STDERR]
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+
+Loading weights:   0%|          | 0/100 [00:00<?, ?it/s]
+Loading weights: 100%|██████████| 100/100 [00:00<00:00, 15905.59it/s]
+[1mDistilBertForSequenceClassification LOAD REPORT[0m from: distilbert-base-uncased
+Key                     | Status     | 
+------------------------+------------+-
+vocab_transform.weight  | UNEXPECTED | 
+vocab_projector.bias    | UNEXPECTED | 
+vocab_layer_norm.weight | UNEXPECTED | 
+vocab_transform.bias    | UNEXPECTED | 
+vocab_layer_norm.bias   | UNEXPECTED | 
+pre_classifier.bias     | MISSING    | 
+classifier.weight       | MISSING    | 
+pre_classifier.weight   | MISSING    | 
+classifier.bias         | MISSING    | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+- MISSING:	those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.
+/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/.venv/lib/python3.13/site-packages/torch/utils/data/dataloader.py:775: UserWarning: 'pin_memory' argument is set as true but not supported on MPS now, device pinned memory won't be used.
+  super().__init__(loader)
+
+
+[ANALYSIS]
+The experiment with the Transformer architecture using the `distilbert-base-uncased` model achieved a success status with F1 and accuracy metrics of 0.8209 and 0.8207 respectively. The training runtime was efficient, processing samples at a rate of approximately 132.4 per second. However, there were unexpected issues during the loading of weights, indicating discrepancies between the expected and actual model parameters. Additionally, several parameters were missing from the checkpoint, which suggests that further training on the downstream task is necessary to properly initialize these weights. For the next run, it would be beneficial to address the missing parameters by ensuring they are correctly initialized or loaded from a compatible source, and to consider adjusting the `pin_memory` argument in the DataLoader configuration to avoid unsupported warnings on MPS devices.

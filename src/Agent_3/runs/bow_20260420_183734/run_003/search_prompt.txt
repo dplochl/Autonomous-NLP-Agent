@@ -1,0 +1,81 @@
+Propose the next BoW experiment spec.
+
+Explore nearby sparse-text settings around the best successful run. If F1 improves, vary max_features, ngrams, or C locally. If performance is flat, try a slightly different feature density before changing thresholds.
+
+Rules:
+- keep the architecture family fixed
+- keep the same overall prompt contract and pipeline shape
+- vary only these tunable keys: max_features, ngram_max, min_df, logreg_c, val_size, threshold_min, threshold_max, threshold_steps
+- optimize against the best successful session trial, not the last run
+- keep the best successful spec as the default anchor and mutate it only slightly
+- change at most 2 tunable keys and prefer changing only 1 key
+- do not repeat an exact spec already tried in this session
+- if a run timed out, reduce cost
+- if a run crashed, simplify the risky parameter region
+- if repeated runs get the same F1, switch to different tunable keys instead of repeating weak ones
+- return one JSON object only
+
+Dataset context:
+DATASET CONTEXT:
+- train.csv: 7613 rows, columns: id, keyword, location, text, target
+- test.csv: 3263 rows, columns: id, keyword, location, text
+- Class balance: 4342 not-disaster (57.0%), 3271 disaster (43.0%)
+- Missing keyword: 0.8%
+- Missing location: 33.3%
+
+
+Family history:
+No prior runs.
+
+Session trials so far:
+- run 1: status=FAILED, f1=N/A, spec={"architecture": "BoW", "dry_run_head": 100, "experiment_name": "bow_20260420_183734_run_01", "logreg_c": 1.0, "max_features": 10000, "min_df": 5, "ngram_max": 1, "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/bow_20260420_183734/run_001/submission.csv", "threshold_max": 0.6, "threshold_min": 0.4, "threshold_steps": 21, "val_size": 0.2, "vectorizer_type": "tfidf_word"}
+- run 2: status=OK, f1=0.7822, spec={"architecture": "BoW", "dry_run_head": 100, "experiment_name": "bow_20260420_183734_run_02", "logreg_c": 2.0, "max_features": 15000, "min_df": 3, "ngram_max": 1, "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/bow_20260420_183734/run_002/submission.csv", "threshold_max": 0.6, "threshold_min": 0.4, "threshold_steps": 21, "val_size": 0.2, "vectorizer_type": "tfidf_word"}
+
+Best session trial so far:
+{
+  "run_index": 2,
+  "spec": {
+    "architecture": "BoW",
+    "vectorizer_type": "tfidf_word",
+    "max_features": 15000,
+    "ngram_max": 1,
+    "min_df": 3,
+    "logreg_c": 2.0,
+    "val_size": 0.2,
+    "threshold_min": 0.4,
+    "threshold_max": 0.6,
+    "threshold_steps": 21,
+    "dry_run_head": 100,
+    "experiment_name": "bow_20260420_183734_run_02",
+    "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/bow_20260420_183734/run_002/submission.csv"
+  },
+  "success": true,
+  "metrics": {
+    "f1": 0.7822,
+    "accuracy": 0.8168
+  },
+  "analysis": "The experiment `bow_20260420_183734_run_02` using a Bag of Words (BoW) architecture with TF-IDF vectorization achieved a respectable F1 score of 0.7822 and an accuracy of 0.8168, indicating that the model performed well on the validation set. The use of a logistic regression classifier with a regularization parameter `C` set to 2.0, along with a TF-IDF vectorizer configured to consider up to 15,000 features and a minimum document frequency (`min_df`) of 3, contributed positively to the model's performance. However, the experiment did not explore different n-gram configurations or other hyperparameters that could potentially improve the results further. For the next run, it would be beneficial to experiment with varying `ngram_max` values, different regularization strengths for logistic regression (`C`), and possibly exploring other vectorization techniques like word embeddings to see if they can enhance performance. Additionally, tuning the threshold steps or adjusting the validation size could also provide insights into optimizing the model's decision boundary.",
+  "run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/bow_20260420_183734/run_002"
+}
+
+Stagnant keys from equal-F1 or same-prediction runs: none
+Preferred keys for the next move: max_features, ngram_max, min_df, logreg_c, val_size, threshold_min, threshold_max, threshold_steps
+Latest equal-F1 changed keys to avoid repeating: none
+Repeated best F1 detected: no
+
+Default if unsure:
+{
+  "architecture": "BoW",
+  "vectorizer_type": "tfidf_word",
+  "max_features": 15000,
+  "ngram_max": 1,
+  "min_df": 3,
+  "logreg_c": 2.0,
+  "val_size": 0.2,
+  "threshold_min": 0.4,
+  "threshold_max": 0.6,
+  "threshold_steps": 21,
+  "dry_run_head": 100,
+  "experiment_name": "bow_20260420_183734_run_03",
+  "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/bow_20260420_183734/run_003/submission.csv"
+}

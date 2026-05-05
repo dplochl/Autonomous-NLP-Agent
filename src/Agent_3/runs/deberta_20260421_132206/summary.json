@@ -1,0 +1,42 @@
+{
+  "family_key": "deberta",
+  "family": "DeBERTa",
+  "session_name": "deberta_20260421_132206",
+  "phase": "sweep",
+  "max_runs": 1,
+  "best_run_index": 1,
+  "best_metrics": {
+    "f1": 0.0,
+    "accuracy": 0.5747
+  },
+  "best_run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/deberta_20260421_132206/run_001",
+  "trials": [
+    {
+      "run_index": 1,
+      "spec": {
+        "architecture": "DeBERTa",
+        "model_name": "microsoft/deberta-v3-small",
+        "max_len": 128,
+        "train_batch_size": 16,
+        "eval_batch_size": 16,
+        "learning_rate": 1.5e-05,
+        "weight_decay": 0.01,
+        "num_epochs": 3,
+        "val_size": 0.2,
+        "threshold_min": 0.3,
+        "threshold_max": 0.7,
+        "threshold_steps": 41,
+        "dry_run_head": 16,
+        "experiment_name": "deberta_20260421_132206_run_01",
+        "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/deberta_20260421_132206/run_001/submission.csv"
+      },
+      "success": true,
+      "metrics": {
+        "f1": 0.0,
+        "accuracy": 0.5747
+      },
+      "analysis": "The experiment with the DeBERTa model achieved a success status, indicating that it completed without crashing. However, the F1 score remained at 0.0, which suggests that the model did not perform well in terms of precision and recall. The accuracy was slightly above random chance at 57.47%, but this is still far from optimal for most classification tasks. Additionally, there were several unexpected parameters and missing parameters during loading, which could indicate issues with the checkpoint or the compatibility between the model architecture and the task. For the next run, it would be beneficial to investigate why the F1 score did not improve, possibly by tuning hyperparameters such as learning rate or adjusting the model's architecture. Addressing the unexpected and missing parameters might also help in aligning the model better with the downstream task.",
+      "run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/deberta_20260421_132206/run_001"
+    }
+  ]
+}

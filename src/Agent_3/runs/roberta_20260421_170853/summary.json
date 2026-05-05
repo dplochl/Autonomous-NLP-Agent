@@ -1,0 +1,44 @@
+{
+  "family_key": "roberta",
+  "family": "RoBERTa",
+  "session_name": "roberta_20260421_170853",
+  "phase": "sweep",
+  "max_runs": 1,
+  "sample_rows": 4000,
+  "validation_fraction": 0.2,
+  "best_run_index": 1,
+  "best_metrics": {
+    "f1": 0.8218,
+    "accuracy": 0.8612
+  },
+  "best_run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/roberta_20260421_170853/run_001",
+  "trials": [
+    {
+      "run_index": 1,
+      "spec": {
+        "architecture": "RoBERTa",
+        "model_name": "roberta-base",
+        "max_len": 128,
+        "train_batch_size": 16,
+        "eval_batch_size": 16,
+        "learning_rate": 1.5e-05,
+        "weight_decay": 0.01,
+        "num_epochs": 3,
+        "val_size": 0.2,
+        "threshold_min": 0.3,
+        "threshold_max": 0.7,
+        "threshold_steps": 41,
+        "dry_run_head": 16,
+        "experiment_name": "roberta_20260421_170853_run_01",
+        "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/roberta_20260421_170853/run_001/submission.csv"
+      },
+      "success": true,
+      "metrics": {
+        "f1": 0.8218,
+        "accuracy": 0.8612
+      },
+      "analysis": "The experiment using RoBERTa achieved a successful status with an F1 score of 0.8218 and accuracy of 0.8612. The training runtime was efficient at approximately 46.62 samples per second. However, there were unexpected parameters during the weight loading process, which might indicate compatibility issues between the model checkpoint and the task architecture. Additionally, several classifier parameters were missing, suggesting that further training on the downstream task is necessary to properly initialize these weights. For the next run, consider addressing the missing parameters by fine-tuning the model specifically for the disaster tweets classification task, ensuring all expected parameters are loaded correctly.",
+      "run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/roberta_20260421_170853/run_001"
+    }
+  ]
+}

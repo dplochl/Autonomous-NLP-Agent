@@ -1,0 +1,12 @@
+```json
+{
+  "diagnosis": "The error occurs because the `outputs` tensor is a 0-d tensor when iterating over it. This can happen if the batch size is 1 and no dimension is specified for the output.",
+  "edits": [
+    {
+      "action": "replace",
+      "target": "test_preds.extend([output.item() for output in outputs])",
+      "content": "test_preds.extend(output.item() if outputs.dim() == 0 else [output.item() for output in outputs])"
+    }
+  ]
+}
+```

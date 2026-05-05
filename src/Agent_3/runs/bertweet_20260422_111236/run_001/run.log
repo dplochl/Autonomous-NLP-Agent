@@ -1,0 +1,44 @@
+success: False
+timed_out: True
+dry_run_failed: True
+
+[STDOUT]
+
+
+[STDERR]
+TIMEOUT after 60s
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+emoji is not installed, thus not converting emoticons or emojis into text. Install emoji: pip3 install emoji==0.6.0
+
+Loading weights:   0%|          | 0/197 [00:00<?, ?it/s]
+Loading weights: 100%|██████████| 197/197 [00:00<00:00, 69581.30it/s]
+[1mRobertaForSequenceClassification LOAD REPORT[0m from: vinai/bertweet-base
+Key                             | Status     | 
+--------------------------------+------------+-
+roberta.embeddings.position_ids | UNEXPECTED | 
+lm_head.decoder.weight          | UNEXPECTED | 
+lm_head.bias                    | UNEXPECTED | 
+lm_head.decoder.bias            | UNEXPECTED | 
+roberta.pooler.dense.weight     | UNEXPECTED | 
+lm_head.dense.bias              | UNEXPECTED | 
+lm_head.layer_norm.bias         | UNEXPECTED | 
+roberta.pooler.dense.bias       | UNEXPECTED | 
+lm_head.layer_norm.weight       | UNEXPECTED | 
+lm_head.dense.weight            | UNEXPECTED | 
+classifier.dense.weight         | MISSING    | 
+classifier.dense.bias           | MISSING    | 
+classifier.out_proj.weight      | MISSING    | 
+classifier.out_proj.bias        | MISSING    | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+- MISSING:	those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.
+/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/.venv/lib/python3.13/site-packages/torch/utils/data/dataloader.py:775: UserWarning: 'pin_memory' argument is set as true but not supported on MPS now, device pinned memory won't be used.
+  super().__init__(loader)
+/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/multiprocessing/resource_tracker.py:301: UserWarning: resource_tracker: There appear to be 1 leaked semaphore objects to clean up at shutdown: {'/loky-46078-ti69xtl3'}
+  warnings.warn(
+
+Repair error: Edit 2 target not found for replace.
+
+[ANALYSIS]
+The experiment using BERTweet architecture encountered a timeout issue, indicating that it did not complete within the expected time frame. The model parameters showed unexpected discrepancies and missing components, which could be due to mismatched architectures or incomplete training checkpoints. Additionally, there were warnings related to memory pinning on MPS (Metal Performance Shaders) and resource leaks in multiprocessing. For the next run, consider increasing the timeout limit, ensuring compatibility between the model architecture and task, addressing the memory pinning issue by disabling it if not necessary, and fixing the resource leak warnings to prevent potential data corruption or system instability.

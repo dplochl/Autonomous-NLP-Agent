@@ -1,0 +1,36 @@
+{
+  "family_key": "deberta",
+  "family": "DeBERTa",
+  "session_name": "deberta_20260421_134928",
+  "phase": "sweep",
+  "max_runs": 1,
+  "best_run_index": null,
+  "best_metrics": {},
+  "best_run_dir": null,
+  "trials": [
+    {
+      "run_index": 1,
+      "spec": {
+        "architecture": "DeBERTa",
+        "model_name": "microsoft/deberta-v3-small",
+        "max_len": 128,
+        "train_batch_size": 16,
+        "eval_batch_size": 16,
+        "learning_rate": 2e-05,
+        "weight_decay": 0.01,
+        "num_epochs": 3,
+        "val_size": 0.2,
+        "threshold_min": 0.01,
+        "threshold_max": 0.99,
+        "threshold_steps": 99,
+        "dry_run_head": 16,
+        "experiment_name": "deberta_20260421_134928_run_01",
+        "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/deberta_20260421_134928/run_001/submission.csv"
+      },
+      "success": false,
+      "metrics": {},
+      "analysis": "The experiment with the DeBERTa model crashed due to a preflight validation failure that could not be repaired. The configuration specified a dry run head of 16, an evaluation batch size of 16, and used the \"microsoft/deberta-v3-small\" model for training over three epochs. No metrics were recorded, indicating that the experiment did not complete successfully. For the next run, it is crucial to address the validation failure by ensuring all configuration parameters are correctly set and compatible with the model and dataset. Additionally, verifying the integrity of the input data and environment setup could prevent similar issues in future experiments.",
+      "run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/deberta_20260421_134928/run_001"
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+```json
+{
+  "architecture": "BERTweet",
+  "model_name": "vinai/bertweet-base",
+  "max_len": 128,
+  "train_batch_size": 16,
+  "eval_batch_size": 16,
+  "learning_rate": 1.5e-05,
+  "weight_decay": 0.01,
+  "num_epochs": 3,
+  "val_size": 0.2,
+  "threshold_min": 0.3,
+  "threshold_max": 0.7,
+  "threshold_steps": 41,
+  "dry_run_head": 16,
+  "experiment_name": "bertweet_20260422_110736_run_01",
+  "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/bertweet_20260422_110736/run_001/submission.csv"
+}
+```

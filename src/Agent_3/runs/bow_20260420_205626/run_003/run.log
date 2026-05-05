@@ -1,0 +1,13 @@
+success: True
+timed_out: False
+dry_run_failed: False
+
+[STDOUT]
+METRICS: {"f1": 0.7808, "accuracy": 0.8168}
+
+
+[STDERR]
+
+
+[ANALYSIS]
+The experiment `bow_20260420_205626_run_03` using a Bag of Words (BoW) architecture with TF-IDF vectorization achieved a respectable F1 score of 0.7808 and an accuracy of 0.8168, indicating that the model performed well on the validation set. The use of TF-IDF for feature extraction likely contributed to the success by effectively weighting the importance of words based on their frequency in the document and across the corpus. However, the experiment did not explore variations in the `logreg_c` parameter or different vectorizer types like Count Vectorizer, which could potentially improve performance further. For the next run, it would be beneficial to conduct a hyperparameter tuning grid search over `logreg_c`, `max_features`, and `ngram_max` to optimize the model's performance. Additionally, experimenting with other vectorization techniques such as Word2Vec or GloVe embeddings might yield better results by capturing semantic relationships between words.

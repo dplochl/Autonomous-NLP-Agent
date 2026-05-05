@@ -1,0 +1,97 @@
+{
+  "family_key": "transformer",
+  "family": "Transformer",
+  "session_name": "transformer_opt_20260420_234150",
+  "phase": "opt",
+  "max_runs": 6,
+  "best_run_index": 2,
+  "best_metrics": {
+    "f1": 0.8209,
+    "accuracy": 0.8562
+  },
+  "best_run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/transformer_opt_20260420_234150/run_002",
+  "trials": [
+    {
+      "run_index": 0,
+      "spec": {
+        "architecture": "Transformer",
+        "model_name": "distilbert-base-uncased",
+        "max_len": 152,
+        "train_batch_size": 16,
+        "eval_batch_size": 16,
+        "learning_rate": 2e-05,
+        "weight_decay": 0.01,
+        "num_epochs": 3,
+        "val_size": 0.2,
+        "threshold_min": 0.1,
+        "threshold_max": 0.9,
+        "threshold_steps": 81,
+        "dry_run_head": 16,
+        "experiment_name": "transformer_20260420_225104_run_04",
+        "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/transformer_20260420_225104/run_004/submission.csv"
+      },
+      "success": true,
+      "metrics": {
+        "f1": 0.8192,
+        "accuracy": 0.8562
+      },
+      "analysis": "The experiment using a Transformer architecture with the DistilBERT model achieved a success status. The F1 score of 0.8192 and accuracy of 0.8562 indicate that the model performed reasonably well on the task. However, there were several issues noted: unexpected parameters during weight loading, missing biases and weights for certain layers, and a warning about unsupported 'pin_memory' argument on MPS device. For the next run, it is recommended to address the missing parameters by training further or initializing them appropriately, and to ensure compatibility with the 'pin_memory' setting based on the current hardware configuration.",
+      "run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/transformer_20260420_225104/run_004",
+      "seeded": true
+    },
+    {
+      "run_index": 1,
+      "spec": {
+        "architecture": "Transformer",
+        "model_name": "distilbert-base-uncased",
+        "max_len": 152,
+        "train_batch_size": 32,
+        "eval_batch_size": 32,
+        "learning_rate": 2e-05,
+        "weight_decay": 0.01,
+        "num_epochs": 3,
+        "val_size": 0.2,
+        "threshold_min": 0.1,
+        "threshold_max": 0.9,
+        "threshold_steps": 81,
+        "dry_run_head": 16,
+        "experiment_name": "transformer_opt_20260420_234150_run_01",
+        "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/transformer_opt_20260420_234150/run_001/submission.csv"
+      },
+      "success": true,
+      "metrics": {
+        "f1": 0.8145,
+        "accuracy": 0.8457
+      },
+      "analysis": "The experiment using a Transformer architecture with the DistilBERT model achieved a success status, as indicated by its completion without errors. The metrics show an F1 score of 0.8145 and accuracy of 0.8457, which are reasonable results for the task at hand. However, there were unexpected issues during the loading of weights, with several parameters marked as UNEXPECTED or MISSING, suggesting potential discrepancies between the checkpoint and the model architecture. Additionally, a warning about 'pin_memory' not being supported on MPS indicates that device-specific optimizations might need adjustment. For the next run, it is recommended to ensure compatibility between the model checkpoint and the task requirements, address any missing parameters by retraining or initializing them appropriately, and verify the correct usage of device-specific features like 'pin_memory'.",
+      "run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/transformer_opt_20260420_234150/run_001"
+    },
+    {
+      "run_index": 2,
+      "spec": {
+        "architecture": "Transformer",
+        "model_name": "distilbert-base-uncased",
+        "max_len": 152,
+        "train_batch_size": 16,
+        "eval_batch_size": 16,
+        "learning_rate": 1.9e-05,
+        "weight_decay": 0.0095,
+        "num_epochs": 3,
+        "val_size": 0.2,
+        "threshold_min": 0.1,
+        "threshold_max": 0.9,
+        "threshold_steps": 81,
+        "dry_run_head": 16,
+        "experiment_name": "transformer_opt_20260420_234150_run_02",
+        "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/transformer_opt_20260420_234150/run_002/submission.csv"
+      },
+      "success": true,
+      "metrics": {
+        "f1": 0.8209,
+        "accuracy": 0.8562
+      },
+      "analysis": "The experiment with the Transformer architecture using the `distilbert-base-uncased` model achieved a successful status with an F1 score of 0.8209 and accuracy of 0.8562 after three epochs. The training runtime was efficient, with approximately 43 samples processed per second. However, there were unexpected issues during the loading of weights, indicating discrepancies between the expected and actual model parameters. Specifically, several layers like `vocab_layer_norm.weight`, `classifier.weight`, and others were either missing or unexpectedly present, which could affect performance if not addressed. Additionally, a user warning about unsupported 'pin_memory' on MPS suggests that memory pinning is not being utilized as intended, potentially impacting data loading efficiency. For the next run, it would be advisable to ensure that all model parameters are correctly aligned with the expected architecture and task requirements, and to investigate why 'pin_memory' is not functioning as expected on the current hardware setup.",
+      "run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/transformer_opt_20260420_234150/run_002"
+    }
+  ]
+}

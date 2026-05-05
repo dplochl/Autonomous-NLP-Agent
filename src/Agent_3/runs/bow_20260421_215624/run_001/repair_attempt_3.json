@@ -1,0 +1,12 @@
+```json
+{
+  "diagnosis": "SyntaxError due to unexpected indent in the submission writing block",
+  "edits": [
+    {
+      "action": "replace",
+      "target": "if WRITE_SUBMISSION:\n    submission_path = \"/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/bow_20260421_215624/run_001/submission.csv\"\n        if not FINAL_SUBMISSION:\n        y_test_prob = model.predict_proba(X_val_tfidf)[:, 1]",
+      "content": "if WRITE_SUBMISSION:\n    submission_path = \"/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/bow_20260421_215624/run_001/submission.csv\"\n    if not FINAL_SUBMISSION:\n        y_test_prob = model.predict_proba(X_val_tfidf)[:, 1]"
+    }
+  ]
+}
+```

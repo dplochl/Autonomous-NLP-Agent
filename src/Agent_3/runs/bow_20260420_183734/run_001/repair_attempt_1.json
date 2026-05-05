@@ -1,0 +1,17 @@
+```json
+{
+  "diagnosis": "The error is due to the use of a non-integer index on a pandas DataFrame column that contains Arrow arrays. This can happen if the data was loaded with certain configurations.",
+  "edits": [
+    {
+      "action": "replace",
+      "target": "X_train = train_df['text'].values",
+      "content": "X_train = train_df['text'].to_numpy()"
+    },
+    {
+      "action": "replace",
+      "target": "X_val = X_val.to_numpy()",
+      "content": "X_val = X_val.values"
+    }
+  ]
+}
+```

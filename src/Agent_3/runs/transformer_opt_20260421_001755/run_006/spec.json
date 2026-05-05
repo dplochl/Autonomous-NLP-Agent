@@ -1,0 +1,17 @@
+{
+  "architecture": "Transformer",
+  "model_name": "distilbert-base-uncased",
+  "max_len": 104,
+  "train_batch_size": 32,
+  "eval_batch_size": 32,
+  "learning_rate": 2.75e-05,
+  "weight_decay": 0.00085,
+  "num_epochs": 2,
+  "val_size": 0.2,
+  "threshold_min": 0.1,
+  "threshold_max": 0.9,
+  "threshold_steps": 81,
+  "dry_run_head": 16,
+  "experiment_name": "transformer_opt_20260421_001755_run_06",
+  "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/transformer_opt_20260421_001755/run_006/submission.csv"
+}

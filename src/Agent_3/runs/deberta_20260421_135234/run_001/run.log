@@ -1,0 +1,42 @@
+success: True
+timed_out: False
+dry_run_failed: False
+
+[STDOUT]
+{'train_runtime': '94.6', 'train_samples_per_second': '77.25', 'train_steps_per_second': '4.852', 'train_loss': '0.3355', 'epoch': '3'}
+METRICS: {"f1": 0.0, "accuracy": 0.5747}
+
+
+[STDERR]
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+
+Loading weights:   0%|          | 0/102 [00:00<?, ?it/s]
+Loading weights: 100%|██████████| 102/102 [00:00<00:00, 62849.86it/s]
+[1mDebertaV2ForSequenceClassification LOAD REPORT[0m from: microsoft/deberta-v3-small
+Key                                     | Status     | 
+----------------------------------------+------------+-
+mask_predictions.LayerNorm.weight       | UNEXPECTED | 
+lm_predictions.lm_head.bias             | UNEXPECTED | 
+mask_predictions.dense.bias             | UNEXPECTED | 
+lm_predictions.lm_head.dense.weight     | UNEXPECTED | 
+mask_predictions.dense.weight           | UNEXPECTED | 
+mask_predictions.LayerNorm.bias         | UNEXPECTED | 
+lm_predictions.lm_head.LayerNorm.weight | UNEXPECTED | 
+lm_predictions.lm_head.LayerNorm.bias   | UNEXPECTED | 
+lm_predictions.lm_head.dense.bias       | UNEXPECTED | 
+mask_predictions.classifier.bias        | UNEXPECTED | 
+mask_predictions.classifier.weight      | UNEXPECTED | 
+pooler.dense.weight                     | MISSING    | 
+classifier.bias                         | MISSING    | 
+pooler.dense.bias                       | MISSING    | 
+classifier.weight                       | MISSING    | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+- MISSING:	those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.
+/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/.venv/lib/python3.13/site-packages/torch/utils/data/dataloader.py:775: UserWarning: 'pin_memory' argument is set as true but not supported on MPS now, device pinned memory won't be used.
+  super().__init__(loader)
+
+
+[ANALYSIS]
+The experiment with DeBERTa architecture achieved a moderate accuracy of 0.5747 but failed to produce any F1 score, indicating potential issues with model performance or evaluation metrics. The unexpected parameters in the STDERR suggest that there might be compatibility issues between the pre-trained model and the downstream task. Additionally, the warning about 'pin_memory' not being supported on MPS highlights a potential inefficiency in data loading. For the next run, consider addressing these compatibility issues by ensuring the model is correctly aligned with the task requirements, and explore different configurations or architectures to improve performance metrics.

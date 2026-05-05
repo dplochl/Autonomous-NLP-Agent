@@ -1,0 +1,35 @@
+success: True
+timed_out: False
+dry_run_failed: False
+
+[STDOUT]
+{'train_runtime': '253.3', 'train_samples_per_second': '72.12', 'train_steps_per_second': '4.512', 'train_loss': '0.353', 'epoch': '3'}
+METRICS: {"f1": 0.8206, "accuracy": 0.8536}
+
+
+[STDERR]
+
+Loading weights:   0%|          | 0/100 [00:00<?, ?it/s]
+Loading weights: 100%|██████████| 100/100 [00:00<00:00, 8482.42it/s]
+[1mDistilBertForSequenceClassification LOAD REPORT[0m from: distilbert-base-uncased
+Key                     | Status     | 
+------------------------+------------+-
+vocab_transform.weight  | UNEXPECTED | 
+vocab_layer_norm.weight | UNEXPECTED | 
+vocab_projector.bias    | UNEXPECTED | 
+vocab_layer_norm.bias   | UNEXPECTED | 
+vocab_transform.bias    | UNEXPECTED | 
+pre_classifier.bias     | MISSING    | 
+classifier.weight       | MISSING    | 
+classifier.bias         | MISSING    | 
+pre_classifier.weight   | MISSING    | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+- MISSING:	those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.
+/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/.venv/lib/python3.13/site-packages/torch/utils/data/dataloader.py:775: UserWarning: 'pin_memory' argument is set as true but not supported on MPS now, device pinned memory won't be used.
+  super().__init__(loader)
+
+
+[ANALYSIS]
+The experiment with the Transformer architecture using the `distilbert-base-uncased` model achieved a success status with an F1 score of 0.8206 and accuracy of 0.8536. The training runtime was efficient, processing samples at a rate of 72.12 per second. However, there were unexpected issues during the loading of weights for certain parameters (`vocab_transform.weight`, `vocab_layer_norm.weight`, etc.) and missing parameters (`pre_classifier.bias`, `classifier.weight`, `classifier.bias`, `pre_classifier.weight`). These discrepancies suggest that the model might not be fully aligned with the intended task or architecture. For the next run, it is recommended to ensure compatibility between the model and the task by using a pre-trained checkpoint specifically fine-tuned for sequence classification tasks, addressing any missing parameters through proper initialization or retraining on the downstream task. Additionally, considering the warning about `pin_memory` not being supported on MPS, further investigation into the device configuration might be necessary to optimize memory usage.

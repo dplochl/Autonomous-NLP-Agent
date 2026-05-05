@@ -1,0 +1,17 @@
+```json
+{
+  "diagnosis": "RuntimeError due to mismatched tensor sizes in the dataset.",
+  "edits": [
+    {
+      "action": "replace",
+      "target": "train_texts = [str(text) for text in train_texts]",
+      "content": "train_texts = [preprocess_text(str(text)) for text in train_texts]"
+    },
+    {
+      "action": "replace",
+      "target": "val_texts = [str(text) for text in val_texts]",
+      "content": "val_texts = [preprocess_text(str(text)) for text in val_texts]"
+    }
+  ]
+}
+```

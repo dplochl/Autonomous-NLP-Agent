@@ -1,0 +1,12 @@
+```json
+{
+  "diagnosis": "SyntaxError due to missing indentation in the WRITE_SUBMISSION block",
+  "edits": [
+    {
+      "action": "insert_after",
+      "target": "if FINAL_SUBMISSION or WRITE_SUBMISSION:",
+      "content": "    "
+    }
+  ]
+}
+```

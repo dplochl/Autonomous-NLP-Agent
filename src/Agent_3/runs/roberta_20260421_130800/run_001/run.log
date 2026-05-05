@@ -1,0 +1,37 @@
+success: True
+timed_out: False
+dry_run_failed: False
+
+[STDOUT]
+{'train_runtime': '161.3', 'train_samples_per_second': '45.32', 'train_steps_per_second': '2.846', 'train_loss': '0.394', 'epoch': '3'}
+METRICS: {"f1": 0.8257, "accuracy": 0.8473}
+
+
+[STDERR]
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+
+Loading weights:   0%|          | 0/197 [00:00<?, ?it/s]
+Loading weights: 100%|██████████| 197/197 [00:00<00:00, 19232.76it/s]
+[1mRobertaForSequenceClassification LOAD REPORT[0m from: roberta-base
+Key                             | Status     | 
+--------------------------------+------------+-
+lm_head.layer_norm.bias         | UNEXPECTED | 
+lm_head.bias                    | UNEXPECTED | 
+lm_head.layer_norm.weight       | UNEXPECTED | 
+lm_head.dense.bias              | UNEXPECTED | 
+lm_head.dense.weight            | UNEXPECTED | 
+roberta.embeddings.position_ids | UNEXPECTED | 
+classifier.out_proj.weight      | MISSING    | 
+classifier.dense.bias           | MISSING    | 
+classifier.dense.weight         | MISSING    | 
+classifier.out_proj.bias        | MISSING    | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+- MISSING:	those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.
+/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/.venv/lib/python3.13/site-packages/torch/utils/data/dataloader.py:775: UserWarning: 'pin_memory' argument is set as true but not supported on MPS now, device pinned memory won't be used.
+  super().__init__(loader)
+
+
+[ANALYSIS]
+The experiment using the RoBERTa architecture achieved a successful status with an F1 score of 0.8257 and accuracy of 0.8473. The training runtime was efficient at approximately 161.3 seconds per epoch, indicating good performance in terms of speed and resource utilization. However, there were several unexpected issues during the loading of weights, specifically with parameters related to the language model head (`lm_head`) and classifier layers (`classifier`). These discrepancies suggest that the model checkpoint used might not be fully compatible with the expected architecture or task. For the next run, it is recommended to ensure that the correct checkpoint is used, aligning with the intended downstream task, and addressing the missing parameters by either initializing them appropriately or using a more suitable pre-trained model variant. Additionally, considering the warning about `pin_memory` not being supported on MPS, it might be beneficial to adjust the data loading configuration to avoid unnecessary memory pinning operations.

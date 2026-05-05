@@ -1,0 +1,39 @@
+Plan one reliable LSTM experiment spec for the Kaggle Disaster Tweets task.
+
+Return a reliable BiLSTM spec with one validation split and conservative sequence settings. Prefer simple settings that are likely to run on the first try.
+
+Return one JSON object only.
+Use these exact keys: architecture, max_vocab, max_len, embedding_dim, hidden_dim, num_layers, dropout, batch_size, epochs, learning_rate, val_size, threshold_min, threshold_max, threshold_steps, dry_run_head, experiment_name, submission_path
+
+Dataset context:
+DATASET CONTEXT:
+- train.csv: 7613 rows, columns: id, keyword, location, text, target
+- test.csv: 3263 rows, columns: id, keyword, location, text
+- Class balance: 4342 not-disaster (57.0%), 3271 disaster (43.0%)
+- Missing keyword: 0.8%
+- Missing location: 33.3%
+
+
+Recent history:
+No prior runs.
+
+Default if unsure:
+{
+  "architecture": "LSTM",
+  "max_vocab": 20000,
+  "max_len": 64,
+  "embedding_dim": 128,
+  "hidden_dim": 128,
+  "num_layers": 1,
+  "dropout": 0.3,
+  "batch_size": 64,
+  "epochs": 3,
+  "learning_rate": 0.001,
+  "val_size": 0.2,
+  "threshold_min": 0.3,
+  "threshold_max": 0.7,
+  "threshold_steps": 41,
+  "dry_run_head": 200,
+  "experiment_name": "lstm_20260505_163040_run_01",
+  "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/lstm_20260505_163040/run_001/submission.csv"
+}

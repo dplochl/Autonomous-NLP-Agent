@@ -1,0 +1,12 @@
+```json
+{
+  "diagnosis": "Missing required validation predict call.",
+  "edits": [
+    {
+      "action": "insert_before",
+      "target": "# Predict validation logits",
+      "content": "val_dataset = DisasterTweetDataset(val_df['text'].tolist(), val_df['target'].tolist(), tokenizer=tokenizer, max_len=128)\n"
+    }
+  ]
+}
+```

@@ -1,0 +1,40 @@
+Plan one reliable EmbeddingDL experiment spec for the Kaggle Disaster Tweets task.
+
+Return a reliable deep-learning text spec for learned embeddings versus local GloVe. Use embedding_source='learned' unless a local GloVe path is likely available; never download embeddings.
+
+Return one JSON object only.
+Use these exact keys: architecture, embedding_source, glove_path, max_vocab, max_len, embedding_dim, hidden_dim, dropout, batch_size, epochs, learning_rate, val_size, threshold_min, threshold_max, threshold_steps, dry_run_head, experiment_name, submission_path
+
+Dataset context:
+DATASET CONTEXT:
+- train.csv: 7613 rows, columns: id, keyword, location, text, target
+- test.csv: 3263 rows, columns: id, keyword, location, text
+- Class balance: 4342 not-disaster (57.0%), 3271 disaster (43.0%)
+- Missing keyword: 0.8%
+- Missing location: 33.3%
+
+
+Recent history:
+No prior runs.
+
+Default if unsure:
+{
+  "architecture": "EmbeddingDL",
+  "embedding_source": "learned",
+  "glove_path": "data/glove.6B.100d.txt",
+  "max_vocab": 25000,
+  "max_len": 72,
+  "embedding_dim": 100,
+  "hidden_dim": 128,
+  "dropout": 0.35,
+  "batch_size": 64,
+  "epochs": 4,
+  "learning_rate": 0.001,
+  "val_size": 0.2,
+  "threshold_min": 0.3,
+  "threshold_max": 0.7,
+  "threshold_steps": 41,
+  "dry_run_head": 200,
+  "experiment_name": "embedding_dl_20260505_162748_run_01",
+  "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/embedding_dl_20260505_162748/run_001/submission.csv"
+}

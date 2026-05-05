@@ -1,0 +1,89 @@
+Propose the next BERTweet experiment spec.
+
+Search locally around the best BERTweet settings. Prefer nearby changes in sequence length, batch size, learning rate, weight decay, or epochs instead of drastic jumps.
+
+Rules:
+- keep the architecture family fixed
+- keep the same overall prompt contract and pipeline shape
+- vary only these tunable keys: max_len, train_batch_size, eval_batch_size, learning_rate, weight_decay, num_epochs
+- optimize against the best successful session trial, not the last run
+- keep the best successful spec as the default anchor and mutate it only slightly
+- this is the family sweep phase, so explore different regions of the parameter space
+- the runner uses a 4k labeled sample split 80/20 for training/validation
+- usually change 2 to 4 tunable keys in one coordinated move
+- with a 5-run budget, cover both model-capacity keys and optimization keys instead of nudging only one key repeatedly
+- prefer combinations such as sequence/model size + regularization + optimization, for example max_len/channels with learning_rate/dropout/batch_size/epochs
+- do not repeat an exact spec already tried in this session
+- if a run timed out, reduce cost
+- if a run crashed, simplify the risky parameter region
+- if repeated runs get the same F1, switch to different tunable keys instead of repeating weak ones
+- return one JSON object only
+
+Dataset context:
+DATASET CONTEXT:
+- train.csv: 7613 rows, columns: id, keyword, location, text, target
+- test.csv: 3263 rows, columns: id, keyword, location, text
+- Class balance: 4342 not-disaster (57.0%), 3271 disaster (43.0%)
+- Missing keyword: 0.8%
+- Missing location: 33.3%
+
+
+Family history:
+No prior runs.
+
+Session trials so far:
+- run 1: status=OK, f1=0.8055, spec={"architecture": "BERTweet", "dry_run_head": 16, "eval_batch_size": 16, "experiment_name": "bertweet_20260427_162308_run_01", "learning_rate": 1.5e-05, "max_len": 128, "model_name": "vinai/bertweet-base", "num_epochs": 3, "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/bertweet_20260427_162308/run_001/submission.csv", "threshold_max": 0.7, "threshold_min": 0.3, "threshold_steps": 41, "train_batch_size": 16, "val_size": 0.2, "weight_decay": 0.01}
+
+Best session trial so far:
+{
+  "run_index": 1,
+  "spec": {
+    "architecture": "BERTweet",
+    "model_name": "vinai/bertweet-base",
+    "max_len": 128,
+    "train_batch_size": 16,
+    "eval_batch_size": 16,
+    "learning_rate": 1.5e-05,
+    "weight_decay": 0.01,
+    "num_epochs": 3,
+    "val_size": 0.2,
+    "threshold_min": 0.3,
+    "threshold_max": 0.7,
+    "threshold_steps": 41,
+    "dry_run_head": 16,
+    "experiment_name": "bertweet_20260427_162308_run_01",
+    "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/bertweet_20260427_162308/run_001/submission.csv"
+  },
+  "success": true,
+  "metrics": {
+    "f1": 0.8055,
+    "accuracy": 0.8413
+  },
+  "analysis": "The experiment using BERTweet architecture achieved a successful execution with an F1 score of 0.8055 and accuracy of 0.8413. The training process ran smoothly with a reasonable runtime per epoch, indicating efficient model training. However, there were unexpected parameters during the loading process, which could be due to differences in task architecture. Additionally, several parameters were missing, suggesting that further training on the downstream task might be necessary to fully initialize these weights. For the next run, it would be beneficial to address the missing parameters by ensuring they are properly initialized or fine-tuned during the training phase.",
+  "run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/bertweet_20260427_162308/run_001"
+}
+
+Stagnant keys from equal-F1 or same-prediction runs: none
+Preferred keys for the next move: max_len, train_batch_size, eval_batch_size, learning_rate, weight_decay, num_epochs
+Latest equal-F1 matched prior run: none
+Latest equal-F1 changed keys to avoid repeating: none
+Repeated best F1 detected: no
+
+Default if unsure:
+{
+  "architecture": "BERTweet",
+  "model_name": "vinai/bertweet-base",
+  "max_len": 128,
+  "train_batch_size": 16,
+  "eval_batch_size": 16,
+  "learning_rate": 1.5e-05,
+  "weight_decay": 0.01,
+  "num_epochs": 3,
+  "val_size": 0.2,
+  "threshold_min": 0.3,
+  "threshold_max": 0.7,
+  "threshold_steps": 41,
+  "dry_run_head": 16,
+  "experiment_name": "bertweet_20260427_162308_run_02",
+  "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/bertweet_20260427_162308/run_002/submission.csv"
+}

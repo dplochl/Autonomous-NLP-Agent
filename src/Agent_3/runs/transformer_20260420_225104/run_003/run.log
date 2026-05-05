@@ -1,0 +1,36 @@
+success: True
+timed_out: False
+dry_run_failed: False
+
+[STDOUT]
+{'train_runtime': '203.2', 'train_samples_per_second': '89.92', 'train_steps_per_second': '5.626', 'train_loss': '0.349', 'epoch': '3'}
+METRICS: {"f1": 0.8156, "accuracy": 0.851}
+
+
+[STDERR]
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+
+Loading weights:   0%|          | 0/100 [00:00<?, ?it/s]
+Loading weights: 100%|██████████| 100/100 [00:00<00:00, 19276.18it/s]
+[1mDistilBertForSequenceClassification LOAD REPORT[0m from: distilbert-base-uncased
+Key                     | Status     | 
+------------------------+------------+-
+vocab_layer_norm.bias   | UNEXPECTED | 
+vocab_transform.weight  | UNEXPECTED | 
+vocab_projector.bias    | UNEXPECTED | 
+vocab_transform.bias    | UNEXPECTED | 
+vocab_layer_norm.weight | UNEXPECTED | 
+pre_classifier.weight   | MISSING    | 
+classifier.bias         | MISSING    | 
+pre_classifier.bias     | MISSING    | 
+classifier.weight       | MISSING    | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+- MISSING:	those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.
+/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/.venv/lib/python3.13/site-packages/torch/utils/data/dataloader.py:775: UserWarning: 'pin_memory' argument is set as true but not supported on MPS now, device pinned memory won't be used.
+  super().__init__(loader)
+
+
+[ANALYSIS]
+The experiment using a Transformer architecture with the DistilBERT model achieved a success status, as indicated by its completion without errors. The model demonstrated reasonable performance with an F1 score of 0.8156 and accuracy of 0.851 on the evaluation set. However, there were several issues noted: unexpected parameters during weight loading, missing classifier parameters, and a warning about unsupported 'pin_memory' argument on MPS device. For the next run, consider addressing the missing parameters by fine-tuning on the downstream task to initialize them properly, ensuring compatibility with the current architecture, and verifying that the 'pin_memory' setting is appropriate for the hardware being used.

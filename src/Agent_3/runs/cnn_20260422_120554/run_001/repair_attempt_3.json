@@ -1,0 +1,12 @@
+```json
+{
+  "diagnosis": "SyntaxError due to unexpected indent",
+  "edits": [
+    {
+      "action": "replace",
+      "target": "if isinstance(sequences, (list, tuple)):\n\n            sequences = sequences[0]\n\n        if isinstance(sequences, (list, tuple)):\n                sequences = sequences[0]\n\n        if isinstance(sequences, (list, tuple)):\n\n            sequences = sequences[0]",
+      "content": "if isinstance(sequences, (list, tuple)):\n    sequences = sequences[0]"
+    }
+  ]
+}
+```

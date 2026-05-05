@@ -1,0 +1,12 @@
+```json
+{
+  "diagnosis": "The error is due to the use of a Pandas Series instead of a NumPy array for stratification in train_test_split.",
+  "edits": [
+    {
+      "action": "replace",
+      "target": "stratify_labels = y_train if len(set(y_train)) > 1 else None",
+      "content": "stratify_labels = y_train.values if len(set(y_train)) > 1 else None"
+    }
+  ]
+}
+```

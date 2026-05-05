@@ -1,0 +1,36 @@
+success: True
+timed_out: False
+dry_run_failed: False
+
+[STDOUT]
+{'train_runtime': '137.3', 'train_samples_per_second': '53.24', 'train_steps_per_second': '1.683', 'train_loss': '0.4185', 'epoch': '3'}
+METRICS: {"f1": 0.815, "accuracy": 0.8456}
+
+
+[STDERR]
+
+Loading weights:   0%|          | 0/197 [00:00<?, ?it/s]
+Loading weights: 100%|██████████| 197/197 [00:00<00:00, 19487.69it/s]
+[1mRobertaForSequenceClassification LOAD REPORT[0m from: roberta-base
+Key                             | Status     | 
+--------------------------------+------------+-
+roberta.embeddings.position_ids | UNEXPECTED | 
+lm_head.dense.bias              | UNEXPECTED | 
+lm_head.bias                    | UNEXPECTED | 
+lm_head.layer_norm.weight       | UNEXPECTED | 
+lm_head.dense.weight            | UNEXPECTED | 
+lm_head.layer_norm.bias         | UNEXPECTED | 
+classifier.dense.weight         | MISSING    | 
+classifier.out_proj.bias        | MISSING    | 
+classifier.out_proj.weight      | MISSING    | 
+classifier.dense.bias           | MISSING    | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+- MISSING:	those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.
+/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/.venv/lib/python3.13/site-packages/torch/utils/data/dataloader.py:775: UserWarning: 'pin_memory' argument is set as true but not supported on MPS now, device pinned memory won't be used.
+  super().__init__(loader)
+
+
+[ANALYSIS]
+The experiment using the RoBERTa architecture achieved a successful completion with an F1 score of 0.815 and accuracy of 0.8456. The training runtime was efficient at approximately 53 samples per second. However, there were unexpected issues during model loading, indicating discrepancies between the expected and loaded parameters, which could affect performance if not addressed. Additionally, warnings about unsupported 'pin_memory' on MPS suggest a need for compatibility adjustments in the data handling pipeline. For the next run, it is recommended to ensure parameter consistency across tasks and architectures, address the missing parameters by training on the downstream task, and verify support for 'pin_memory' with the current device configuration.

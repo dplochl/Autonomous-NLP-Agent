@@ -1,0 +1,137 @@
+{
+  "family": "BoW",
+  "session_name": "bow_20260417_141644",
+  "max_runs": 5,
+  "best_run_index": 1,
+  "best_metrics": {
+    "f1": 0.7808,
+    "accuracy": 0.8175
+  },
+  "trials": [
+    {
+      "run_index": 1,
+      "spec": {
+        "architecture": "BoW",
+        "vectorizer_type": "tfidf_word",
+        "max_features": 15000,
+        "ngram_max": 2,
+        "min_df": 3,
+        "logreg_c": 1.0,
+        "val_size": 0.2,
+        "threshold_min": 0.4,
+        "threshold_max": 0.6,
+        "threshold_steps": 21,
+        "dry_run_head": 100,
+        "experiment_name": "bow_20260417_141644_run_01",
+        "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/bow_20260417_141644/run_001/submission.csv"
+      },
+      "success": true,
+      "metrics": {
+        "f1": 0.7808,
+        "accuracy": 0.8175
+      },
+      "analysis": "The experiment `bow_20260417_141644_run_01` successfully executed a Bag of Words (BoW) model with TF-IDF vectorization, achieving an F1 score of 0.7808 and accuracy of 0.8175. The use of TF-IDF for feature extraction likely contributed to the model's performance by effectively weighting features based on their importance across the dataset. However, the experiment did not explore different architectures or hyperparameters beyond those specified, which could have led to potential improvements in performance. For the next run, consider experimenting with additional vectorization techniques such as word embeddings (e.g., Word2Vec, GloVe) and exploring other machine learning models like Random Forests or Gradient Boosting to see if they offer better accuracy or F1 scores. Additionally, tuning hyperparameters such as `logreg_c`, `max_features`, and the range of thresholds could further optimize model performance.",
+      "run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/bow_20260417_141644/run_001"
+    },
+    {
+      "run_index": 2,
+      "spec": {
+        "architecture": "BoW",
+        "vectorizer_type": "tfidf_word",
+        "max_features": 14000,
+        "ngram_max": 2,
+        "min_df": 3,
+        "logreg_c": 1.0,
+        "val_size": 0.2,
+        "threshold_min": 0.4,
+        "threshold_max": 0.6,
+        "threshold_steps": 21,
+        "dry_run_head": 100,
+        "experiment_name": "bow_20260417_141644_run_02",
+        "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/bow_20260417_141644/run_002/submission.csv"
+      },
+      "success": true,
+      "metrics": {
+        "f1": 0.7808,
+        "accuracy": 0.8175
+      },
+      "analysis": "The experiment `bow_20260417_141644_run_02` using a Bag of Words (BoW) architecture with TF-IDF vectorization achieved a respectable F1 score of 0.7808 and an accuracy of 0.8175, indicating that the model performed well on the validation set. The use of TF-IDF for feature extraction likely contributed to the success, as it effectively captures the importance of words in the context of disaster tweets. However, the experiment did not explore different vectorization techniques or hyperparameter tuning beyond the specified settings, which could have potentially improved performance further. For the next run, consider experimenting with additional vectorization methods such as word embeddings (e.g., Word2Vec, GloVe) and exploring a wider range of hyperparameters for the logistic regression model to see if there is room for improvement in accuracy and F1 score.",
+      "run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/bow_20260417_141644/run_002"
+    },
+    {
+      "run_index": 3,
+      "spec": {
+        "architecture": "BoW",
+        "vectorizer_type": "tfidf_word",
+        "max_features": 15500,
+        "ngram_max": 2,
+        "min_df": 3,
+        "logreg_c": 1.0,
+        "val_size": 0.2,
+        "threshold_min": 0.4,
+        "threshold_max": 0.6,
+        "threshold_steps": 21,
+        "dry_run_head": 100,
+        "experiment_name": "bow_20260417_141644_run_03",
+        "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/bow_20260417_141644/run_003/submission.csv"
+      },
+      "success": true,
+      "metrics": {
+        "f1": 0.7808,
+        "accuracy": 0.8175
+      },
+      "analysis": "The experiment `bow_20260417_141644_run_03` using a Bag of Words (BoW) architecture with TF-IDF vectorization achieved a reasonable performance, as indicated by an F1 score of 0.7808 and accuracy of 0.8175. The use of n-grams up to the second order (`ngram_max=2`) and a moderate number of features (`max_features=15500`) likely contributed positively to the model's ability to capture nuanced patterns in the text data. However, the experiment did not explore other potential improvements such as different regularization strengths for logistic regression or alternative vectorization techniques like word embeddings. For the next run, consider experimenting with a wider range of hyperparameters, including varying the `logreg_c` parameter and exploring additional feature extraction methods to potentially enhance model performance further.",
+      "run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/bow_20260417_141644/run_003"
+    },
+    {
+      "run_index": 4,
+      "spec": {
+        "architecture": "BoW",
+        "vectorizer_type": "tfidf_word",
+        "max_features": 15250,
+        "ngram_max": 2,
+        "min_df": 3,
+        "logreg_c": 1.0,
+        "val_size": 0.2,
+        "threshold_min": 0.4,
+        "threshold_max": 0.6,
+        "threshold_steps": 21,
+        "dry_run_head": 100,
+        "experiment_name": "bow_20260417_141644_run_04",
+        "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/bow_20260417_141644/run_004/submission.csv"
+      },
+      "success": true,
+      "metrics": {
+        "f1": 0.7808,
+        "accuracy": 0.8175
+      },
+      "analysis": "The experiment **bow_20260417_141644_run_04** successfully executed with a Bag of Words (BoW) architecture using TF-IDF vectorization. The model achieved an F1 score of 0.7808 and accuracy of 0.8175, indicating reasonable performance on the validation set. However, there is room for improvement as the F1 score could be higher, suggesting potential issues with class imbalance or feature selection. For the next run, consider experimenting with different hyperparameters such as adjusting the `logreg_c` regularization strength, exploring other vectorization techniques like word embeddings, and increasing the `max_features` to capture more nuanced information from the text data. Additionally, evaluating the impact of varying the `ngram_max` parameter might help in capturing more complex linguistic patterns.",
+      "run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/bow_20260417_141644/run_004"
+    },
+    {
+      "run_index": 5,
+      "spec": {
+        "architecture": "BoW",
+        "vectorizer_type": "tfidf_word",
+        "max_features": 14800,
+        "ngram_max": 2,
+        "min_df": 3,
+        "logreg_c": 1.0,
+        "val_size": 0.2,
+        "threshold_min": 0.4,
+        "threshold_max": 0.6,
+        "threshold_steps": 21,
+        "dry_run_head": 100,
+        "experiment_name": "bow_20260417_141644_run_05",
+        "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/bow_20260417_141644/run_005/submission.csv"
+      },
+      "success": true,
+      "metrics": {
+        "f1": 0.7808,
+        "accuracy": 0.8175
+      },
+      "analysis": "The experiment `bow_20260417_141644_run_05` using a Bag of Words (BoW) architecture achieved a success status with an F1 score of 0.7808 and accuracy of 0.8175, indicating that the model performed reasonably well on the validation set. The use of TF-IDF vectorization for word-level features up to bigrams contributed positively to the results. However, the experiment did not explore other potential improvements such as different feature extraction methods (e.g., character n-grams) or hyperparameter tuning beyond the C parameter in logistic regression. For the next run, consider experimenting with additional feature types like character n-grams and exploring a wider range of hyperparameters to potentially enhance model performance further.",
+      "run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/bow_20260417_141644/run_005"
+    }
+  ]
+}

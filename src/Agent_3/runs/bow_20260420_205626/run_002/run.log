@@ -1,0 +1,13 @@
+success: True
+timed_out: False
+dry_run_failed: False
+
+[STDOUT]
+METRICS: {"f1": 0.7764, "accuracy": 0.8207}
+
+
+[STDERR]
+
+
+[ANALYSIS]
+The experiment `bow_20260420_205626_run_02` using a Bag of Words (BoW) architecture achieved a respectable F1 score of 0.7764 and an accuracy of 0.8207, indicating that the model performed well on the validation set. The use of TF-IDF vectorization with a maximum of 12,000 features and a minimum document frequency (min_df) of 5 likely contributed to the success by effectively capturing the most relevant terms while filtering out less common ones. However, the experiment did not explore different n-gram ranges or other hyperparameters that could potentially improve performance further. For the next run, consider varying the `ngram_max` parameter to include bigrams or trigrams, as these can capture more complex patterns in the text data. Additionally, experimenting with different values for `logreg_c`, which controls the regularization strength of the logistic regression model, might yield better results.

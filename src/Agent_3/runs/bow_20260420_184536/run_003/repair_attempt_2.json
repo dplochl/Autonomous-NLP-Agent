@@ -1,0 +1,12 @@
+```json
+{
+  "diagnosis": "np is not defined",
+  "edits": [
+    {
+      "action": "insert_before",
+      "target": "stratify_labels = y_train if len(np.unique(y_train)) > 1 else None",
+      "content": "import numpy as np"
+    }
+  ]
+}
+```

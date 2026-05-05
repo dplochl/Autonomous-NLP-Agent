@@ -1,0 +1,172 @@
+import os
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import f1_score, accuracy_score
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import Dataset, DataLoader
+
+# Load environment variables
+DATA_DIR = os.environ.get("DISASTER_AGENT_DATA_DIR", "data")
+DRY_RUN = os.environ.get("AGENT_DRY_RUN") == "1"
+
+# Load data
+train_df = pd.read_csv(os.path.join(DATA_DIR, 'train.csv'))
+test_df = pd.read_csv(os.path.join(DATA_DIR, 'test.csv'))
+
+# Fill missing values
+train_df[['keyword', 'location', 'text']] = train_df[['keyword', 'location', 'text']].fillna('')
+test_df[['keyword', 'location', 'text']] = test_df[['keyword', 'location', 'text']].fillna('')
+
+# Build text field
+train_df['text'] = train_df.apply(lambda row: f"{row['keyword']} [SEP] {row['text']}" if pd.notna(row['keyword']) else row['text'], axis=1)
+test_df['text'] = test_df.apply(lambda row: f"{row['keyword']} [SEP] {row['text']}" if pd.notna(row['keyword']) else row['text'], axis=1)
+
+# DRY_RUN
+if DRY_RUN:
+    train_df = train_df.head(200)
+    test_df = test_df.head(200)
+
+# Define stratify labels
+stratify_labels = train_df['target'] if train_df['target'].nunique() > 1 and train_df['target'].value_counts().min() >= 2 else None
+
+# Train-test split
+X_train, X_val, y_train, y_val = train_test_split(train_df['text'], train_df['target'], test_size=0.2, random_state=42, stratify=stratify_labels)
+
+# Build tokenizer/vocabulary
+vocab = set()
+for text in X_train:
+    vocab.update(text.split())
+vocab = {word: i + 1 for i, word in enumerate(vocab)}
+vocab['<PAD>'] = 0
+
+# Convert texts to padded integer sequences
+def text_to_sequence(text, max_len=64):
+    sequence = [vocab.get(word, 0) for word in text.split()][:max_len]
+    return sequence[:max_len] + [0] * (max_len - len(sequence))
+
+X_train_seq = np.array([text_to_sequence(text) for text in X_train])
+X_val_seq = np.array([text_to_sequence(text) for text in X_val])
+X_test_seq = np.array([text_to_sequence(text) for text in test_df['text']])
+
+# Define Dataset and DataLoader
+class TextDataset(Dataset):
+    def __init__(self, texts, labels=None):
+        self.texts = texts
+        self.labels = labels
+
+    def __len__(self):
+        return len(self.texts)
+
+    def __getitem__(self, idx):
+        text = torch.tensor(self.texts[idx], dtype=torch.long)
+        if self.labels is not None:
+            label = torch.tensor(self.labels.iloc[idx] if hasattr(self.labels, 'iloc') else self.labels[idx], dtype=torch.float32)
+            return text, label
+        else:
+            return text
+
+train_dataset = TextDataset(X_train_seq, y_train)
+val_dataset = TextDataset(X_val_seq, y_val)
+test_dataset = TextDataset(X_test_seq)
+
+batch_size = 64
+train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+
+# Define LSTM model
+class LSTMClassifier(nn.Module):
+    def __init__(self, vocab_size, embedding_dim, hidden_dim, num_layers, dropout):
+        super(LSTMClassifier, self).__init__()
+        self.embedding = nn.Embedding(vocab_size, embedding_dim)
+        self.lstm = nn.LSTM(embedding_dim, hidden_dim, num_layers=num_layers, bidirectional=True, dropout=dropout, batch_first=True)
+        self.fc = nn.Linear(hidden_dim * 2, 1)
+
+    def forward(self, x):
+        embedded = self.embedding(x)
+        lstm_out, _ = self.lstm(embedded)
+        last_hidden_state = lstm_out[:, -1, :]
+        out = self.fc(last_hidden_state)
+        return torch.sigmoid(out.squeeze())
+
+# Model parameters
+spec = {
+    "architecture": "LSTM",
+    "max_vocab": 25625,
+    "max_len": 64,
+    "embedding_dim": 128,
+    "hidden_dim": 128,
+    "num_layers": 1,
+    "dropout": 0.3,
+    "batch_size": 64,
+    "epochs": 4,
+    "learning_rate": 0.001,
+    "val_size": 0.2,
+    "threshold_min": 0.3,
+    "threshold_max": 0.7,
+    "threshold_steps": 41,
+    "dry_run_head": 200,
+    "experiment_name": "lstm_20260420_170626_run_03",
+    "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/lstm_20260420_170626/run_003/submission.csv"
+}
+
+# Initialize model, loss function, and optimizer
+model = LSTMClassifier(spec["max_vocab"], spec["embedding_dim"], spec["hidden_dim"], spec["num_layers"], spec["dropout"])
+criterion = nn.BCELoss()
+optimizer = optim.Adam(model.parameters(), lr=spec["learning_rate"])
+
+# Training loop
+if not DRY_RUN:
+    for epoch in range(spec["epochs"]):
+        model.train()
+        running_loss = 0.0
+        for texts, labels in train_loader:
+            optimizer.zero_grad()
+            outputs = model(texts)
+            loss = criterion(outputs, labels)
+            loss.backward()
+            optimizer.step()
+            running_loss += loss.item()
+
+        print(f'Epoch {epoch+1}, Loss: {running_loss/len(train_loader)}')
+
+# Validation probabilities
+model.eval()
+val_probs = []
+with torch.no_grad():
+    for texts in val_loader:
+        outputs = model(texts)
+        val_probs.extend(outputs.numpy())
+
+# Test probabilities
+test_probs = []
+with torch.no_grad():
+    for texts in test_loader:
+        outputs = model(texts)
+        test_probs.extend(outputs.numpy())
+
+# Choose best cutoff
+best_f1 = 0
+best_threshold = 0.5
+for threshold in np.linspace(spec["threshold_min"], spec["threshold_max"], spec["threshold_steps"]):
+    val_preds = (np.array(val_probs) > threshold).astype(int)
+    f1 = f1_score(y_val, val_preds)
+    if f1 > best_f1:
+        best_f1 = f1
+        best_threshold = threshold
+
+# Compute final metrics on validation set
+val_preds = (np.array(val_probs) > best_threshold).astype(int)
+acc = accuracy_score(y_val, val_preds)
+
+# Create submission directory and write CSV
+submission_dir = os.path.dirname(spec["submission_path"])
+os.makedirs(submission_dir, exist_ok=True)
+submission_df = pd.DataFrame({'id': test_df['id'], 'target': (np.array(test_probs) > best_threshold).astype(int)})
+submission_df.to_csv(spec["submission_path"], index=False)
+
+# Print final metrics
+print('METRICS: {"f1": ' + str(round(best_f1, 4)) + ', "accuracy": ' + str(round(acc, 4)) + '}')

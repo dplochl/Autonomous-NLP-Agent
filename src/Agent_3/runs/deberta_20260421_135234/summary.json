@@ -1,0 +1,42 @@
+{
+  "family_key": "deberta",
+  "family": "DeBERTa",
+  "session_name": "deberta_20260421_135234",
+  "phase": "sweep",
+  "max_runs": 1,
+  "best_run_index": 1,
+  "best_metrics": {
+    "f1": 0.0,
+    "accuracy": 0.5747
+  },
+  "best_run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/deberta_20260421_135234/run_001",
+  "trials": [
+    {
+      "run_index": 1,
+      "spec": {
+        "architecture": "DeBERTa",
+        "model_name": "microsoft/deberta-v3-small",
+        "max_len": 128,
+        "train_batch_size": 16,
+        "eval_batch_size": 16,
+        "learning_rate": 2e-05,
+        "weight_decay": 0.01,
+        "num_epochs": 3,
+        "val_size": 0.2,
+        "threshold_min": 0.01,
+        "threshold_max": 0.99,
+        "threshold_steps": 99,
+        "dry_run_head": 16,
+        "experiment_name": "deberta_20260421_135234_run_01",
+        "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/deberta_20260421_135234/run_001/submission.csv"
+      },
+      "success": true,
+      "metrics": {
+        "f1": 0.0,
+        "accuracy": 0.5747
+      },
+      "analysis": "The experiment with DeBERTa architecture achieved a moderate accuracy of 0.5747 but failed to produce any F1 score, indicating potential issues with model performance or evaluation metrics. The unexpected parameters in the STDERR suggest that there might be compatibility issues between the pre-trained model and the downstream task. Additionally, the warning about 'pin_memory' not being supported on MPS highlights a potential inefficiency in data loading. For the next run, consider addressing these compatibility issues by ensuring the model is correctly aligned with the task requirements, and explore different configurations or architectures to improve performance metrics.",
+      "run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/deberta_20260421_135234/run_001"
+    }
+  ]
+}

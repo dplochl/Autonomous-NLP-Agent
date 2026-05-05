@@ -1,0 +1,74 @@
+Write one complete runnable Python script for Kaggle Disaster Tweets.
+
+Family:
+- LSTM
+- Use a PyTorch bidirectional LSTM text classifier with an embedding layer and a compact classifier head.
+
+Use this validated spec exactly:
+{
+  "architecture": "LSTM",
+  "max_vocab": 20000,
+  "max_len": 64,
+  "embedding_dim": 128,
+  "hidden_dim": 128,
+  "num_layers": 1,
+  "dropout": 0.3,
+  "batch_size": 64,
+  "epochs": 4,
+  "learning_rate": 0.001,
+  "val_size": 0.2,
+  "threshold_min": 0.3,
+  "threshold_max": 0.7,
+  "threshold_steps": 41,
+  "dry_run_head": 200,
+  "experiment_name": "lstm_20260420_164306_run_01",
+  "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/lstm_20260420_164306/run_001/submission.csv"
+}
+
+Required pipeline:
+- use Python + PyTorch only
+- load only real train.csv and test.csv from DATA_DIR = os.environ.get("DISASTER_AGENT_DATA_DIR", "data")
+- DRY_RUN = os.environ.get("AGENT_DRY_RUN") == "1"
+- fillna keyword, location, text with ""
+- build one text field from keyword + " [SEP] " + text, else text
+- if DRY_RUN, use head(dry_run_head)
+- define stratify_labels = y if class counts allow, else None
+- use one train_test_split with test_size=val_size, random_state=42, stratify=stratify_labels
+- build a simple tokenizer/vocabulary in code
+- convert texts to padded integer sequences using max_vocab and max_len from spec
+- define a torch Dataset and DataLoader
+- define a bidirectional LSTM classifier with torch.nn.Embedding and torch.nn.LSTM(bidirectional=True)
+- importing `torch.nn as nn` is allowed
+- the sequence builder must truncate to max_len before padding
+- labels used inside Dataset must be indexed positionally, not by pandas label
+- create the submissions directory before writing the CSV
+- train for epochs from spec, but if DRY_RUN skip or minimize training
+- compute validation probabilities with sigmoid
+- compute test probabilities with sigmoid
+- choose best cutoff by looping over np.linspace(threshold_min, threshold_max, threshold_steps)
+- save columns id,target to submission_path
+- last line exactly:
+  print('METRICS: {"f1": ' + str(round(f1, 4)) + ', "accuracy": ' + str(round(acc, 4)) + '}')
+
+Do not use:
+- Hugging Face Trainer
+- tensorflow
+- keras
+- K-fold CV
+- mock/demo/sample data
+
+Dataset context:
+DATASET CONTEXT:
+- train.csv: 7613 rows, columns: id, keyword, location, text, target
+- test.csv: 3263 rows, columns: id, keyword, location, text
+- Class balance: 4342 not-disaster (57.0%), 3271 disaster (43.0%)
+- Missing keyword: 0.8%
+- Missing location: 33.3%
+
+Family history:
+No prior runs.
+
+Session trial summary:
+No previous runs in this session.
+
+Return code only.

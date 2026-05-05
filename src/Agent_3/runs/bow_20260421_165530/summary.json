@@ -1,0 +1,42 @@
+{
+  "family_key": "bow",
+  "family": "BoW",
+  "session_name": "bow_20260421_165530",
+  "phase": "sweep",
+  "max_runs": 1,
+  "sample_rows": 4000,
+  "validation_fraction": 0.2,
+  "best_run_index": 1,
+  "best_metrics": {
+    "f1": 0.7504,
+    "accuracy": 0.7837
+  },
+  "best_run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/bow_20260421_165530/run_001",
+  "trials": [
+    {
+      "run_index": 1,
+      "spec": {
+        "architecture": "BoW",
+        "vectorizer_type": "tfidf_word",
+        "max_features": 10000,
+        "ngram_max": 1,
+        "min_df": 5,
+        "logreg_c": 1.0,
+        "val_size": 0.2,
+        "threshold_min": 0.4,
+        "threshold_max": 0.6,
+        "threshold_steps": 21,
+        "dry_run_head": 100,
+        "experiment_name": "bow_20260421_165530_run_01",
+        "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/bow_20260421_165530/run_001/submission.csv"
+      },
+      "success": true,
+      "metrics": {
+        "f1": 0.7504,
+        "accuracy": 0.7837
+      },
+      "analysis": "The experiment `bow_20260421_165530_run_01` successfully executed with a Bag of Words (BoW) architecture using TF-IDF vectorization. The model achieved an F1 score of 0.7504 and accuracy of 0.7837, indicating reasonable performance on the validation set. However, the experiment did not explore different n-gram ranges or vectorizer types, which could potentially improve results. For the next run, consider expanding the `ngram_max` parameter to include bigrams or trigrams to capture more complex linguistic features. Additionally, experimenting with other vectorizers like Count Vectorizer might yield better performance depending on the dataset's characteristics.",
+      "run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/bow_20260421_165530/run_001"
+    }
+  ]
+}

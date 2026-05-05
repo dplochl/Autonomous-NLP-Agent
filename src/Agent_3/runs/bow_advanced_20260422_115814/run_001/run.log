@@ -1,0 +1,24 @@
+success: False
+timed_out: False
+dry_run_failed: True
+
+[STDOUT]
+
+
+[STDERR]
+Traceback (most recent call last):
+  File "/var/folders/rp/_q6137ys147f688vnf1knc4w0000gn/T/agent3_jokvpokg.py", line 53, in <module>
+    stratify_labels = y.values if len(set(y)) > 1 else None
+                      ^^^^^^^^
+AttributeError: 'numpy.ndarray' object has no attribute 'values'
+
+
+[ANALYSIS]
+The experiment "bow_advanced_20260422_115814_run_01" aimed to utilize an advanced Bag of Words (BoW) model with specific configurations for character and word n-grams. The configuration included a maximum of 15,000 character features, a range of 4 to 6 for character n-grams, and up to 20,000 word features with a maximum of 3 for word n-grams. However, the experiment encountered a critical failure due to an AttributeError in the code where it attempted to access the 'values' attribute on a numpy.ndarray object instead of a pandas Series or DataFrame.
+
+For the next run, the following changes should be made:
+1. Ensure that the variable `y` is converted to a pandas Series before accessing its 'values' attribute.
+2. Review and validate the data preprocessing steps to ensure that all outputs are in the expected format (e.g., pandas Series for labels).
+3. Consider adding error handling or type checks to prevent similar issues in future runs.
+
+These adjustments will help stabilize the experiment and allow it to complete successfully, potentially leading to meaningful metrics and insights.

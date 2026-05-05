@@ -1,0 +1,34 @@
+{
+  "family_key": "bow",
+  "family": "BoW",
+  "session_name": "bow_20260421_152032",
+  "phase": "sweep",
+  "max_runs": 4,
+  "best_run_index": null,
+  "best_metrics": {},
+  "best_run_dir": null,
+  "trials": [
+    {
+      "run_index": 1,
+      "spec": {
+        "architecture": "BoW",
+        "vectorizer_type": "tfidf_word",
+        "max_features": 10000,
+        "ngram_max": 1,
+        "min_df": 5,
+        "logreg_c": 1.0,
+        "val_size": 0.2,
+        "threshold_min": 0.4,
+        "threshold_max": 0.6,
+        "threshold_steps": 11,
+        "dry_run_head": 100,
+        "experiment_name": "bow_20260421_152032_run_01",
+        "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/bow_20260421_152032/run_001/submission.csv"
+      },
+      "success": false,
+      "metrics": {},
+      "analysis": "In this experiment, a Bag of Words (BoW) model was attempted to be trained using TF-IDF vectorization. The configuration specified parameters such as `max_features`, `min_df`, and `ngram_max` for feature extraction, along with logistic regression hyperparameters like `logreg_c`. However, the experiment crashed due to a `NameError` indicating that the variable `stratify_labels` was not defined in the code. This suggests an issue with the data preprocessing step where labels were supposed to be stratified but were not properly initialized or passed to the `train_test_split` function.\n\nFor the next run, it is crucial to ensure that the `stratify_labels` variable is correctly defined and contains the appropriate label data for stratification. Additionally, reviewing the data loading and preprocessing pipeline will help identify any other potential issues that might lead to similar errors in future experiments. Implementing robust error handling and logging can also aid in diagnosing such issues more quickly.",
+      "run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/bow_20260421_152032/run_001"
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+```json
+{
+  "diagnosis": "Missing stratify_labels fallback and test predict call.",
+  "edits": [
+    {
+      "action": "insert_before",
+      "target": "X_train, X_val, y_train, y_val = train_test_split(train_df['text'], train_df['target'], test_size=0.2, random_state=42, stratify=stratify_labels)",
+      "content": "stratify_labels = train_df['target']"
+    },
+    {
+      "action": "insert_after",
+      "target": "test_preds = (test_probs[:, 1] >= best_threshold).astype(int)",
+      "content": "test_logits = trainer.predict(test_dataset).predictions\n\ntest_probs = np.exp(test_logits) / np.sum(np.exp(test_logits), axis=1, keepdims=True)\n\ntest_preds = (test_probs[:, 1] >= best_threshold).astype(int)"
+    }
+  ]
+}
+```

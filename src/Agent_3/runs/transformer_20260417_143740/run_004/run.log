@@ -1,0 +1,35 @@
+success: True
+timed_out: False
+dry_run_failed: False
+
+[STDOUT]
+{'train_runtime': '153.4', 'train_samples_per_second': '119.1', 'train_steps_per_second': '7.451', 'train_loss': '0.3538', 'epoch': '3'}
+METRICS: {"f1": 0.8191, "accuracy": 0.8536}
+
+
+[STDERR]
+
+Loading weights:   0%|          | 0/100 [00:00<?, ?it/s]
+Loading weights: 100%|██████████| 100/100 [00:00<00:00, 20027.24it/s]
+[1mDistilBertForSequenceClassification LOAD REPORT[0m from: distilbert-base-uncased
+Key                     | Status     | 
+------------------------+------------+-
+vocab_transform.weight  | UNEXPECTED | 
+vocab_layer_norm.weight | UNEXPECTED | 
+vocab_layer_norm.bias   | UNEXPECTED | 
+vocab_projector.bias    | UNEXPECTED | 
+vocab_transform.bias    | UNEXPECTED | 
+classifier.weight       | MISSING    | 
+classifier.bias         | MISSING    | 
+pre_classifier.bias     | MISSING    | 
+pre_classifier.weight   | MISSING    | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+- MISSING:	those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.
+/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/.venv/lib/python3.13/site-packages/torch/utils/data/dataloader.py:775: UserWarning: 'pin_memory' argument is set as true but not supported on MPS now, device pinned memory won't be used.
+  super().__init__(loader)
+
+
+[ANALYSIS]
+The experiment using a Transformer architecture with the DistilBERT model achieved a successful run, as indicated by its status. The F1 score of 0.8191 and accuracy of 0.8536 suggest that the model performed reasonably well on the task at hand. However, there were unexpected issues during weight loading, where several parameters like `vocab_transform.weight`, `vocab_layer_norm.weight`, etc., were marked as UNEXPECTED, which could indicate potential mismatches between the expected and actual model architecture or weights. Additionally, some parameters such as `classifier.weight` and `bias` were missing, suggesting that they were newly initialized, which might affect performance if these layers are critical for the task. For the next run, it would be beneficial to ensure that all necessary parameters are correctly loaded and consider fine-tuning the model further on the specific downstream task to better initialize or adapt these missing parameters.

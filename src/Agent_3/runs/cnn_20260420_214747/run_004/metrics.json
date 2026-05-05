@@ -1,0 +1,9 @@
+{
+  "success": true,
+  "timed_out": false,
+  "dry_run_failed": false,
+  "metrics": {
+    "f1": 0.7246,
+    "accuracy": 0.738
+  }
+}

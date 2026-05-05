@@ -1,0 +1,157 @@
+{
+  "family": "LSTM",
+  "session_name": "lstm_20260420_164923",
+  "max_runs": 5,
+  "best_run_index": 1,
+  "best_metrics": {
+    "f1": 0.6008,
+    "accuracy": 1.0
+  },
+  "trials": [
+    {
+      "run_index": 1,
+      "spec": {
+        "architecture": "LSTM",
+        "max_vocab": 20000,
+        "max_len": 64,
+        "embedding_dim": 128,
+        "hidden_dim": 128,
+        "num_layers": 1,
+        "dropout": 0.3,
+        "batch_size": 64,
+        "epochs": 4,
+        "learning_rate": 0.001,
+        "val_size": 0.2,
+        "threshold_min": 0.3,
+        "threshold_max": 0.7,
+        "threshold_steps": 41,
+        "dry_run_head": 200,
+        "experiment_name": "lstm_20260420_164923_run_01",
+        "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/lstm_20260420_164923/run_001/submission.csv"
+      },
+      "success": true,
+      "metrics": {
+        "f1": 0.6008,
+        "accuracy": 1.0
+      },
+      "analysis": "The experiment with the LSTM model achieved a high accuracy of 1.0 but had an F1 score of only 0.6008, indicating that while it correctly classified many instances, it struggled with precision or recall. The warning about dropout suggests that the dropout rate was set to 0.3 with only one layer, which might not be effective for regularization. For the next run, consider increasing the number of layers to utilize dropout effectively and explore different architectures like GRU or BiLSTM to see if they improve performance. Additionally, tuning hyperparameters such as learning rate, batch size, and embedding dimensions could further enhance model accuracy and F1 score.",
+      "run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/lstm_20260420_164923/run_001"
+    },
+    {
+      "run_index": 2,
+      "spec": {
+        "architecture": "LSTM",
+        "max_vocab": 20000,
+        "max_len": 128,
+        "embedding_dim": 128,
+        "hidden_dim": 256,
+        "num_layers": 1,
+        "dropout": 0.3,
+        "batch_size": 64,
+        "epochs": 6,
+        "learning_rate": 0.0005,
+        "val_size": 0.2,
+        "threshold_min": 0.3,
+        "threshold_max": 0.7,
+        "threshold_steps": 41,
+        "dry_run_head": 200,
+        "experiment_name": "lstm_20260420_164923_run_02",
+        "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/lstm_20260420_164923/run_002/submission.csv"
+      },
+      "success": true,
+      "metrics": {
+        "f1": 0.6008,
+        "accuracy": 0.4294
+      },
+      "analysis": "The experiment with LSTM architecture achieved a moderate F1 score of 0.6008 and an accuracy of 0.4294, indicating that the model has some predictive power but could be improved. The warning in STDERR suggests that the dropout setting is not effective as intended because it's applied after all layers when only one layer is used. For the next run, increasing the number of LSTM layers (`num_layers`) to at least 2 would allow the dropout to function correctly and potentially improve model performance. Additionally, experimenting with different learning rates or adjusting the batch size could further enhance the model's accuracy and F1 score.",
+      "run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/lstm_20260420_164923/run_002"
+    },
+    {
+      "run_index": 3,
+      "spec": {
+        "architecture": "LSTM",
+        "max_vocab": 20000,
+        "max_len": 128,
+        "embedding_dim": 128,
+        "hidden_dim": 128,
+        "num_layers": 1,
+        "dropout": 0.3,
+        "batch_size": 64,
+        "epochs": 4,
+        "learning_rate": 0.001,
+        "val_size": 0.2,
+        "threshold_min": 0.3,
+        "threshold_max": 0.7,
+        "threshold_steps": 41,
+        "dry_run_head": 200,
+        "experiment_name": "lstm_20260420_164923_run_03",
+        "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/lstm_20260420_164923/run_003/submission.csv"
+      },
+      "success": true,
+      "metrics": {
+        "f1": 0.6008,
+        "accuracy": 1.0
+      },
+      "analysis": "The experiment with the LSTM model achieved a high accuracy of 1.0 but had a lower F1 score of 0.6008, indicating that while the model correctly classified many instances, it struggled with precision or recall. The warning about dropout suggests that the dropout rate was set to 0.3 with only one layer, which might not be effective for regularization in this configuration. For the next run, consider increasing the number of layers to allow dropout to function properly and explore different dropout rates to find an optimal balance between overfitting and underfitting. Additionally, experimenting with other hyperparameters such as learning rate or embedding dimensions could further improve model performance.",
+      "run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/lstm_20260420_164923/run_003"
+    },
+    {
+      "run_index": 4,
+      "spec": {
+        "architecture": "LSTM",
+        "max_vocab": 20000,
+        "max_len": 64,
+        "embedding_dim": 128,
+        "hidden_dim": 256,
+        "num_layers": 1,
+        "dropout": 0.3,
+        "batch_size": 64,
+        "epochs": 4,
+        "learning_rate": 0.001,
+        "val_size": 0.2,
+        "threshold_min": 0.3,
+        "threshold_max": 0.7,
+        "threshold_steps": 41,
+        "dry_run_head": 200,
+        "experiment_name": "lstm_20260420_164923_run_04",
+        "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/lstm_20260420_164923/run_004/submission.csv"
+      },
+      "success": true,
+      "metrics": {
+        "f1": 0.6008,
+        "accuracy": 1.0
+      },
+      "analysis": "The experiment with LSTM architecture achieved a high accuracy of 1.0 but had a lower F1 score of 0.6008, indicating that while it correctly classified most instances, there was an issue with precision or recall. The warning about dropout suggests that the configuration might not be optimal for the model's structure, as dropout is applied after all recurrent layers when `num_layers` is set to 1. For the next run, consider increasing the number of LSTM layers (`num_layers`) to allow dropout to function properly and potentially improve the F1 score by balancing precision and recall. Additionally, experimenting with different learning rates or adjusting the batch size could further refine model performance.",
+      "run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/lstm_20260420_164923/run_004"
+    },
+    {
+      "run_index": 5,
+      "spec": {
+        "architecture": "LSTM",
+        "max_vocab": 14375,
+        "max_len": 64,
+        "embedding_dim": 128,
+        "hidden_dim": 128,
+        "num_layers": 1,
+        "dropout": 0.3,
+        "batch_size": 64,
+        "epochs": 4,
+        "learning_rate": 0.001,
+        "val_size": 0.2,
+        "threshold_min": 0.3,
+        "threshold_max": 0.7,
+        "threshold_steps": 41,
+        "dry_run_head": 200,
+        "experiment_name": "lstm_20260420_164923_run_05",
+        "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/lstm_20260420_164923/run_005/submission.csv"
+      },
+      "success": true,
+      "metrics": {
+        "f1": 0.6008,
+        "accuracy": 1.0
+      },
+      "analysis": "The experiment with LSTM architecture achieved a high accuracy of 1.0 but had an F1 score of only 0.6008, indicating that while it correctly classified many instances, it struggled with precision or recall. The warning about dropout suggests that the current configuration does not utilize dropout effectively due to having only one layer. For the next run, consider increasing the number of layers to allow for more effective dropout regularization and potentially improve the F1 score without compromising accuracy. Additionally, experimenting with different learning rates or adjusting the batch size could further refine model performance.",
+      "run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/lstm_20260420_164923/run_005"
+    }
+  ]
+}

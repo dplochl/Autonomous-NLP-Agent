@@ -1,0 +1,12 @@
+```json
+{
+  "diagnosis": "The error is due to inconsistent tensor sizes in the dataset. The issue arises from the double split of the training data.",
+  "edits": [
+    {
+      "action": "replace",
+      "target": "train_texts, val_texts, train_labels, val_labels = train_test_split(train_df['text'], y, test_size=0.2, random_state=42, stratify=stratify_labels)",
+      "content": ""
+    }
+  ]
+}
+```

@@ -1,0 +1,35 @@
+success: True
+timed_out: False
+dry_run_failed: False
+
+[STDOUT]
+{'train_runtime': '151.8', 'train_samples_per_second': '120.3', 'train_steps_per_second': '3.774', 'train_loss': '0.3675', 'epoch': '3'}
+METRICS: {"f1": 0.8179, "accuracy": 0.8477}
+
+
+[STDERR]
+
+Loading weights:   0%|          | 0/100 [00:00<?, ?it/s]
+Loading weights: 100%|██████████| 100/100 [00:00<00:00, 8828.44it/s]
+[1mDistilBertForSequenceClassification LOAD REPORT[0m from: distilbert-base-uncased
+Key                     | Status     | 
+------------------------+------------+-
+vocab_projector.bias    | UNEXPECTED | 
+vocab_transform.weight  | UNEXPECTED | 
+vocab_layer_norm.bias   | UNEXPECTED | 
+vocab_layer_norm.weight | UNEXPECTED | 
+vocab_transform.bias    | UNEXPECTED | 
+classifier.bias         | MISSING    | 
+pre_classifier.weight   | MISSING    | 
+classifier.weight       | MISSING    | 
+pre_classifier.bias     | MISSING    | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+- MISSING:	those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.
+/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/.venv/lib/python3.13/site-packages/torch/utils/data/dataloader.py:775: UserWarning: 'pin_memory' argument is set as true but not supported on MPS now, device pinned memory won't be used.
+  super().__init__(loader)
+
+
+[ANALYSIS]
+The experiment with the Transformer architecture using the `distilbert-base-uncased` model was successful, achieving an F1 score of 0.8179 and accuracy of 0.8477 after three epochs. The training process ran efficiently, processing samples at a rate of approximately 120 per second. However, there were unexpected issues with loading certain weights and missing parameters (`classifier.bias`, `pre_classifier.weight`, etc.), which could affect the model's performance if not addressed. Additionally, a warning about unsupported 'pin_memory' on MPS suggests that memory pinning is not being utilized as intended, potentially impacting data transfer efficiency. For the next run, it would be beneficial to ensure all parameters are correctly loaded and consider adjusting the `pin_memory` setting or using a different device configuration to optimize performance further.

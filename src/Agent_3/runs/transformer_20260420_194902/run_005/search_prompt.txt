@@ -1,0 +1,96 @@
+Propose the next Transformer experiment spec.
+
+Search locally around the best transformer settings. Prefer nearby changes in sequence length, batch size, learning rate, weight decay, or epochs instead of drastic jumps. Keep threshold tuning broad enough to search for the true best F1 cutoff. Preserve deterministic seeded training and do not wander away from the best successful run.
+
+Rules:
+- keep the architecture family fixed
+- keep the same overall prompt contract and pipeline shape
+- vary only these tunable keys: max_len, train_batch_size, eval_batch_size, learning_rate, weight_decay, num_epochs
+- optimize against the best successful session trial, not the last run
+- keep the best successful spec as the default anchor and mutate it only slightly
+- change at most 2 tunable keys and prefer changing only 1 key
+- do not repeat an exact spec already tried in this session
+- if a run timed out, reduce cost
+- if a run crashed, simplify the risky parameter region
+- if repeated runs get the same F1, switch to different tunable keys instead of repeating weak ones
+- return one JSON object only
+
+Dataset context:
+DATASET CONTEXT:
+- train.csv: 7613 rows, columns: id, keyword, location, text, target
+- test.csv: 3263 rows, columns: id, keyword, location, text
+- Class balance: 4342 not-disaster (57.0%), 3271 disaster (43.0%)
+- Missing keyword: 0.8%
+- Missing location: 33.3%
+
+
+Family history:
+- [21] transformer_20260417_115051_run_01 run 1 | F1=N/A | FAILED | The experiment "transformer_20260417_115051_run_01" using a Transformer architecture with DistilBERT
+- [22] transformer_20260417_115051_run_02 run 2 | F1=0.8186 | OK | The experiment with the Transformer architecture using the `distilbert-base-uncased` model achieved 
+- [23] transformer_20260417_115051_run_03 run 3 | F1=0.8209 | OK | The experiment with the Transformer architecture using the `distilbert-base-uncased` model achieved 
+- [24] transformer_20260417_115051_run_04 run 4 | F1=0.8189 | OK | The experiment with the Transformer architecture using the `distilbert-base-uncased` model achieved 
+- [25] transformer_20260417_115051_run_05 run 5 | F1=0.8165 | OK | The experiment with the Transformer architecture using the `distilbert-base-uncased` model achieved 
+- [46] transformer_20260417_143740_run_01 run 1 | F1=0.8161 | OK | The experiment with the Transformer architecture using the `distilbert-base-uncased` model achieved 
+- [47] transformer_20260417_143740_run_02 run 2 | F1=0.8198 | OK | The experiment with the Transformer architecture using the `distilbert-base-uncased` model achieved 
+- [48] transformer_20260417_143740_run_03 run 3 | F1=0.8139 | OK | The experiment with the Transformer architecture using the `distilbert-base-uncased` model achieved 
+- [49] transformer_20260417_143740_run_04 run 4 | F1=0.8191 | OK | The experiment using a Transformer architecture with the DistilBERT model achieved a successful run,
+- [50] transformer_20260417_143740_run_05 run 5 | F1=0.8131 | OK | The experiment with the Transformer architecture using the `distilbert-base-uncased` model achieved 
+
+Session trials so far:
+- run 1: status=OK, f1=0.8151, spec={"architecture": "Transformer", "dry_run_head": 16, "eval_batch_size": 16, "experiment_name": "transformer_20260420_194902_run_01", "learning_rate": 2e-05, "max_len": 128, "model_name": "distilbert-base-uncased", "num_epochs": 3, "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/transformer_20260420_194902/run_001/submission.csv", "threshold_max": 0.9, "threshold_min": 0.1, "threshold_steps": 81, "train_batch_size": 16, "val_size": 0.2, "weight_decay": 0.01}
+- run 2: status=OK, f1=0.8131, spec={"architecture": "Transformer", "dry_run_head": 16, "eval_batch_size": 16, "experiment_name": "transformer_20260420_194902_run_02", "learning_rate": 2e-05, "max_len": 130, "model_name": "distilbert-base-uncased", "num_epochs": 3, "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/transformer_20260420_194902/run_002/submission.csv", "threshold_max": 0.9, "threshold_min": 0.1, "threshold_steps": 81, "train_batch_size": 16, "val_size": 0.2, "weight_decay": 0.01}
+- run 3: status=OK, f1=0.8155, spec={"architecture": "Transformer", "dry_run_head": 16, "eval_batch_size": 16, "experiment_name": "transformer_20260420_194902_run_03", "learning_rate": 2e-05, "max_len": 128, "model_name": "distilbert-base-uncased", "num_epochs": 3, "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/transformer_20260420_194902/run_003/submission.csv", "threshold_max": 0.9, "threshold_min": 0.1, "threshold_steps": 81, "train_batch_size": 32, "val_size": 0.2, "weight_decay": 0.01}
+- run 4: status=OK, f1=0.8166, spec={"architecture": "Transformer", "dry_run_head": 16, "eval_batch_size": 16, "experiment_name": "transformer_20260420_194902_run_04", "learning_rate": 2e-05, "max_len": 130, "model_name": "distilbert-base-uncased", "num_epochs": 4, "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/transformer_20260420_194902/run_004/submission.csv", "threshold_max": 0.9, "threshold_min": 0.1, "threshold_steps": 81, "train_batch_size": 32, "val_size": 0.2, "weight_decay": 0.01}
+
+Best session trial so far:
+{
+  "run_index": 4,
+  "spec": {
+    "architecture": "Transformer",
+    "model_name": "distilbert-base-uncased",
+    "max_len": 130,
+    "train_batch_size": 32,
+    "eval_batch_size": 16,
+    "learning_rate": 2e-05,
+    "weight_decay": 0.01,
+    "num_epochs": 4,
+    "val_size": 0.2,
+    "threshold_min": 0.1,
+    "threshold_max": 0.9,
+    "threshold_steps": 81,
+    "dry_run_head": 16,
+    "experiment_name": "transformer_20260420_194902_run_04",
+    "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/transformer_20260420_194902/run_004/submission.csv"
+  },
+  "success": true,
+  "metrics": {
+    "f1": 0.8166,
+    "accuracy": 0.8516
+  },
+  "analysis": "The experiment \"transformer_20260420_194902_run_04\" using a Transformer architecture with DistilBERT as the base model achieved a success status. The model performed well with an F1 score of 0.8166 and accuracy of 0.8516, indicating effective learning over 4 epochs. However, there were unexpected issues during weight loading, specifically with parameters related to vocabulary transformation and classification layers, which might affect performance if the architecture expectations are not met. Additionally, a warning about 'pin_memory' not being supported on MPS suggests potential inefficiencies in memory handling. For the next run, addressing these missing or unexpectedly loaded parameters should be prioritized to ensure model consistency and potentially improve performance.",
+  "run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/transformer_20260420_194902/run_004"
+}
+
+Stagnant keys from equal-F1 or same-prediction runs: none
+Preferred keys for the next move: max_len, train_batch_size, eval_batch_size, learning_rate, weight_decay, num_epochs
+Latest equal-F1 changed keys to avoid repeating: none
+Repeated best F1 detected: no
+
+Default if unsure:
+{
+  "architecture": "Transformer",
+  "model_name": "distilbert-base-uncased",
+  "max_len": 130,
+  "train_batch_size": 32,
+  "eval_batch_size": 16,
+  "learning_rate": 2e-05,
+  "weight_decay": 0.01,
+  "num_epochs": 4,
+  "val_size": 0.2,
+  "threshold_min": 0.1,
+  "threshold_max": 0.9,
+  "threshold_steps": 81,
+  "dry_run_head": 16,
+  "experiment_name": "transformer_20260420_194902_run_05",
+  "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/transformer_20260420_194902/run_005/submission.csv"
+}

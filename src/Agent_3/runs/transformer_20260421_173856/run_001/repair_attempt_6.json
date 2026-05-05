@@ -1,0 +1,17 @@
+```json
+{
+  "diagnosis": "SyntaxError due to unexpected indent in the test prediction and submission writing section.",
+  "edits": [
+    {
+      "action": "replace",
+      "target": "test_predictions = trainer.predict(test_dataset).predictions\n    test_probs = np.exp(test_predictions) / np.sum(np.exp(test_predictions), axis=-1, keepdims=True)\n        test_predictions = trainer.predict(test_dataset).predictions\n    test_probs = np.exp(test_predictions) / np.sum(np.exp(test_predictions), axis=-1, keepdims=True)",
+      "content": "test_predictions = trainer.predict(test_dataset).predictions\n    test_probs = np.exp(test_predictions) / np.sum(np.exp(test_predictions), axis=-1, keepdims=True)"
+    },
+    {
+      "action": "replace",
+      "target": "os.makedirs(os.path.dirname(submission_path), exist_ok=True)\nos.makedirs(os.path.dirname(submission_path), exist_ok=True)\nos.makedirs(os.path.dirname(submission_path), exist_ok=True)",
+      "content": "os.makedirs(os.path.dirname(submission_path), exist_ok=True)"
+    }
+  ]
+}
+```

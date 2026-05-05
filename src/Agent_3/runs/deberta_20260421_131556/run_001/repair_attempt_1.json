@@ -1,0 +1,12 @@
+```json
+{
+  "diagnosis": "The error is due to the `tolist()` method being called on a list object, which causes an AttributeError.",
+  "edits": [
+    {
+      "action": "replace",
+      "target": "train_dataset = TweetDataset(train_texts.tolist(), train_labels.tolist())",
+      "content": "train_dataset = TweetDataset(train_texts, train_labels)"
+    }
+  ]
+}
+```

@@ -1,0 +1,12 @@
+```json
+{
+  "diagnosis": "Syntax error due to missing comma in import statement",
+  "edits": [
+    {
+      "action": "replace",
+      "target": "import os\nimport pandas as pdimport numpy as np",
+      "content": "import os\nimport pandas as pd, numpy as np"
+    }
+  ]
+}
+```

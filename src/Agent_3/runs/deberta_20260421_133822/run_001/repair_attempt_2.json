@@ -1,0 +1,12 @@
+```json
+{
+  "diagnosis": "RuntimeError due to mismatched tensor sizes in embedding layer",
+  "edits": [
+    {
+      "action": "replace",
+      "target": "model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=2)",
+      "content": "model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=2, output_attentions=False)"
+    }
+  ]
+}
+```

@@ -1,0 +1,84 @@
+Propose the next LSTM experiment spec.
+
+Search locally around the best successful LSTM settings. Adjust hidden size, max length, dropout, learning rate, and epochs with nearby changes.
+
+Rules:
+- keep the architecture family fixed
+- keep the same overall prompt contract and pipeline shape
+- vary only these tunable keys: max_vocab, max_len, embedding_dim, hidden_dim, num_layers, dropout, batch_size, epochs, learning_rate
+- optimize against the best successful session trial, not the last run
+- keep the best successful spec as the default anchor and mutate it only slightly
+- change at most 2 tunable keys and prefer changing only 1 key
+- do not repeat an exact spec already tried in this session
+- if a run timed out, reduce cost
+- if a run crashed, simplify the risky parameter region
+- return one JSON object only
+
+Dataset context:
+DATASET CONTEXT:
+- train.csv: 7613 rows, columns: id, keyword, location, text, target
+- test.csv: 3263 rows, columns: id, keyword, location, text
+- Class balance: 4342 not-disaster (57.0%), 3271 disaster (43.0%)
+- Missing keyword: 0.8%
+- Missing location: 33.3%
+
+
+Family history:
+No prior runs.
+
+Session trials so far:
+- run 1: status=OK, f1=0.6008, spec={"architecture": "LSTM", "batch_size": 64, "dropout": 0.3, "dry_run_head": 200, "embedding_dim": 128, "epochs": 4, "experiment_name": "lstm_20260417_114541_run_01", "hidden_dim": 128, "learning_rate": 0.001, "max_len": 64, "max_vocab": 20000, "num_layers": 1, "submission_path": "submissions/lstm_20260417_114541_run_01_submission.csv", "threshold_max": 0.7, "threshold_min": 0.3, "threshold_steps": 41, "val_size": 0.2}
+- run 2: status=OK, f1=0.6008, spec={"architecture": "LSTM", "batch_size": 64, "dropout": 0.3, "dry_run_head": 200, "embedding_dim": 128, "epochs": 4, "experiment_name": "lstm_20260417_114541_run_02", "hidden_dim": 128, "learning_rate": 0.001, "max_len": 64, "max_vocab": 14375, "num_layers": 1, "submission_path": "submissions/lstm_20260417_114541_run_02_submission.csv", "threshold_max": 0.7, "threshold_min": 0.3, "threshold_steps": 41, "val_size": 0.2}
+- run 3: status=OK, f1=0.6008, spec={"architecture": "LSTM", "batch_size": 64, "dropout": 0.3, "dry_run_head": 200, "embedding_dim": 128, "epochs": 4, "experiment_name": "lstm_20260417_114541_run_03", "hidden_dim": 128, "learning_rate": 0.001, "max_len": 64, "max_vocab": 25625, "num_layers": 1, "submission_path": "submissions/lstm_20260417_114541_run_03_submission.csv", "threshold_max": 0.7, "threshold_min": 0.3, "threshold_steps": 41, "val_size": 0.2}
+
+Best session trial so far:
+{
+  "run_index": 1,
+  "spec": {
+    "architecture": "LSTM",
+    "max_vocab": 20000,
+    "max_len": 64,
+    "embedding_dim": 128,
+    "hidden_dim": 128,
+    "num_layers": 1,
+    "dropout": 0.3,
+    "batch_size": 64,
+    "epochs": 4,
+    "learning_rate": 0.001,
+    "val_size": 0.2,
+    "threshold_min": 0.3,
+    "threshold_max": 0.7,
+    "threshold_steps": 41,
+    "dry_run_head": 200,
+    "experiment_name": "lstm_20260417_114541_run_01",
+    "submission_path": "submissions/lstm_20260417_114541_run_01_submission.csv"
+  },
+  "success": true,
+  "metrics": {
+    "f1": 0.6008,
+    "accuracy": 0.0
+  },
+  "analysis": "The experiment with LSTM architecture achieved a moderate F1 score of 0.6008 but had an accuracy of 0.0, indicating significant issues with classification performance. The model's loss decreased slightly over epochs, suggesting some learning occurred, but the low accuracy suggests that the model is not effectively classifying the data. The warning about dropout indicates that the dropout rate was set to 0.3 with only one layer, which might not be effective for regularization. For the next run, consider increasing the number of layers to utilize dropout properly and explore different architectures or hyperparameters such as learning rate, batch size, and embedding dimensions to improve classification accuracy.",
+  "run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/src/Agent_3/runs/lstm_20260417_114541/run_001"
+}
+
+Default if unsure:
+{
+  "architecture": "LSTM",
+  "max_vocab": 20000,
+  "max_len": 64,
+  "embedding_dim": 128,
+  "hidden_dim": 128,
+  "num_layers": 1,
+  "dropout": 0.3,
+  "batch_size": 64,
+  "epochs": 4,
+  "learning_rate": 0.001,
+  "val_size": 0.2,
+  "threshold_min": 0.3,
+  "threshold_max": 0.7,
+  "threshold_steps": 41,
+  "dry_run_head": 200,
+  "experiment_name": "lstm_20260417_114541_run_04",
+  "submission_path": "submissions/lstm_20260417_114541_run_04_submission.csv"
+}

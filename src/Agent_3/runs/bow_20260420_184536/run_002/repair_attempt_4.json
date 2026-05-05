@@ -1,0 +1,12 @@
+```json
+{
+  "diagnosis": "The error is due to the use of a non-integer index for stratification. The stratify_labels should be converted to integers.",
+  "edits": [
+    {
+      "action": "replace",
+      "target": "stratify_labels = y_train.astype(int) if len(np.unique(y_train)) > 1 else None",
+      "content": "stratify_labels = y_train.astype(int)"
+    }
+  ]
+}
+```
