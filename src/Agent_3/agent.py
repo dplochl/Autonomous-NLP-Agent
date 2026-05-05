@@ -19,6 +19,7 @@ from sklearn.model_selection import train_test_split
 from artifacts import copy_if_exists, create_session_dir, create_run_dir, write_json, write_text
 from generate_spec import generate_initial_spec
 from json_utils import pretty_json
+from kaggle_submit import auto_submit_enabled, submit_and_wait
 from llm import OllamaClient
 from memory import Agent3Memory
 from prompts import ANALYSIS_PROMPT_TEMPLATE, DATA_CONTEXT_TEMPLATE, FULL_SYSTEM
@@ -31,6 +32,7 @@ import families.experiment_bow as exp_bow
 import families.experiment_bow_advanced as exp_bow_advanced
 import families.experiment_bertweet as exp_bertweet
 import families.experiment_cnn as exp_cnn
+import families.experiment_embedding_dl as exp_embedding_dl
 import families.experiment_lstm as exp_lstm
 import families.experiment_roberta as exp_roberta
 import families.experiment_transformer as exp_transformer
@@ -54,6 +56,7 @@ FAMILY_RUN_ESTIMATES = {
     "bow": 100,
     "bow_advanced": 200,
     "cnn": 200,
+    "embedding_dl": 240,
     "lstm": 200,
     "transformer": 500,
     "roberta": 500,
@@ -66,6 +69,7 @@ FAMILY_MODULES = {
     "roberta": exp_roberta,
     "bow_advanced": exp_bow_advanced,
     "cnn": exp_cnn,
+    "embedding_dl": exp_embedding_dl,
     "lstm": exp_lstm,
     "bow": exp_bow,
 }
@@ -174,6 +178,19 @@ def load_text_if_exists(path: str | None) -> str | None:
         return None
     with open(path, "r", encoding="utf-8") as f:
         return f.read()
+
+
+def build_kaggle_submission_message(best_overall: dict[str, Any]) -> str:
+    metrics = best_overall.get("best_metrics") or {}
+    f1 = metrics.get("f1", "NA")
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    return (
+        "Agent_3 auto-submit | "
+        f"family={best_overall.get('family', 'unknown')} | "
+        f"run={best_overall.get('best_run_index', 'NA')} | "
+        f"f1={f1} | "
+        f"ts={timestamp}"
+    )
 
 
 def force_submission_path(code: str, old_path: str | None, new_path: str) -> str:
@@ -813,6 +830,22 @@ def main(
 
     if final_submission_success and os.path.exists(public_best_submission):
         overall_summary["best_submission_path"] = public_best_submission
+        if auto_submit_enabled():
+            print("[Kaggle] Uploading final submission and polling for score...")
+            kaggle_result = submit_and_wait(
+                submission_path=public_best_submission,
+                default_message=build_kaggle_submission_message(best_overall),
+            )
+            overall_summary["kaggle_submission"] = kaggle_result
+            if kaggle_result.get("submitted"):
+                print(
+                    "[Kaggle] "
+                    f"status={kaggle_result.get('status', 'unknown')} | "
+                    f"public_score={kaggle_result.get('public_score', '') or 'pending'} | "
+                    f"private_score={kaggle_result.get('private_score', '') or 'pending'}"
+                )
+            else:
+                print(f"[Kaggle] Submission failed: {kaggle_result.get('error', 'unknown error')}")
     write_json(os.path.join(os.path.dirname(__file__), "runs", "overall_best.json"), overall_summary)
     print(
         "[Overall Best] "

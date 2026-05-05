@@ -231,6 +231,16 @@ def _ensure_probability_conversion(code: str) -> str:
             "test_probs = np.exp(test_logits - np.max(test_logits, axis=1, keepdims=True))\n"
             "test_predictions = test_probs / test_probs.sum(axis=1, keepdims=True)",
         )
+    fixed = re.sub(
+        r"test_logits\s*=\s*trainer\.predict\(test_dataset\)\.predictions",
+        "test_predictor = final_trainer if FINAL_SUBMISSION else trainer\n    test_logits = test_predictor.predict(test_dataset).predictions",
+        fixed,
+    )
+    fixed = re.sub(
+        r"test_probs\s*=\s*softmax\(test_logits,\s*axis=1\)\s*\[:,\s*1\s*\]",
+        "test_probs = np.exp(test_logits - np.max(test_logits, axis=1, keepdims=True))\n    test_probs = test_probs / test_probs.sum(axis=1, keepdims=True)\n    test_probs = test_probs[:, 1]",
+        fixed,
+    )
     return fixed
 
 

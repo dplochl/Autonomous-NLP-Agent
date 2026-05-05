@@ -12,6 +12,7 @@ Families:
 - `bow`
 - `bow_advanced`
 - `cnn`
+- `embedding_dl`
 - `lstm`
 - `transformer`
 - `roberta`
@@ -52,3 +53,10 @@ Notes:
 - Ollama must be running on `localhost:11434`
 - the requested model must already be pulled locally
 - data is read from `data/train.csv` and `data/test.csv` unless `DISASTER_AGENT_DATA_DIR` is set
+
+Optional Kaggle auto-submit:
+- set `AGENT3_AUTO_SUBMIT_KAGGLE=1` to upload the final `best_overall_submission.csv` automatically
+- default competition is `nlp-getting-started`; override with `AGENT3_KAGGLE_COMPETITION`
+- optional polling controls: `AGENT3_KAGGLE_POLL_SECONDS`, `AGENT3_KAGGLE_TIMEOUT_SECONDS`
+- the runner uses the Kaggle CLI from `.venv/bin/kaggle` when available
+- Kaggle credentials must already be configured via `KAGGLE_USERNAME` and `KAGGLE_KEY` or `~/.kaggle/kaggle.json`
