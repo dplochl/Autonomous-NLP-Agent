@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 
-from families.autofix_utils import fix_text_column_fillna
+from families.autofix_utils import fix_text_column_fillna, force_cpu_execution
 
 
 FAMILY = "CNN"
@@ -164,7 +164,7 @@ def preflight_issues(code: str, spec: dict[str, object]) -> list[str]:
 
 
 def apply_light_autofixes(code: str, spec: dict[str, object]) -> str:
-    fixed = fix_text_column_fillna(code)
+    fixed = force_cpu_execution(fix_text_column_fillna(code))
     if "F." in fixed and "import torch.nn.functional as F" not in fixed:
         fixed = fixed.replace("import torch.nn as nn\n", "import torch.nn as nn\nimport torch.nn.functional as F\n", 1)
     fixed = fixed.replace(

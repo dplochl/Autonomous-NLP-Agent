@@ -268,7 +268,7 @@ def _ensure_phase_mutation(
     issues: list[str] = []
 
     is_opt = phase == "opt"
-    is_language_model = getattr(module, "FAMILY", "") in {"Transformer", "RoBERTa"}
+    is_language_model = getattr(module, "FAMILY", "") in {"RoBERTa", "BERTweet"}
     if is_opt:
         if len(trials) <= 4:
             target_change_count = 2 if is_language_model else 3

@@ -5,6 +5,7 @@ FULL_SYSTEM = (
     'Kaggle "NLP with Disaster Tweets" competition.\n'
     "Return ONLY one ```python code block and no prose outside it.\n"
     "The script must be executable end to end, use real data only, print one final METRICS line, "
+    "run on CPU only, and never rely on CUDA, MPS, GPU autocasting, or GPU-specific execution paths. "
     "and write a submission CSV only when AGENT_WRITE_SUBMISSION=1. "
     "When AGENT_FINAL_SUBMISSION=1, use the chosen validation threshold, then train/refit "
     "the final model on every labeled row available in train.csv before predicting the unlabeled test set.\n"

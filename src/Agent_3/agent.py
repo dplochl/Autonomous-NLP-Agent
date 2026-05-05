@@ -35,16 +35,16 @@ import families.experiment_cnn as exp_cnn
 import families.experiment_embedding_dl as exp_embedding_dl
 import families.experiment_lstm as exp_lstm
 import families.experiment_roberta as exp_roberta
-import families.experiment_transformer as exp_transformer
 
 
 DATA_DIR_ENV = "DISASTER_AGENT_DATA_DIR"
 DEFAULT_DATA_DIR = "data"
 MAX_SEARCH_RUNS = int(os.environ.get("AGENT3_MAX_RUNS", "4"))
 MAX_REPAIR_ATTEMPTS = int(os.environ.get("DISASTER_AGENT_MAX_REPAIRS", "8"))
-TOTAL_TIME_BUDGET_SECONDS = int(os.environ.get("AGENT3_TOTAL_TIME_BUDGET_SECONDS", str(80 * 60)))
+FINAL_SUBMISSION_MAX_REPAIRS = int(os.environ.get("AGENT3_FINAL_SUBMISSION_MAX_REPAIRS", "6"))
+TOTAL_TIME_BUDGET_SECONDS = int(os.environ.get("AGENT3_TOTAL_TIME_BUDGET_SECONDS", str(60 * 60)))
 SWEEP_BUDGET_FRACTION = float(os.environ.get("AGENT3_SWEEP_BUDGET_FRACTION", "0.65"))
-SWEEP_SAMPLE_ROWS = int(os.environ.get("AGENT3_SWEEP_SAMPLE_ROWS", "4000"))
+SWEEP_SAMPLE_ROWS = int(os.environ.get("AGENT3_SWEEP_SAMPLE_ROWS", "2000"))
 FINAL_TRAIN_ROWS = int(os.environ.get("AGENT3_FINAL_TRAIN_ROWS", "10000"))
 VALIDATION_FRACTION = min(max(float(os.environ.get("AGENT3_VALIDATION_FRACTION", "0.2")), 0.05), 0.5)
 TOP_ARCHITECTURES_TO_OPTIMIZE = int(os.environ.get("AGENT3_TOP_ARCHITECTURES_TO_OPTIMIZE", "2"))
@@ -58,14 +58,12 @@ FAMILY_RUN_ESTIMATES = {
     "cnn": 200,
     "embedding_dl": 240,
     "lstm": 200,
-    "transformer": 500,
     "roberta": 500,
     "bertweet": 500,
 }
 
 FAMILY_MODULES = {
     "bertweet": exp_bertweet,
-    "transformer": exp_transformer,
     "roberta": exp_roberta,
     "bow_advanced": exp_bow_advanced,
     "cnn": exp_cnn,
@@ -198,29 +196,56 @@ def force_submission_path(code: str, old_path: str | None, new_path: str) -> str
     if old_path:
         fixed = fixed.replace(str(old_path), new_path)
     fixed = re.sub(
+        r"os\.environ\.get\((['\"])AGENT_SUBMISSION_PATH\1,\s*(['\"])[^'\"]*submission\.csv\2\)",
+        f"os.environ.get('DISASTER_AGENT_SUBMISSION_PATH', {new_path!r})",
+        fixed,
+    )
+    fixed = re.sub(
         r"os\.environ\.get\((['\"])DISASTER_AGENT_SUBMISSION_PATH\1,\s*(['\"])[^'\"]*submission\.csv\2\)",
-        repr(new_path),
+        f"os.environ.get('DISASTER_AGENT_SUBMISSION_PATH', {new_path!r})",
         fixed,
     )
     fixed = re.sub(
         r"submission_path\s*=\s*(['\"])[^'\"]*submission[^'\"]*\.csv\1",
-        f"submission_path = {new_path!r}",
+        f"submission_path = os.environ.get('DISASTER_AGENT_SUBMISSION_PATH', {new_path!r})",
         fixed,
     )
     fixed = re.sub(
         r"((?:['\"])submission_path(?:['\"])\s*:\s*)(['\"])[^'\"]*submission[^'\"]*\.csv\2",
-        rf"\g<1>{new_path!r}",
+        rf"\g<1>os.environ.get('DISASTER_AGENT_SUBMISSION_PATH', {new_path!r})",
         fixed,
     )
     fixed = re.sub(
         r"(['\"])submissions/[^'\"]+_submission\.csv\1",
-        repr(new_path),
+        f"os.environ.get('DISASTER_AGENT_SUBMISSION_PATH', {new_path!r})",
         fixed,
     )
     return fixed
 
 
-def build_final_submission_code(summary: dict[str, Any], public_submission_path: str) -> tuple[str | None, str | None]:
+def validate_submission_file(submission_path: str) -> str | None:
+    if not os.path.exists(submission_path):
+        return "Submission file was not created."
+    try:
+        submission_df = pd.read_csv(submission_path)
+    except Exception as exc:
+        return f"Submission file could not be read as CSV: {exc}"
+
+    expected_columns = ["id", "target"]
+    actual_columns = list(submission_df.columns)
+    if actual_columns != expected_columns:
+        return f"Submission columns must be exactly {expected_columns}, found {actual_columns}."
+    if submission_df.empty:
+        return "Submission CSV is empty."
+
+    _, test_path = get_data_paths()
+    expected_rows = len(pd.read_csv(test_path))
+    if len(submission_df) != expected_rows:
+        return f"Submission row count must be {expected_rows}, found {len(submission_df)}."
+    return None
+
+
+def prepare_final_submission_payload(summary: dict[str, Any], public_submission_path: str) -> tuple[dict[str, Any] | None, str | None]:
     best_trial = best_trial_from_summary(summary)
     if not best_trial:
         return None, "Could not find the best trial in the selected family summary."
@@ -241,7 +266,181 @@ def build_final_submission_code(summary: dict[str, Any], public_submission_path:
         code = module.tune_frozen_code(code, spec, "best_overall_submission")
     if hasattr(module, "apply_light_autofixes"):
         code = module.apply_light_autofixes(code, spec)
-    return force_submission_path(code, old_submission_path if old_submission_path is not None else None, public_submission_path), None
+    return {
+        "code": force_submission_path(code, old_submission_path if old_submission_path is not None else None, public_submission_path),
+        "family": summary["family"],
+        "family_key": summary["family_key"],
+        "module": module,
+        "run_name": "best_overall_submission",
+        "session_dir": session_dir,
+        "spec": spec,
+        "submission_path": public_submission_path,
+    }, None
+
+
+def execute_final_submission_with_repairs(
+    llm: OllamaClient,
+    payload: dict[str, Any],
+) -> tuple[str, dict[str, Any], int]:
+    code = str(payload["code"])
+    family = str(payload["family"])
+    module = payload["module"]
+    run_name = str(payload["run_name"])
+    spec = dict(payload["spec"])
+    submission_path = str(payload["submission_path"])
+    runs_root = os.path.join(os.path.dirname(__file__), "runs")
+    attempt = 0
+    result: dict[str, Any] | None = None
+
+    while attempt <= FINAL_SUBMISSION_MAX_REPAIRS:
+        if hasattr(module, "apply_light_autofixes"):
+            code = module.apply_light_autofixes(code, spec)
+        issues = module.preflight_issues(code, spec)
+        if issues:
+            if attempt == FINAL_SUBMISSION_MAX_REPAIRS:
+                result = {
+                    "success": False,
+                    "timed_out": False,
+                    "dry_run_failed": False,
+                    "metrics": {},
+                    "stdout": "",
+                    "stderr": "Final submission preflight validation failed:\n- " + "\n- ".join(issues),
+                }
+                break
+            repair = request_surgical_repair(
+                llm=llm,
+                module=module,
+                family=family,
+                run_name=run_name,
+                submission_path=submission_path,
+                failed_code=code,
+                stderr_text="Final submission preflight validation failed:\n- " + "\n- ".join(issues),
+                stdout_text="",
+                attempt=attempt + 1,
+                max_attempts=FINAL_SUBMISSION_MAX_REPAIRS,
+                extra_context=(
+                    "Validated spec:\n"
+                    + pretty_json(spec)
+                    + "\n\nThis is final submission mode. The script must create the submission CSV, "
+                    "use the final full-data retraining path when AGENT_FINAL_SUBMISSION=1, and still print METRICS."
+                ),
+            )
+            write_text(os.path.join(runs_root, f"final_submission_repair_attempt_{attempt + 1}.json"), repair["raw_response"])
+            if not repair["code"]:
+                result = {
+                    "success": False,
+                    "timed_out": False,
+                    "dry_run_failed": False,
+                    "metrics": {},
+                    "stdout": "",
+                    "stderr": "Final submission preflight failed and repair returned no patch.\n" + repair["error"],
+                }
+                break
+            code = repair["code"]
+            attempt += 1
+            continue
+
+        ok, syntax_err = syntax_check(code)
+        if not ok:
+            if attempt == FINAL_SUBMISSION_MAX_REPAIRS:
+                result = {
+                    "success": False,
+                    "timed_out": False,
+                    "dry_run_failed": False,
+                    "metrics": {},
+                    "stdout": "",
+                    "stderr": syntax_err,
+                }
+                break
+            repair = request_surgical_repair(
+                llm=llm,
+                module=module,
+                family=family,
+                run_name=run_name,
+                submission_path=submission_path,
+                failed_code=code,
+                stderr_text=syntax_err,
+                stdout_text="",
+                attempt=attempt + 1,
+                max_attempts=FINAL_SUBMISSION_MAX_REPAIRS,
+                extra_context=(
+                    "Validated spec:\n"
+                    + pretty_json(spec)
+                    + "\n\nThis is final submission mode. The script must create the submission CSV, "
+                    "use the final full-data retraining path when AGENT_FINAL_SUBMISSION=1, and still print METRICS."
+                ),
+            )
+            write_text(os.path.join(runs_root, f"final_submission_repair_attempt_{attempt + 1}.json"), repair["raw_response"])
+            if not repair["code"]:
+                result = {
+                    "success": False,
+                    "timed_out": False,
+                    "dry_run_failed": False,
+                    "metrics": {},
+                    "stdout": "",
+                    "stderr": syntax_err + "\n" + repair["error"],
+                }
+                break
+            code = repair["code"]
+            attempt += 1
+            continue
+
+        result = run_experiment(
+            code,
+            run_name,
+            train_fraction=1.0,
+            train_rows=FINAL_TRAIN_ROWS,
+            write_submission=True,
+            final_submission=True,
+            submission_path=submission_path,
+        )
+        submission_error = validate_submission_file(submission_path) if result.get("success") else None
+        if result.get("success") and submission_error is None:
+            break
+        if attempt == FINAL_SUBMISSION_MAX_REPAIRS:
+            if result.get("success") and submission_error:
+                result["success"] = False
+                result["stderr"] = (result.get("stderr", "") + "\n" + submission_error).strip()
+            break
+        repair_stderr = result.get("stderr", "")
+        if result.get("success") and submission_error:
+            repair_stderr = (repair_stderr + "\n" + submission_error).strip()
+            result["success"] = False
+        repair = request_surgical_repair(
+            llm=llm,
+            module=module,
+            family=family,
+            run_name=run_name,
+            submission_path=submission_path,
+            failed_code=code,
+            stderr_text=repair_stderr,
+            stdout_text=result.get("stdout", ""),
+            attempt=attempt + 1,
+            max_attempts=FINAL_SUBMISSION_MAX_REPAIRS,
+            extra_context=(
+                "Validated spec:\n"
+                + pretty_json(spec)
+                + "\n\nThis is final submission mode. The script must create the submission CSV, "
+                "use the final full-data retraining path when AGENT_FINAL_SUBMISSION=1, and still print METRICS."
+            ),
+        )
+        write_text(os.path.join(runs_root, f"final_submission_repair_attempt_{attempt + 1}.json"), repair["raw_response"])
+        if not repair["code"]:
+            result["stderr"] = (result.get("stderr", "") + "\nRepair error: " + repair["error"]).strip()
+            break
+        code = repair["code"]
+        attempt += 1
+
+    if result is None:
+        result = {
+            "success": False,
+            "timed_out": False,
+            "dry_run_failed": False,
+            "metrics": {},
+            "stdout": "",
+            "stderr": "Final submission failed without a result payload.",
+        }
+    return code, result, attempt
 
 
 def constrain_phase_spec(spec: dict[str, Any]) -> dict[str, Any]:
@@ -251,7 +450,7 @@ def constrain_phase_spec(spec: dict[str, Any]) -> dict[str, Any]:
 
 
 def phase_train_rows(phase_label: str) -> int | None:
-    if phase_label == "sweep":
+    if phase_label in {"sweep", "opt"}:
         return SWEEP_SAMPLE_ROWS
     return None
 
@@ -792,30 +991,31 @@ def main(
     }
     write_json(os.path.join(os.path.dirname(__file__), "runs", "overall_best.json"), overall_summary)
     public_best_submission = os.path.join(public_submissions_dir, "best_overall_submission.csv")
-    final_code, final_error = build_final_submission_code(best_overall, public_best_submission)
+    final_payload, final_error = prepare_final_submission_payload(best_overall, public_best_submission)
     final_submission_success = False
-    if final_code:
+    if final_payload:
         print("[Final Submission] Re-running the selected best model on full data for one test prediction file.")
-        final_result = run_experiment(
-            final_code,
-            "best_overall_submission",
-            train_fraction=1.0,
-            train_rows=FINAL_TRAIN_ROWS,
-            write_submission=True,
-            final_submission=True,
-        )
+        final_code, final_result, final_repair_attempts = execute_final_submission_with_repairs(llm, final_payload)
         overall_summary["final_submission_result"] = {
             "success": final_result.get("success", False),
             "timed_out": final_result.get("timed_out", False),
             "metrics": final_result.get("metrics", {}),
+            "repair_attempts": final_repair_attempts,
         }
         final_submission_success = bool(final_result.get("success", False))
+        if not final_submission_success and final_result.get("stderr"):
+            overall_summary["final_submission_result"]["error"] = final_result.get("stderr", "")
+        write_text(
+            os.path.join(os.path.dirname(__file__), "runs", "final_submission_train.py"),
+            final_code,
+        )
         write_text(
             os.path.join(os.path.dirname(__file__), "runs", "final_submission.log"),
             "\n".join(
                 [
                     f"success: {final_result.get('success', False)}",
                     f"timed_out: {final_result.get('timed_out', False)}",
+                    f"repair_attempts: {final_repair_attempts}",
                     "",
                     "[STDOUT]",
                     final_result.get("stdout", ""),
@@ -860,7 +1060,7 @@ if __name__ == "__main__":
     parser.add_argument("--model", type=str, default="qwen2.5-coder:14b")
     parser.add_argument("--family", type=str, choices=sorted(FAMILY_MODULES.keys()))
     parser.add_argument("--max-runs", type=int)
-    parser.add_argument("--time-budget-minutes", type=int, default=80)
+    parser.add_argument("--time-budget-minutes", type=int, default=60)
     parser.add_argument("--no-winner-optimization", action="store_true")
     parser.add_argument("--fresh", action="store_true", help="Do not write agent3_log.json for this invocation")
     args = parser.parse_args()

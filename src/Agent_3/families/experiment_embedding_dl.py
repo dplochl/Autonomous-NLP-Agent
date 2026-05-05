@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 import textwrap
 
-from families.autofix_utils import fix_text_column_fillna
+from families.autofix_utils import fix_text_column_fillna, force_cpu_execution
 
 
 FAMILY = "EmbeddingDL"
@@ -138,11 +138,9 @@ def fallback_code(spec: dict[str, object]) -> str:
             random.seed(seed)
             np.random.seed(seed)
             torch.manual_seed(seed)
-            if torch.cuda.is_available():
-                torch.cuda.manual_seed_all(seed)
 
         seed_everything(42)
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        device = torch.device("cpu")
         token_pattern = re.compile(r"[a-z0-9#@']+")
 
         def tokenize(text):
@@ -470,7 +468,7 @@ def apply_light_autofixes(code: str, spec: dict[str, object]) -> str:
     has_glove_loader = "load_glove" in lowered or "from_pretrained" in lowered
     if not (has_embedding_switch and has_glove_path and has_glove_loader):
         return fallback_code(spec)
-    fixed = fix_text_column_fillna(code)
+    fixed = force_cpu_execution(fix_text_column_fillna(code))
     fixed = fixed.replace(
         "stratify_labels = train_df['target'] if len(train_df['target'].unique()) == 2 else None",
         "stratify_labels = train_df['target'] if train_df['target'].nunique() > 1 and train_df['target'].value_counts().min() >= 2 else None",

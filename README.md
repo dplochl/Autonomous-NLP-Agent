@@ -1,171 +1,195 @@
-# Disaster Tweets Autonomous Research Agent
+# APA Disaster Tweets Agent
 
-## Overview
-
-This project implements an autonomous machine learning agent for the Kaggle competition:
+Autonomous research agent for the Kaggle competition `nlp-getting-started`:
 https://www.kaggle.com/competitions/nlp-getting-started
 
-The system:
-- proposes experiments
-- trains models
-- evaluates performance
-- logs results
-- iterates automatically
+The active implementation in this repository is `src/Agent_3/`. It uses a local Ollama-hosted LLM to:
+- propose experiment specs
+- generate runnable training code
+- dry-run and execute experiments
+- repair failing code
+- analyze results
+- iterate across multiple model families
+- attempt one final Kaggle-style submission rerun from the best run
 
----
+## Current Entry Point
 
-## Project Structure
+Run the agent from:
 
+```bash
+python3 src/Agent_3/agent.py
+```
+
+There are no active `agent_vs.py`, `Agent_V2`, dashboard, or legacy entrypoints in the current repository flow.
+
+## Repository Layout
+
+```text
 apa-disaster-tweets-agent/
-│
-├── data/        (not included)
-├── logs/
-├── outputs/
-├── models/
-│
+├── data/
+│   ├── train.csv
+│   └── test.csv
+├── submissions/
 ├── src/
-│   ├── config.py
-│   ├── agent_vs.py
-│   ├── agents/
-│   │   ├── v1_simple.py
-│   │   └── v2_transformer.py
-│   ├── dashboard.py
-│   └── test_ollama.py
-│
+│   └── Agent_3/
+│       ├── agent.py
+│       ├── llm.py
+│       ├── sandbox.py
+│       ├── search.py
+│       ├── memory.py
+│       ├── repair.py
+│       ├── families/
+│       ├── templates/
+│       └── runs/
 ├── requirements.txt
-├── .gitignore
 └── README.md
+```
 
----
+Important output locations:
+- run artifacts: `src/Agent_3/runs/`
+- public final submission copy after a successful final rerun: `submissions/best_overall_submission.csv`
+- invocation log: `agent3_log.json`
 
-## Setup
+## Supported Model Families
 
-Clone:
+`Agent_3` can sweep these families:
+- `bow`
+- `bow_advanced`
+- `cnn`
+- `embedding_dl`
+- `lstm`
+- `roberta`
+- `bertweet`
 
-git clone git@github.com:Nic000111/apa-disaster-tweets-agent.git
-cd apa-disaster-tweets-agent
+## Prerequisites
 
-Create env:
+1. Python 3.11+ with a virtual environment
+2. Ollama running locally on `http://localhost:11434`
+3. At least one pulled local model for code generation
+4. Kaggle Disaster Tweets data available at `data/train.csv` and `data/test.csv`
 
+Recommended Ollama setup:
+
+```bash
+ollama serve
+ollama pull qwen2.5-coder:14b
+```
+
+The default agent model is `qwen2.5-coder:14b`. You can override it with `--model`.
+
+## Installation
+
+```bash
 python3 -m venv .venv
 source .venv/bin/activate
-
-Install:
-
 pip install -r requirements.txt
+```
 
----
+## Dataset Setup
 
-## Data
+The agent expects:
+- `data/train.csv`
+- `data/test.csv`
 
-Download Kaggle data:
+If they are not already present, download them with Kaggle:
 
+```bash
 mkdir -p data
 kaggle competitions download -c nlp-getting-started -p data
 unzip data/nlp-getting-started.zip -d data
+```
 
----
+You can also point the agent to a different dataset directory:
 
-## Run
+```bash
+export DISASTER_AGENT_DATA_DIR="/absolute/path/to/data"
+```
 
-Agent runner (recommended):
+## Running the Agent
 
-python src/agent_vs.py v1
+Run all families with the default model:
 
-Transformer agent:
+```bash
+python3 src/Agent_3/agent.py --time-budget-minutes 60
+```
 
-python src/agent_vs.py v2
+Run a single family:
 
-Dashboard:
+```bash
+python3 src/Agent_3/agent.py --family bertweet --max-runs 2 --time-budget-minutes 20
+```
 
-streamlit run src/dashboard.py
+Use a different local Ollama model:
 
----
+```bash
+python3 src/Agent_3/agent.py --model gemma4:e4b
+```
 
-## Config
+Run without writing to `agent3_log.json`:
 
-Optional:
+```bash
+python3 src/Agent_3/agent.py --fresh
+```
 
-export OLLAMA_MODEL="gemma4:e4b"
-export HF_DEFAULT_MODEL="distilroberta-base"
-export DISASTER_AGENT_DATA_DIR="/your/path/to/data"
+Disable the winner-optimization phase:
 
----
+```bash
+python3 src/Agent_3/agent.py --no-winner-optimization
+```
 
-## Results
+## What the Agent Does
 
-Simple model ≈ 0.76 F1  
-Transformer ≈ 0.83 F1  
+For each family, the current flow is:
+1. generate an experiment spec
+2. validate and clamp the spec
+3. render a family-specific prompt
+4. ask the local LLM for a full Python training script
+5. dry-run the script
+6. execute the full run
+7. attempt surgical repairs if the script fails
+8. log metrics, stdout/stderr, analysis, and artifacts
+9. rank families by best sweep F1
+10. optimize the top architecture candidates
+11. rerun the best overall model to produce a final submission file
 
----
+## Configuration
+
+Common runtime controls:
+
+- `DISASTER_AGENT_DATA_DIR`: override the dataset directory
+- `AGENT3_MAX_RUNS`: default max runs per family when `--max-runs` is not passed
+- `AGENT3_TOTAL_TIME_BUDGET_SECONDS`: total wall-clock budget
+- `AGENT3_SWEEP_BUDGET_FRACTION`: fraction reserved for sweep before winner optimization
+- `AGENT3_SWEEP_SAMPLE_ROWS`: labeled rows used during sweep
+- `AGENT3_FINAL_TRAIN_ROWS`: labeled rows used for the final best-model rerun
+- `DISASTER_AGENT_LLM_TIMEOUT`: Ollama request timeout in seconds
+- `DISASTER_AGENT_MAX_REPAIRS`: max repair attempts per generated script
+
+## Optional Kaggle Auto-Submit
+
+The agent can optionally submit the final CSV through the Kaggle CLI.
+
+Requirements:
+- Kaggle CLI installed in the environment
+- Kaggle credentials configured via `~/.kaggle/kaggle.json` or `KAGGLE_USERNAME` and `KAGGLE_KEY`
+
+Enable it with:
+
+```bash
+export AGENT3_AUTO_SUBMIT_KAGGLE=1
+python3 src/Agent_3/agent.py --time-budget-minutes 60
+```
+
+Optional submission controls:
+- `AGENT3_KAGGLE_COMPETITION`
+- `AGENT3_KAGGLE_MESSAGE`
+- `AGENT3_KAGGLE_POLL_SECONDS`
+- `AGENT3_KAGGLE_TIMEOUT_SECONDS`
+- `KAGGLE_CLI_PATH`
 
 ## Notes
 
-- data is not included
-- models/logs not committed
-- works with any local LLM via Ollama
-
----
-
-## Next Steps
-
-- cross validation
-- ensemble models
-- submission pipeline
-
----
-
-## Agent_V2 (Autonomous ML Research Agent)
-
-A new, fully autonomous agent is available in `src/Agent_V2/`. This agent uses a locally-hosted LLM (via Ollama) to drive the experimentation loop for the Kaggle Disaster Tweets competition.
-
-### Architecture Overview
-
-(Excerpt from `src/Agent_V2/ARCHITECTURE.md`)
-
-> An agent that autonomously designs, trains, evaluates, and iterates on ML models for the [NLP with Disaster Tweets](https://www.kaggle.com/competitions/nlp-getting-started) Kaggle competition. The agent uses a locally-hosted LLM (via Ollama) as its "brain" to drive the experimentation loop.
-
-#### File Structure
-
-```
-src/Agent_V2/
-├── agent_fully_autonomous.py  # Entry point — fully autonomous loop
-├── llm.py            # Ollama LLM client (THINK + REFLECT steps)
-├── memory.py         # Tiered experiment memory (rolling log + milestones)
-├── sandbox.py        # Safe code execution (dry run + full run + monitor)
-├── templates.py      # Boilerplate-correct code templates per architecture
-├── prompts.py        # All LLM prompt templates
-│
-├── train.csv         # Kaggle training data (7613 tweets)
-├── test.csv          # Kaggle test data (3263 tweets)
-├── experiment_log.json  # Persistent log of all experiments (auto-generated)
-├── submissions/      # Kaggle submission CSVs (auto-generated)
-│
-├── disaster_tweets.ipynb  # Manual baseline notebook
-└── Untitled-1.py          # Original manual pipeline script
-```
-
-#### Agent Loop
-
-```
-AGENT LOOP (agent_fully_autonomous.py):
-- MEMORY (project brief, rolling log, milestones)
-- THINK (LLM proposes architecture + code)
-- DRY RUN (1 epoch, 200 rows)
-- EXECUTE (full run)
-- REFLECT (LLM analyzes results)
-- UPDATE MEMORY
-- Repeat until F1 >= 0.88, plateau, or max iterations
-```
-
-#### Architecture Sequence
-
-The agent explores architectures in this order:
-1. BoW (TF-IDF + Logistic Regression)
-2. BoW_advanced (multi-vectorizer ensemble)
-3. BoW_advanced_thr (threshold tuning)
-4. CNN (PyTorch)
-5. LSTM (PyTorch)
-6. Transformer (HuggingFace)
-
-See `src/Agent_V2/ARCHITECTURE.md` for full details and design decisions.
+- The local LLM is used for planning, code generation, repair, and analysis.
+- Hugging Face model families may download pretrained checkpoints on first use unless already cached locally.
+- `src/Agent_3/runs/` contains generated code and experiment artifacts from previous runs.
+- The generated scripts are part of the agent workflow; the hand-written source of truth is under `src/Agent_3/`.

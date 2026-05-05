@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 
-from families import experiment_transformer as base
+from families import experiment_hf_classifier as base
 
 
 FAMILY = "BERTweet"
@@ -18,16 +18,23 @@ normalize_spec = base.normalize_spec
 
 
 def get_default_spec(name: str, submission_path: str) -> dict[str, object]:
-    spec = base.get_default_spec(name, submission_path)
-    spec["architecture"] = FAMILY
-    spec["model_name"] = MODEL_NAME
-    spec["max_len"] = 128
-    spec["train_batch_size"] = 16
-    spec["eval_batch_size"] = 16
-    spec["learning_rate"] = 1.5e-5
-    spec["weight_decay"] = 0.01
-    spec["num_epochs"] = 3
-    return spec
+    return {
+        "architecture": FAMILY,
+        "model_name": MODEL_NAME,
+        "max_len": 128,
+        "train_batch_size": 16,
+        "eval_batch_size": 16,
+        "learning_rate": 1.5e-5,
+        "weight_decay": 0.01,
+        "num_epochs": 3,
+        "val_size": 0.2,
+        "threshold_min": 0.3,
+        "threshold_max": 0.7,
+        "threshold_steps": 41,
+        "dry_run_head": 16,
+        "experiment_name": name,
+        "submission_path": submission_path,
+    }
 
 
 def get_spec_ranges() -> dict[str, tuple[float, float]]:
@@ -43,7 +50,7 @@ def get_tunable_keys() -> list[str]:
 
 
 def get_template_name() -> str:
-    return "train_transformer.py.j2"
+    return base.get_template_name()
 
 
 def get_arch_prompt() -> str:

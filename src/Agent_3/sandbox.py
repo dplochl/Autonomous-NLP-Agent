@@ -32,6 +32,7 @@ def _write_temp_script(
     train_fraction: float = 1.0,
     write_submission: bool = False,
     final_submission: bool = False,
+    submission_path: str | None = None,
 ) -> str:
     if dry_run:
         code = (
@@ -39,6 +40,12 @@ def _write_temp_script(
             "_os.environ['AGENT_DRY_RUN'] = '1'\n"
             "_os.environ['AGENT_WRITE_SUBMISSION'] = '0'\n"
             "_os.environ['AGENT_FINAL_SUBMISSION'] = '0'\n"
+            + (
+                f"_os.environ['AGENT_SUBMISSION_PATH'] = {submission_path!r}\n"
+                f"_os.environ['DISASTER_AGENT_SUBMISSION_PATH'] = {submission_path!r}\n"
+                if submission_path
+                else ""
+            )
             + code
         )
     else:
@@ -48,6 +55,12 @@ def _write_temp_script(
             "_os.environ.setdefault('AGENT_SAMPLE_SEED', '42')\n"
             f"_os.environ['AGENT_WRITE_SUBMISSION'] = {('1' if write_submission else '0')!r}\n"
             f"_os.environ['AGENT_FINAL_SUBMISSION'] = {('1' if final_submission else '0')!r}\n"
+            + (
+                f"_os.environ['AGENT_SUBMISSION_PATH'] = {submission_path!r}\n"
+                f"_os.environ['DISASTER_AGENT_SUBMISSION_PATH'] = {submission_path!r}\n"
+                if submission_path
+                else ""
+            )
             + code
         )
     fd, path = tempfile.mkstemp(suffix=".py", prefix="agent3_")
@@ -116,6 +129,8 @@ def _run(script_path: str, timeout: int, monitor: bool = False, env: dict[str, s
     start = time.time()
     python_exec = _python_executable()
     process_env = os.environ.copy()
+    process_env.setdefault("AGENT_FORCE_CPU", "1")
+    process_env.setdefault("CUDA_VISIBLE_DEVICES", "")
     if env:
         process_env.update(env)
     proc = subprocess.Popen(
@@ -177,10 +192,11 @@ def run_experiment(
     train_rows: int | None = None,
     write_submission: bool = False,
     final_submission: bool = False,
+    submission_path: str | None = None,
     data_dir: str | None = None,
 ) -> dict:
     print(f"  [Sandbox] Dry run for '{name}'...")
-    dry_path = _write_temp_script(code, dry_run=True, write_submission=False)
+    dry_path = _write_temp_script(code, dry_run=True, write_submission=False, submission_path=submission_path)
     dry_env = {DATA_DIR_ENV: data_dir} if data_dir else None
     dry_result = _run(dry_path, DRY_RUN_TIMEOUT, monitor=False, env=dry_env)
     os.unlink(dry_path)
@@ -213,6 +229,7 @@ def run_experiment(
         train_fraction=1.0 if sampled_dir or data_dir else train_fraction,
         write_submission=write_submission,
         final_submission=final_submission,
+        submission_path=submission_path,
     )
     full_env = {DATA_DIR_ENV: data_dir or sampled_dir} if data_dir or sampled_dir else None
     try:

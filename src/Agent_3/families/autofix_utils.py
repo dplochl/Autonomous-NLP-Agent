@@ -34,3 +34,26 @@ def fix_text_column_fillna(code: str) -> str:
         fixed,
         count=1,
     )
+
+
+def force_cpu_execution(code: str) -> str:
+    """Rewrite common generated PyTorch device patterns to CPU-only execution."""
+    fixed = code
+    fixed = re.sub(
+        r"device\s*=\s*torch\.device\([^\n]*\)",
+        'device = torch.device("cpu")',
+        fixed,
+    )
+    fixed = re.sub(
+        r"if\s+torch\.cuda\.is_available\(\)\s*:\s*\n[ \t]*torch\.cuda\.manual_seed_all\([^\n]*\)\n?",
+        "",
+        fixed,
+    )
+    fixed = fixed.replace('.to("cuda")', '.to("cpu")')
+    fixed = fixed.replace(".to('cuda')", '.to("cpu")')
+    fixed = fixed.replace('.to("mps")', '.to("cpu")')
+    fixed = fixed.replace(".to('mps')", '.to("cpu")')
+    fixed = fixed.replace("torch.cuda.is_available()", "False")
+    fixed = fixed.replace("torch.backends.mps.is_available()", "False")
+    fixed = fixed.replace("pin_memory=True", "pin_memory=False")
+    return fixed

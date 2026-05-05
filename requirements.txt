@@ -1,29 +1,18 @@
-# Agent_V2 fully autonomous stack dependencies.
-# Covers third-party imports used by src/Agent_V2 and generated experiment scripts.
-# Standard-library modules (os, re, json, argparse, etc.) are intentionally excluded.
-
-# Orchestrator/runtime deps
+# Core runtime for Agent_3 orchestration
 pandas>=2.2
-requests>=2.31
-
-# Generated experiment script deps (BoW, BoW_advanced, BoW_advanced_thr, CNN, LSTM, Transformer)
 numpy>=1.26
+requests>=2.31
 scikit-learn>=1.4
 scipy>=1.11
+
+# Deep learning families
 torch>=2.2
 transformers>=4.41
-datasets>=2.19
 accelerate>=0.30
-evaluate>=0.4
 sentencepiece>=0.1.99
 
-# Non-agent project extras
-streamlit>=1.34
-plotly>=5.20
+# BERTweet text normalization warning suppression
+emoji==0.6.0
+
+# Optional: Kaggle submission automation
 kaggle>=1.6
-flask>=3.0
-
-# Legacy V1 agent only (not required for Agent_V2 fully autonomous)
-# TensorFlow currently has no official wheels for Python 3.14 on Windows.
-tensorflow>=2.15; python_version < "3.13"
-

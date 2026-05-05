@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 
-from families.autofix_utils import fix_text_column_fillna
+from families.autofix_utils import fix_text_column_fillna, force_cpu_execution
 
 
 FAMILY = "LSTM"
@@ -207,7 +207,7 @@ def preflight_issues(code: str, spec: dict[str, object]) -> list[str]:
 
 
 def apply_light_autofixes(code: str, spec: dict[str, object]) -> str:
-    fixed = fix_text_column_fillna(code)
+    fixed = force_cpu_execution(fix_text_column_fillna(code))
     fixed = fixed.replace(
         "sequence = [vocab.get(word, 0) for word in text.split()]",
         "sequence = [vocab.get(word, 0) for word in text.split()][:max_len]",

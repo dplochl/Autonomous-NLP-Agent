@@ -9,6 +9,7 @@ Use this validated spec exactly:
 
 Required pipeline:
 - use Python + PyTorch only
+- run on CPU only; define `device = torch.device("cpu")` and never use CUDA or MPS
 - load only real train.csv and test.csv from DATA_DIR = os.environ.get("DISASTER_AGENT_DATA_DIR", "data")
 - DRY_RUN = os.environ.get("AGENT_DRY_RUN") == "1"
 - WRITE_SUBMISSION = os.environ.get("AGENT_WRITE_SUBMISSION") == "1"
@@ -24,6 +25,7 @@ Required pipeline:
 - build a simple tokenizer/vocabulary in code
 - convert texts to padded integer sequences using max_vocab and max_len from spec
 - define a torch Dataset and DataLoader
+- use `pin_memory=False` on DataLoaders if you set it explicitly
 - define a compact PyTorch text classifier with torch.nn.Embedding and a bidirectional GRU or LSTM encoder
 - support embedding_source values learned and glove
 - if embedding_source == "glove", load vectors only from the local glove_path and fall back to learned embeddings if the file is missing
