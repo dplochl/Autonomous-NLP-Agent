@@ -57,3 +57,26 @@ def force_cpu_execution(code: str) -> str:
     fixed = fixed.replace("torch.backends.mps.is_available()", "False")
     fixed = fixed.replace("pin_memory=True", "pin_memory=False")
     return fixed
+
+
+def ensure_submission_makedirs(code: str, submission_var: str = "submission_path") -> str:
+    """Insert directory creation immediately before the submission write, preserving indentation."""
+    fixed = re.sub(
+        rf"(?m)^[ \t]*os\.makedirs\(os\.path\.dirname\({re.escape(submission_var)}\),[ \t]*exist_ok=True\)[ \t]*\n?",
+        "",
+        code,
+    )
+
+    def add_before_to_csv(match: re.Match[str]) -> str:
+        indent = match.group("indent")
+        return (
+            f"{indent}os.makedirs(os.path.dirname({submission_var}), exist_ok=True)\n"
+            f"{match.group(0)}"
+        )
+
+    return re.sub(
+        rf"(?m)^(?P<indent>[ \t]*)submission_df\.to_csv\({re.escape(submission_var)},\s*index=False\)",
+        add_before_to_csv,
+        fixed,
+        count=1,
+    )

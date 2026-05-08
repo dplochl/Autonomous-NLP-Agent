@@ -32,6 +32,14 @@ SEARCH_SYSTEM = (
     "Use prior trial outcomes to propose the next spec."
 )
 
+OPT_PLANNER_SYSTEM = (
+    "You are a local ML optimization planner.\n"
+    "Return exactly one JSON object.\n"
+    "Choose the optimization target family from the highest sweep F1 family only.\n"
+    "Then choose a small set of tunable parameters to focus in optimization.\n"
+    "Prefer safe local parameter moves over broad exploration."
+)
+
 ANALYSIS_SYSTEM = "You are a concise ML experiment analyst."
 
 DATA_CONTEXT_TEMPLATE = """DATASET CONTEXT:

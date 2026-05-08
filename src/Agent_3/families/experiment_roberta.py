@@ -15,7 +15,6 @@ default_max_runs = base.default_max_runs
 freeze_after_first_success = base.freeze_after_first_success
 tune_frozen_code = base.tune_frozen_code
 normalize_spec = base.normalize_spec
-apply_light_autofixes = base.apply_light_autofixes
 
 
 def get_default_spec(name: str, submission_path: str) -> dict[str, object]:
@@ -81,6 +80,117 @@ def get_repair_prompt() -> str:
         "Patch only the broken part of the RoBERTa script. "
         "Keep roberta-base, Trainer, and the single validation split."
     )
+
+
+def _canonicalize_dataset_section(code: str, spec: dict[str, object]) -> str:
+    max_len = int(spec["max_len"])
+    replacement = f"""# Dataset class
+class DisasterTweetDataset(Dataset):
+    def __init__(self, texts, labels=None, tokenizer=tokenizer, max_len={max_len}):
+        self.texts = list(texts)
+        self.labels = list(labels) if labels is not None else None
+        self.tokenizer = tokenizer
+        self.max_len = max_len
+
+    def __len__(self):
+        return len(self.texts)
+
+    def __getitem__(self, idx):
+        text = str(self.texts[idx])
+        encoding = self.tokenizer(
+            text,
+            add_special_tokens=True,
+            max_length=self.max_len,
+            return_token_type_ids=False,
+            padding='max_length',
+            truncation=True,
+            return_attention_mask=True,
+            return_tensors='pt',
+        )
+        item = {{
+            'input_ids': encoding['input_ids'].flatten(),
+            'attention_mask': encoding['attention_mask'].flatten(),
+        }}
+        if self.labels is not None:
+            item['labels'] = torch.tensor(self.labels[idx], dtype=torch.long)
+        return item
+
+# Create datasets
+train_dataset = DisasterTweetDataset(train_texts, train_labels, tokenizer=tokenizer, max_len={max_len})
+val_dataset = DisasterTweetDataset(val_texts, val_labels, tokenizer=tokenizer, max_len={max_len})
+test_dataset = DisasterTweetDataset(list(test_df['text']), labels=None, tokenizer=tokenizer, max_len={max_len})
+
+"""
+    return re.sub(
+        r"# (?:Tokenize data|Create Dataset class|Dataset class)[\s\S]*?(?=# Training arguments)",
+        replacement,
+        code,
+        count=1,
+    )
+
+
+def _ensure_probability_and_metrics(code: str) -> str:
+    fixed = code
+    fixed = fixed.replace(
+        "val_probs = torch.softmax(torch.tensor(val_logits), dim=1)[:, 1].numpy()",
+        "val_probs = np.exp(val_logits - np.max(val_logits, axis=1, keepdims=True))\n"
+        "val_probs = val_probs / val_probs.sum(axis=1, keepdims=True)\n"
+        "val_probs = val_probs[:, 1]",
+    )
+    fixed = fixed.replace(
+        "val_probabilities = torch.softmax(torch.tensor(val_predictions), dim=1)[:, 1].numpy()",
+        "val_probabilities = np.exp(val_predictions - np.max(val_predictions, axis=1, keepdims=True))\n"
+        "val_probabilities = val_probabilities / val_probabilities.sum(axis=1, keepdims=True)\n"
+        "val_probabilities = val_probabilities[:, 1]",
+    )
+    fixed = fixed.replace("val_preds = (val_logits[:, 1] > best_threshold).astype(int)", "val_preds = (val_probs > best_threshold).astype(int)")
+    fixed = fixed.replace("val_preds = (val_predictions[:, 1] > best_threshold).astype(int)", "val_preds = (val_probabilities > best_threshold).astype(int)")
+    return fixed
+
+
+def _canonicalize_final_submission_section(code: str, spec: dict[str, object]) -> str:
+    max_len = int(spec["max_len"])
+    model_name = str(spec["model_name"])
+    submission_path = str(spec["submission_path"])
+    replacement = f"""# Final submission training and prediction
+if FINAL_SUBMISSION:
+    final_model = AutoModelForSequenceClassification.from_pretrained('{model_name}', num_labels=2)
+    final_train_dataset = DisasterTweetDataset(train_df['text'], train_df['target'], tokenizer=tokenizer, max_len={max_len})
+    final_trainer = Trainer(
+        model=final_model,
+        args=training_args,
+        train_dataset=final_train_dataset
+    )
+    if not DRY_RUN:
+        final_trainer.train()
+    test_predictor = final_trainer
+else:
+    test_predictor = trainer
+
+# Write submission if required
+if WRITE_SUBMISSION:
+    test_logits = test_predictor.predict(DisasterTweetDataset(test_df['text'], labels=None, tokenizer=tokenizer, max_len={max_len})).predictions
+    test_probs = np.exp(test_logits - np.max(test_logits, axis=1, keepdims=True))
+    test_probs = test_probs / test_probs.sum(axis=1, keepdims=True)
+    test_preds = (test_probs[:, 1] > best_threshold).astype(int)
+    submission_df = pd.DataFrame({{'id': test_df['id'], 'target': test_preds}})
+    os.makedirs(os.path.dirname({submission_path!r}), exist_ok=True)
+    submission_df.to_csv({submission_path!r}, index=False)
+
+"""
+    return re.sub(
+        r"# (?:Final submission: train on full data and predict test|Final submission training and prediction)[\s\S]*?(?=# Metrics)",
+        replacement,
+        code,
+        count=1,
+    )
+
+
+def apply_light_autofixes(code: str, spec: dict[str, object]) -> str:
+    fixed = base.apply_light_autofixes(code, spec)
+    fixed = _canonicalize_dataset_section(fixed, spec)
+    fixed = _ensure_probability_and_metrics(fixed)
+    return _canonicalize_final_submission_section(fixed, spec)
 
 
 def preflight_issues(code: str, spec: dict[str, object]) -> list[str]:

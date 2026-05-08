@@ -220,6 +220,10 @@ def _ordered_underexplored_keys(
 
 def _optimization_focus_keys(module: object, preferred_keys: list[str]) -> list[str]:
     tunable = module.get_tunable_keys()
+    ordered: list[str] = []
+    for key in preferred_keys:
+        if key in tunable and key not in ordered:
+            ordered.append(key)
     focus_order = [
         "learning_rate",
         "dropout",
@@ -237,17 +241,61 @@ def _optimization_focus_keys(module: object, preferred_keys: list[str]) -> list[
         "num_layers",
         "max_vocab",
     ]
-    ordered: list[str] = []
     for key in focus_order:
-        if key in tunable and key not in ordered:
-            ordered.append(key)
-    for key in preferred_keys:
         if key in tunable and key not in ordered:
             ordered.append(key)
     for key in tunable:
         if key not in ordered:
             ordered.append(key)
     return ordered
+
+
+def _apply_planner_parameter_bias(
+    module: object,
+    anchor_spec: dict[str, Any],
+    proposed_spec: dict[str, Any],
+    planner_guidance: dict[str, Any] | None,
+) -> tuple[dict[str, Any], list[str]]:
+    if not planner_guidance:
+        return proposed_spec, []
+
+    candidate = dict(proposed_spec)
+    ranges = module.get_spec_ranges()
+    issues: list[str] = []
+    for item in planner_guidance.get("parameter_focus", []):
+        if not isinstance(item, dict):
+            continue
+        key = item.get("key")
+        direction = item.get("direction")
+        if not isinstance(key, str) or key not in ranges or key not in anchor_spec:
+            continue
+        if direction not in {"up_small", "down_small", "up_medium", "down_medium"}:
+            continue
+        low, high = ranges[key]
+        base_value = candidate.get(key, anchor_spec[key])
+        values = _candidate_values(base_value, low, high, local=True) + _candidate_values(anchor_spec[key], low, high, local=True)
+        if isinstance(base_value, int) and not isinstance(base_value, bool):
+            higher = sorted({int(v) for v in values if isinstance(v, int) and v > int(base_value)})
+            lower = sorted({int(v) for v in values if isinstance(v, int) and v < int(base_value)}, reverse=True)
+        else:
+            higher = sorted({float(v) for v in values if float(v) > float(base_value)})
+            lower = sorted({float(v) for v in values if float(v) < float(base_value)}, reverse=True)
+
+        chosen = None
+        if direction == "up_small" and higher:
+            chosen = higher[0]
+        elif direction == "up_medium" and higher:
+            chosen = higher[min(1, len(higher) - 1)]
+        elif direction == "down_small" and lower:
+            chosen = lower[0]
+        elif direction == "down_medium" and lower:
+            chosen = lower[min(1, len(lower) - 1)]
+
+        if chosen is not None and chosen != base_value:
+            candidate[key] = chosen
+            issues.append(f"Applied planner guidance: {key} -> {direction}.")
+
+    return candidate, issues
 
 
 def _ensure_phase_mutation(
@@ -377,6 +425,7 @@ def propose_next_spec(
     history_summary: str,
     trials: list[dict[str, Any]],
     phase: str = "sweep",
+    planner_guidance: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     best_trial = _best_successful_trial(trials) or max(trials, key=_safe_f1)
     default_spec = dict(best_trial["spec"]) if best_trial.get("success") else module.get_default_spec(run_name, submission_path)
@@ -390,6 +439,15 @@ def propose_next_spec(
     active_tunable_keys = [key for key in active_tunable_keys if key != "val_size"] or [
         key for key in tunable_keys if key != "val_size"
     ]
+    planner_focus_keys: list[str] = []
+    planner_focus = planner_guidance.get("parameter_focus", []) if planner_guidance else []
+    for item in planner_focus:
+        if isinstance(item, dict):
+            key = item.get("key")
+            if isinstance(key, str) and key in tunable_keys and key != "val_size" and key not in planner_focus_keys:
+                planner_focus_keys.append(key)
+    if planner_focus_keys:
+        active_tunable_keys = planner_focus_keys + [key for key in active_tunable_keys if key not in planner_focus_keys]
     latest_success = next((trial for trial in reversed(trials) if trial.get("success")), None)
     repeated_match = _latest_repeated_f1_trial(trials)
     repeated_f1 = latest_success is not None and repeated_match is not None
@@ -398,17 +456,26 @@ def propose_next_spec(
         stale_changed_keys = _changed_tunable_keys(module, repeated_match["spec"], latest_success["spec"])
     phase_rules = (
         "- this is the top-architecture optimization phase, so stay near this architecture's current best spec\n"
-        "- usually change 2 to 4 tunable keys because the sweep used the smaller 4k labeled sample\n"
+        "- usually change 2 to 4 tunable keys because the sweep used the smaller labeled sample\n"
         "- prefer coordinated local changes such as learning_rate, dropout, batch_size, epochs, weight_decay, sequence length, and threshold settings\n"
         "- validation size is controlled by the runner and should remain at 0.2\n"
         "- avoid large capacity jumps unless the history strongly suggests they help\n"
     ) if phase == "opt" else (
         "- this is the family sweep phase, so explore different regions of the parameter space\n"
-        "- the runner uses a 4k labeled sample split 80/20 for training/validation\n"
+        "- the runner uses a 2k labeled sample split 80/20 for training/validation\n"
         "- usually change 2 to 4 tunable keys in one coordinated move\n"
         "- with a 5-run budget, cover both model-capacity keys and optimization keys instead of nudging only one key repeatedly\n"
         "- prefer combinations such as sequence/model size + regularization + optimization, for example max_len/channels with learning_rate/dropout/batch_size/epochs\n"
     )
+    planner_notes = ""
+    if phase == "opt" and planner_guidance:
+        parameter_focus = planner_guidance.get("parameter_focus", [])
+        planner_notes = (
+            "Optimization planner guidance:\n"
+            f"{json.dumps(planner_guidance, indent=2)}\n\n"
+            "Follow the planner's chosen parameter focus and movement directions unless doing so would repeat an exact prior spec.\n"
+            f"Prioritize these keys first: {', '.join(planner_focus_keys) if planner_focus_keys else 'none'}\n\n"
+        )
     prompt = (
         f"Propose the next {module.FAMILY} experiment spec.\n\n"
         f"{module.get_search_prompt()}\n\n"
@@ -433,6 +500,7 @@ def propose_next_spec(
         f"Latest equal-F1 matched prior run: {repeated_match['run_index'] if repeated_match else 'none'}\n"
         f"Latest equal-F1 changed keys to avoid repeating: {', '.join(stale_changed_keys) if stale_changed_keys else 'none'}\n"
         f"Repeated best F1 detected: {'yes' if repeated_f1 else 'no'}\n\n"
+        f"{planner_notes}"
         "Default if unsure:\n"
         f"{json.dumps(default_spec, indent=2)}\n"
     )
@@ -445,6 +513,14 @@ def propose_next_spec(
         ranges=module.get_spec_ranges(),
         fixed_keys=module.get_fixed_spec_keys(),
     )
+    planner_issues: list[str] = []
+    if phase == "opt" and planner_guidance:
+        spec, planner_issues = _apply_planner_parameter_bias(
+            module=module,
+            anchor_spec=best_trial["spec"],
+            proposed_spec=spec,
+            planner_guidance=planner_guidance,
+        )
     if "val_size" in spec:
         spec["val_size"] = default_spec.get("val_size", spec["val_size"])
     spec, diversity_issues = _ensure_phase_mutation(
@@ -458,6 +534,7 @@ def propose_next_spec(
         preferred_keys=active_tunable_keys,
         phase=phase,
     )
+    issues.extend(planner_issues)
     issues.extend(diversity_issues)
     changed_after_validation = _changed_tunable_keys(module, best_trial["spec"], spec)
     only_stagnant_changes = bool(changed_after_validation) and all(key in stagnant_keys for key in changed_after_validation)

@@ -221,6 +221,10 @@ def apply_light_autofixes(code: str, spec: dict[str, object]) -> str:
         "self.labels.iloc[idx] if hasattr(self.labels, 'iloc') else self.labels[idx]",
         fixed,
     )
+    fixed = fixed.replace(
+        "self.labels.iloc[idx] if hasattr(self.labels, 'iloc') else self.labels[idx]",
+        "self.labels[idx]",
+    )
     if "train_labels = np.asarray(train_labels)" not in fixed:
         fixed = re.sub(
             r"(train_texts,\s*val_texts,\s*train_labels,\s*val_labels\s*=\s*train_test_split\([\s\S]*?\)\n)",
@@ -237,6 +241,14 @@ def apply_light_autofixes(code: str, spec: dict[str, object]) -> str:
         "test_probs.extend(np.atleast_1d(outputs))",
     )
     fixed = fixed.replace(
+        "val_preds.extend(outputs)",
+        "val_preds.extend(np.atleast_1d(outputs).tolist())",
+    )
+    fixed = fixed.replace(
+        "test_preds.extend(outputs)",
+        "test_preds.extend(np.atleast_1d(outputs).tolist())",
+    )
+    fixed = fixed.replace(
         "val_preds.extend(outputs.numpy())",
         "val_preds.extend(np.atleast_1d(outputs.numpy()))",
     )
@@ -244,18 +256,102 @@ def apply_light_autofixes(code: str, spec: dict[str, object]) -> str:
         "test_preds.extend(outputs.numpy())",
         "test_preds.extend(np.atleast_1d(outputs.numpy()))",
     )
+    fixed = fixed.replace(
+        "return best_threshold",
+        "return best_threshold, np.asarray(val_preds)",
+    )
+    fixed = fixed.replace(
+        "best_threshold = train_model(model, train_loader, val_loader, epochs=3)",
+        "best_threshold, val_preds = train_model(model, train_loader, val_loader, epochs=3)",
+    )
     fixed = re.sub(
-        r"(\n[ \t]*)for (\w+) in ((?:val|test)_loader):\n(?![ \t]*if isinstance)",
-        r"\1for \2 in \3:\n\1    if isinstance(\2, (list, tuple)):\n\1        \2 = \2[0]\n",
+        r"(?ms)\n(?:[ \t]*submission_df\s*=\s*pd\.DataFrame\(\{.*?submission_df\.to_csv\(submission_path,\s*index=False\)\n)+",
+        "\n",
         fixed,
     )
-    if "final_model.eval()" in fixed and "final_model = model" not in fixed:
-        fixed = fixed.replace("\n# Final submission\n", "\n# Final submission\nfinal_model = model\n", 1)
-    fixed = fixed.replace(
-        "submission_df.to_csv(submission_path, index=False)",
-        "os.makedirs(os.path.dirname(submission_path), exist_ok=True)\nsubmission_df.to_csv(submission_path, index=False)",
+    return _canonicalize_eval_and_submission(fixed, spec)
+
+
+def _canonicalize_eval_and_submission(code: str, spec: dict[str, object]) -> str:
+    batch_size = int(spec["batch_size"])
+    epochs = int(spec["epochs"])
+    max_len = int(spec["max_len"])
+    threshold_min = float(spec["threshold_min"])
+    threshold_max = float(spec["threshold_max"])
+    threshold_steps = int(spec["threshold_steps"])
+    val_block = f"""# Validation
+def collect_probs_and_labels(model, loader):
+    model.eval()
+    all_probs = []
+    all_labels = []
+    with torch.no_grad():
+        for sequences, labels in loader:
+            sequences = sequences.to(device)
+            labels = labels.to(device)
+            outputs = model(sequences)
+            all_probs.extend(np.atleast_1d(outputs.detach().cpu().numpy()).tolist())
+            all_labels.extend(np.atleast_1d(labels.cpu().numpy()).tolist())
+    return np.asarray(all_probs), np.asarray(all_labels)
+
+val_probs, val_labels = collect_probs_and_labels(model, val_loader)
+
+# Choose best threshold
+best_threshold = 0.5
+best_f1 = 0.0
+for threshold in np.linspace({threshold_min}, {threshold_max}, {threshold_steps}):
+    val_preds = (val_probs > threshold).astype(int)
+    f1 = f1_score(val_labels, val_preds)
+    if f1 > best_f1:
+        best_f1 = f1
+        best_threshold = threshold
+
+# Final submission
+test_preds = np.array([], dtype=int)
+if WRITE_SUBMISSION:
+    class _UnlabeledTextDataset(Dataset):
+        def __init__(self, texts):
+            self.texts = list(texts)
+
+        def __len__(self):
+            return len(self.texts)
+
+        def __getitem__(self, idx):
+            text = self.texts[idx]
+            token_ids = text_to_sequence(text, vocab, {max_len})
+            return torch.tensor(token_ids, dtype=torch.long)
+
+    test_loader = DataLoader(_UnlabeledTextDataset(test_df['text']), batch_size={batch_size}, shuffle=False, pin_memory=False)
+    if FINAL_SUBMISSION:
+        full_train_dataset = DisasterDataset(train_sequences + val_seq, train_label + val_label)
+        full_train_loader = DataLoader(full_train_dataset, batch_size={batch_size}, shuffle=True, pin_memory=False)
+        train_model(model, full_train_loader, optimizer, criterion, {epochs})
+
+    model.eval()
+    test_probs = []
+    with torch.no_grad():
+        for sequences in test_loader:
+            if isinstance(sequences, (list, tuple)):
+                sequences = sequences[0]
+            sequences = sequences.to(device)
+            outputs = model(sequences)
+            test_probs.extend(np.atleast_1d(outputs.detach().cpu().numpy()).tolist())
+    test_preds = (np.asarray(test_probs) > best_threshold).astype(int)
+
+    os.makedirs(os.path.dirname(submission_path), exist_ok=True)
+    submission_df = pd.DataFrame({{'id': test_df['id'], 'target': test_preds}})
+    submission_df.to_csv(submission_path, index=False)
+
+# Metrics
+val_preds = (val_probs > best_threshold).astype(int)
+f1 = f1_score(val_labels, val_preds)
+acc = accuracy_score(val_labels, val_preds)
+"""
+    return re.sub(
+        r"# Validation[\s\S]*?(?=# Metrics)",
+        val_block,
+        code,
+        count=1,
     )
-    return fixed
 
 
 def build_repair_hint(stderr_text: str) -> str:

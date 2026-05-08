@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 
-from families.autofix_utils import fix_text_column_fillna
+from families.autofix_utils import ensure_submission_makedirs, fix_text_column_fillna
 
 
 FAMILY = "BoW_advanced"
@@ -159,10 +159,24 @@ def preflight_issues(code: str, spec: dict[str, object]) -> list[str]:
 
 def apply_light_autofixes(code: str, spec: dict[str, object]) -> str:
     fixed = fix_text_column_fillna(code)
+    fixed = re.sub(
+        r"X_train\s*=\s*train_df\[(?P<quote>['\"])(?P<col>[^'\"]+)(?P=quote)\]\.values",
+        lambda m: f"X_train = train_df[{m.group('quote')}{m.group('col')}{m.group('quote')}].astype(str).to_numpy()",
+        fixed,
+    )
+    fixed = re.sub(
+        r"X\s*=\s*train_df\[(?P<quote>['\"])(?P<col>[^'\"]+)(?P=quote)\]\.values",
+        lambda m: f"X = train_df[{m.group('quote')}{m.group('col')}{m.group('quote')}].astype(str).to_numpy()",
+        fixed,
+    )
+    fixed = fixed.replace(
+        "stratify_labels = y if len(set(y)) > 1 else None",
+        "stratify_labels = y if len(np.unique(np.asarray(y, dtype=int))) > 1 and np.min(np.bincount(np.asarray(y, dtype=int))) >= 2 else None",
+    )
     if "from scipy.sparse import hstack" not in fixed and "hstack(" in fixed:
         fixed = fixed.replace("from sklearn.feature_extraction.text import TfidfVectorizer\n",
                               "from sklearn.feature_extraction.text import TfidfVectorizer\nfrom scipy.sparse import hstack\n", 1)
-    return fixed
+    return ensure_submission_makedirs(fixed)
 
 
 def build_repair_hint(stderr_text: str) -> str:

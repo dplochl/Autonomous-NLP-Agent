@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 
-from families.autofix_utils import fix_text_column_fillna
+from families.autofix_utils import ensure_submission_makedirs, fix_text_column_fillna
 
 
 FAMILY = "BoW"
@@ -191,11 +191,7 @@ def apply_light_autofixes(code: str, spec: dict[str, object]) -> str:
             "stratify_labels = y if len(np.unique(np.asarray(y, dtype=int))) > 1 and np.min(np.bincount(np.asarray(y, dtype=int))) >= 2 else None\n",
             1,
         )
-    fixed = fixed.replace(
-        "submission_df.to_csv(submission_path, index=False)",
-        "os.makedirs(os.path.dirname(submission_path), exist_ok=True)\nsubmission_df.to_csv(submission_path, index=False)",
-    )
-    return fixed
+    return ensure_submission_makedirs(fixed)
 
 
 def build_repair_hint(stderr_text: str) -> str:

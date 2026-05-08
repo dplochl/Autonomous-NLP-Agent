@@ -32,7 +32,7 @@ Required pipeline:
 - build test_dataset from list(test_df["text"]), labels=None, tokenizer, and max_len only if WRITE_SUBMISSION is true
 - tokenize with max_len from spec
 - train with batch sizes, learning rate, weight decay, and num_epochs from spec
-- TrainingArguments must include use_cpu=True, no_cuda=True, dataloader_pin_memory=False, save_strategy="no", logging_strategy="no", report_to="none", fp16=False, bf16=False, disable_tqdm=True
+- TrainingArguments must include use_cpu=True, dataloader_pin_memory=False, save_strategy="no", logging_strategy="no", report_to="none", fp16=False, bf16=False, disable_tqdm=True
 - if DRY_RUN, skip trainer.train()
 - use `val_dataset` or `valid_dataset`, either name is fine
 - predict validation logits with `trainer.predict(...).predictions` preferred

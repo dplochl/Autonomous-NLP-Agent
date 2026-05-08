@@ -251,6 +251,113 @@ def _ensure_probability_conversion(code: str) -> str:
     return fixed
 
 
+def _canonicalize_dataset_section(code: str, spec: dict[str, object]) -> str:
+    max_len = int(spec["max_len"])
+    train_label_var = "train_labels" if "train_labels" in code else "y_train"
+    val_label_var = "val_labels" if "val_labels" in code else "y_val"
+    replacement = f"""# Dataset class
+class TweetDataset(Dataset):
+    def __init__(self, texts, labels=None, tokenizer=tokenizer, max_len={max_len}):
+        self.texts = list(texts)
+        self.labels = list(labels) if labels is not None else None
+        self.tokenizer = tokenizer
+        self.max_len = max_len
+
+    def __len__(self):
+        return len(self.texts)
+
+    def __getitem__(self, idx):
+        text = str(self.texts[idx])
+        encoding = self.tokenizer(
+            text,
+            add_special_tokens=True,
+            max_length=self.max_len,
+            return_token_type_ids=False,
+            padding='max_length',
+            truncation=True,
+            return_attention_mask=True,
+            return_tensors='pt',
+        )
+        item = {{
+            'input_ids': encoding['input_ids'].flatten(),
+            'attention_mask': encoding['attention_mask'].flatten(),
+        }}
+        if self.labels is not None:
+            item['labels'] = torch.tensor(self.labels[idx], dtype=torch.long)
+        return item
+
+# Create datasets
+train_dataset = TweetDataset(train_texts, {train_label_var}, tokenizer=tokenizer, max_len={max_len})
+val_dataset = TweetDataset(val_texts, {val_label_var}, tokenizer=tokenizer, max_len={max_len})
+test_dataset = TweetDataset(list(test_df['text']), labels=None, tokenizer=tokenizer, max_len={max_len})
+
+"""
+    return re.sub(
+        r"# (?:Tokenize data|Create Dataset class|Dataset class)[\s\S]*?(?=# Training arguments)",
+        replacement,
+        code,
+        count=1,
+    )
+
+
+def _canonicalize_final_submission_section(code: str, spec: dict[str, object]) -> str:
+    max_len = int(spec["max_len"])
+    model_name_expr = 'spec["model_name"]' if 'spec =' in code else "model_name"
+    val_label_var = "val_labels" if "val_labels" in code else "y_val"
+    replacement = f"""# Predict validation logits
+val_logits = trainer.predict(val_dataset).predictions
+val_probs = np.exp(val_logits - np.max(val_logits, axis=1, keepdims=True))
+val_probs = val_probs / val_probs.sum(axis=1, keepdims=True)
+
+# Choose best threshold
+best_threshold = 0.5
+best_f1 = 0.0
+for threshold in np.linspace({float(spec["threshold_min"])}, {float(spec["threshold_max"])}, {int(spec["threshold_steps"])}):
+    val_preds = (val_probs[:, 1] > threshold).astype(int)
+    f1 = f1_score({val_label_var}, val_preds)
+    if f1 > best_f1:
+        best_f1 = f1
+        best_threshold = threshold
+
+# Final submission training and prediction
+if FINAL_SUBMISSION:
+    final_model = AutoModelForSequenceClassification.from_pretrained({model_name_expr}, num_labels=2)
+    final_train_dataset = TweetDataset(train_df['text'], train_df['target'], tokenizer=tokenizer, max_len={max_len})
+    final_trainer = Trainer(
+        model=final_model,
+        args=training_args,
+        train_dataset=final_train_dataset
+    )
+    if not DRY_RUN:
+        final_trainer.train()
+    test_predictor = final_trainer
+else:
+    test_predictor = trainer
+
+# Write submission if required
+if WRITE_SUBMISSION:
+    test_logits = test_predictor.predict(TweetDataset(test_df['text'], labels=None, tokenizer=tokenizer, max_len={max_len})).predictions
+    test_probs = np.exp(test_logits - np.max(test_logits, axis=1, keepdims=True))
+    test_probs = test_probs / test_probs.sum(axis=1, keepdims=True)
+    test_preds = (test_probs[:, 1] > best_threshold).astype(int)
+    submission_df = pd.DataFrame({{'id': test_df['id'], 'target': test_preds}})
+    os.makedirs(os.path.dirname(submission_path), exist_ok=True)
+    submission_df.to_csv(submission_path, index=False)
+
+# Metrics
+val_preds = (val_probs[:, 1] > best_threshold).astype(int)
+f1 = f1_score({val_label_var}, val_preds)
+acc = accuracy_score({val_label_var}, val_preds)
+
+"""
+    return re.sub(
+        r"# (?:Predict validation logits|Evaluate on validation set|Final submission|FINAL_SUBMISSION: train final model on full train data|Final submission training and prediction)[\s\S]*?(?=# Print metrics|# Metrics|# Calculate metrics)",
+        replacement,
+        code,
+        count=1,
+    )
+
+
 def apply_light_autofixes(code: str, spec: dict[str, object]) -> str:
     fixed = base.apply_light_autofixes(code, spec)
     fixed = _force_slow_tokenizer(fixed)
@@ -262,7 +369,9 @@ def apply_light_autofixes(code: str, spec: dict[str, object]) -> str:
     fixed = _apply_tweet_normalization(fixed)
     fixed = _replace_encode_plus(fixed)
     fixed = _use_dataset_predictions(fixed)
-    return _ensure_probability_conversion(fixed)
+    fixed = _ensure_probability_conversion(fixed)
+    fixed = _canonicalize_dataset_section(fixed, spec)
+    return _canonicalize_final_submission_section(fixed, spec)
 
 
 

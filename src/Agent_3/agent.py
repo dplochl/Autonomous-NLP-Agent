@@ -18,11 +18,11 @@ from sklearn.model_selection import train_test_split
 
 from artifacts import copy_if_exists, create_session_dir, create_run_dir, write_json, write_text
 from generate_spec import generate_initial_spec
-from json_utils import pretty_json
+from json_utils import extract_json_object, pretty_json
 from kaggle_submit import auto_submit_enabled, submit_and_wait
 from llm import OllamaClient
 from memory import Agent3Memory
-from prompts import ANALYSIS_PROMPT_TEMPLATE, DATA_CONTEXT_TEMPLATE, FULL_SYSTEM
+from prompts import ANALYSIS_PROMPT_TEMPLATE, DATA_CONTEXT_TEMPLATE, FULL_SYSTEM, OPT_PLANNER_SYSTEM
 from render_templates import render_family_prompt
 from repair import request_surgical_repair
 from sandbox import run_experiment, tail
@@ -40,7 +40,7 @@ import families.experiment_roberta as exp_roberta
 DATA_DIR_ENV = "DISASTER_AGENT_DATA_DIR"
 DEFAULT_DATA_DIR = "data"
 MAX_SEARCH_RUNS = int(os.environ.get("AGENT3_MAX_RUNS", "4"))
-MAX_REPAIR_ATTEMPTS = int(os.environ.get("DISASTER_AGENT_MAX_REPAIRS", "8"))
+MAX_REPAIR_ATTEMPTS = int(os.environ.get("DISASTER_AGENT_MAX_REPAIRS", "4"))
 FINAL_SUBMISSION_MAX_REPAIRS = int(os.environ.get("AGENT3_FINAL_SUBMISSION_MAX_REPAIRS", "6"))
 TOTAL_TIME_BUDGET_SECONDS = int(os.environ.get("AGENT3_TOTAL_TIME_BUDGET_SECONDS", str(60 * 60)))
 SWEEP_BUDGET_FRACTION = float(os.environ.get("AGENT3_SWEEP_BUDGET_FRACTION", "0.65"))
@@ -50,8 +50,9 @@ VALIDATION_FRACTION = min(max(float(os.environ.get("AGENT3_VALIDATION_FRACTION",
 TOP_ARCHITECTURES_TO_OPTIMIZE = int(os.environ.get("AGENT3_TOP_ARCHITECTURES_TO_OPTIMIZE", "2"))
 WINNER_OPTIMIZATION_MAX_RUNS = int(os.environ.get("AGENT3_WINNER_OPTIMIZATION_MAX_RUNS", "20"))
 RUN_START_BUFFER_SECONDS = int(os.environ.get("AGENT3_RUN_START_BUFFER_SECONDS", "120"))
+OPT_PLANNER_MODEL = os.environ.get("AGENT3_OPT_PLANNER_MODEL", "gemma4:e4b")
 # Measured one-run wall times on 2026-04-20, plus an extra ~120s cushion
-# for up to five repair attempts at roughly 24s each.
+# for up to four repair attempts at roughly 30s each.
 FAMILY_RUN_ESTIMATES = {
     "bow": 100,
     "bow_advanced": 200,
@@ -169,6 +170,138 @@ def best_trial_from_summary(summary: dict[str, Any]) -> dict[str, Any] | None:
         if trial.get("run_index") == best_run_index:
             return trial
     return None
+
+
+def _planner_family_rows(summaries: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for summary in summaries:
+        best_trial = best_trial_from_summary(summary)
+        best_metrics = summary.get("best_metrics") or {}
+        trials = summary.get("trials", [])
+        successful_runs = sum(1 for trial in trials if trial.get("success"))
+        failed_runs = sum(1 for trial in trials if not trial.get("success"))
+        rows.append(
+            {
+                "family_key": summary.get("family_key"),
+                "family": summary.get("family"),
+                "best_f1": best_metrics.get("f1"),
+                "best_accuracy": best_metrics.get("accuracy"),
+                "best_run_index": summary.get("best_run_index"),
+                "successful_runs": successful_runs,
+                "failed_runs": failed_runs,
+                "best_spec": best_trial.get("spec") if best_trial else {},
+                "tunable_keys": list(FAMILY_MODULES[summary["family_key"]].get_tunable_keys()),
+            }
+        )
+    return rows
+
+
+def build_opt_planner_prompt(
+    sweep_ranked: list[dict[str, Any]],
+    chosen_summary: dict[str, Any],
+) -> str:
+    planner_rows = _planner_family_rows(sweep_ranked)
+    chosen_module = FAMILY_MODULES[chosen_summary["family_key"]]
+    chosen_trial = best_trial_from_summary(chosen_summary)
+    return (
+        "You are planning the optimization stage after a family sweep for Kaggle Disaster Tweets.\n\n"
+        "Rules:\n"
+        "- choose the optimization family from the highest best_f1 sweep family only\n"
+        "- do not invent a new family\n"
+        "- output one JSON object only\n"
+        "- focus on safe local optimization around the chosen family's current best spec\n"
+        "- choose 2 or 3 parameter keys to focus during opt\n"
+        "- for each key, provide a direction from: keep, up_small, down_small, up_medium, down_medium\n"
+        "- use only tunable keys valid for the chosen family\n\n"
+        f"Chosen highest-F1 family:\n{pretty_json({'family_key': chosen_summary['family_key'], 'family': chosen_summary['family'], 'best_metrics': chosen_summary.get('best_metrics', {}), 'best_spec': chosen_trial.get('spec', {}) if chosen_trial else {}, 'tunable_keys': chosen_module.get_tunable_keys()})}\n\n"
+        f"Sweep family table:\n{pretty_json({'families': planner_rows})}\n\n"
+        "Return this schema exactly:\n"
+        '{\n'
+        '  "chosen_family_key": "family key from highest-F1 row",\n'
+        '  "strategy": "local_exploit|cautious_exploit",\n'
+        '  "parameter_focus": [\n'
+        '    {"key": "learning_rate", "direction": "down_small", "reason": "short reason"}\n'
+        "  ],\n"
+        '  "reason": "short paragraph",\n'
+        '  "confidence": 0.0\n'
+        "}\n"
+    )
+
+
+def plan_opt_family_and_parameters(
+    planner_llm: OllamaClient | None,
+    sweep_ranked: list[dict[str, Any]],
+) -> dict[str, Any]:
+    chosen_summary = sweep_ranked[0]
+    fallback = {
+        "planner_model": getattr(planner_llm, "model", None),
+        "chosen_family_key": chosen_summary["family_key"],
+        "chosen_family": chosen_summary["family"],
+        "strategy": "local_exploit",
+        "parameter_focus": [],
+        "reason": "Fallback to the highest sweep F1 family.",
+        "confidence": 0.0,
+        "used_fallback": True,
+        "raw_response": "",
+    }
+    if planner_llm is None:
+        return fallback
+
+    prompt = build_opt_planner_prompt(sweep_ranked, chosen_summary)
+    raw_response = planner_llm.respond(OPT_PLANNER_SYSTEM, prompt)
+    raw_json = extract_json_object(raw_response)
+    if not raw_json:
+        fallback["reason"] = "Fallback to the highest sweep F1 family because the planner returned no valid JSON."
+        fallback["raw_response"] = raw_response
+        return fallback
+
+    chosen_family_key = raw_json.get("chosen_family_key")
+    if chosen_family_key != chosen_summary["family_key"]:
+        chosen_family_key = chosen_summary["family_key"]
+    parameter_focus: list[dict[str, Any]] = []
+    valid_keys = set(FAMILY_MODULES[chosen_family_key].get_tunable_keys())
+    for item in raw_json.get("parameter_focus", []):
+        if not isinstance(item, dict):
+            continue
+        key = item.get("key")
+        direction = item.get("direction")
+        if not isinstance(key, str) or key not in valid_keys or key == "val_size":
+            continue
+        if direction not in {"keep", "up_small", "down_small", "up_medium", "down_medium"}:
+            continue
+        parameter_focus.append(
+            {
+                "key": key,
+                "direction": direction,
+                "reason": str(item.get("reason", ""))[:200],
+            }
+        )
+        if len(parameter_focus) >= 3:
+            break
+    if not parameter_focus:
+        top_keys = [key for key in FAMILY_MODULES[chosen_family_key].get_tunable_keys() if key != "val_size"][:3]
+        parameter_focus = [{"key": key, "direction": "keep", "reason": "Fallback focus key."} for key in top_keys]
+        used_fallback = True
+    else:
+        used_fallback = False
+
+    try:
+        confidence = float(raw_json.get("confidence", 0.0))
+    except (TypeError, ValueError):
+        confidence = 0.0
+
+    return {
+        "planner_model": planner_llm.model,
+        "chosen_family_key": chosen_family_key,
+        "chosen_family": FAMILY_MODULES[chosen_family_key].FAMILY,
+        "strategy": str(raw_json.get("strategy", "local_exploit")),
+        "parameter_focus": parameter_focus,
+        "reason": str(raw_json.get("reason", fallback["reason"]))[:1000],
+        "confidence": max(0.0, min(confidence, 1.0)),
+        "used_fallback": used_fallback,
+        "raw_response": raw_response,
+        "prompt": prompt,
+    }
 
 
 def load_text_if_exists(path: str | None) -> str | None:
@@ -394,7 +527,14 @@ def execute_final_submission_with_repairs(
             final_submission=True,
             submission_path=submission_path,
         )
-        submission_error = validate_submission_file(submission_path) if result.get("success") else None
+        submission_error = validate_submission_file(submission_path)
+        if submission_error is None and not result.get("success"):
+            result["success"] = True
+            result["stderr"] = (
+                result.get("stderr", "").rstrip()
+                + ("\n" if result.get("stderr") else "")
+                + "Accepted final submission because a valid submission CSV was created."
+            ).strip()
         if result.get("success") and submission_error is None:
             break
         if attempt == FINAL_SUBMISSION_MAX_REPAIRS:
@@ -520,6 +660,7 @@ def execute_family(
     seeded_code: str | None = None,
     phase_data_dir: str | None = None,
     phase_split_manifest: dict[str, Any] | None = None,
+    planner_guidance: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     module = FAMILY_MODULES[family_key]
     family = module.FAMILY
@@ -533,8 +674,7 @@ def execute_family(
     best_trial: dict[str, Any] | None = None
     best_code: str | None = seeded_code
     frozen_code: str | None = seeded_code
-    first_sweep_success_run: int | None = None
-    freeze_after_success = bool(getattr(module, "freeze_after_first_success", lambda: False)())
+    freeze_after_success = phase_label == "opt" and bool(getattr(module, "freeze_after_first_success", lambda: False)())
     if seeded_trial:
         seed_record = dict(seeded_trial)
         seed_record["run_index"] = 0
@@ -583,6 +723,7 @@ def execute_family(
                 history_summary=family_history,
                 trials=trials,
                 phase=phase_label,
+                planner_guidance=planner_guidance,
             )
             spec_stage_name = "search"
 
@@ -811,14 +952,8 @@ def execute_family(
                     print(f"[Freeze] {family} baseline refreshed from current best successful run.")
         print(f"[Result] run {run_index}/{resolved_max_runs} | success={result.get('success', False)} | metrics={result.get('metrics', {})}")
         if phase_label == "sweep" and result.get("success"):
-            if first_sweep_success_run is None:
-                first_sweep_success_run = run_index
-            elif run_index > first_sweep_success_run:
-                print(
-                    f"[Sweep] {family} produced a success plus one follow-up run; "
-                    "moving to the next family."
-                )
-                break
+            print(f"[Sweep] {family} produced a successful run; moving to the next family.")
+            break
 
     session_dir = create_session_dir(session_name)
     summary = {
@@ -852,6 +987,7 @@ def main(
     persist: bool,
     time_budget_seconds: int,
     optimize_winner: bool,
+    opt_planner_model: str,
 ) -> None:
     try:
         llm = OllamaClient(model=model)
@@ -861,6 +997,15 @@ def main(
             "Start Ollama and ensure the requested model is available.\n"
             f"Details: {exc}"
         ) from exc
+    opt_planner_llm: OllamaClient | None = None
+    if optimize_winner:
+        try:
+            opt_planner_llm = OllamaClient(model=opt_planner_model)
+        except Exception as exc:  # noqa: BLE001
+            print(
+                "[Planner] Could not initialize optimization planner model "
+                f"'{opt_planner_model}'. Falling back to heuristic opt selection. Details: {exc}"
+            )
     memory = Agent3Memory(persist=persist, load_existing=False)
     public_submissions_dir = reset_public_submissions_dir()
     phase_data_dirs: list[str] = []
@@ -915,7 +1060,26 @@ def main(
         reverse=True,
     )
     sweep_best = sweep_ranked[0]
+    planner_decision: dict[str, Any] | None = None
     top_sweep_summaries = sweep_ranked[:max(1, TOP_ARCHITECTURES_TO_OPTIMIZE)]
+    if optimize_winner:
+        planner_decision = plan_opt_family_and_parameters(opt_planner_llm, sweep_ranked)
+        selected_family_key = planner_decision["chosen_family_key"]
+        selected_summary = next((summary for summary in sweep_ranked if summary["family_key"] == selected_family_key), sweep_best)
+        top_sweep_summaries = [selected_summary]
+        planner_dir = os.path.join(os.path.dirname(__file__), "runs")
+        write_json(os.path.join(planner_dir, "opt_planner_decision.json"), planner_decision)
+        if planner_decision.get("prompt"):
+            write_text(os.path.join(planner_dir, "opt_planner_prompt.txt"), planner_decision["prompt"])
+        if planner_decision.get("raw_response"):
+            write_text(os.path.join(planner_dir, "opt_planner_raw_response.txt"), planner_decision["raw_response"])
+        focus_keys = [item["key"] for item in planner_decision.get("parameter_focus", [])]
+        print(
+            "[Planner] "
+            f"family={planner_decision['chosen_family']} | "
+            f"strategy={planner_decision.get('strategy', 'local_exploit')} | "
+            f"focus={focus_keys or ['none']}"
+        )
 
     if optimize_winner:
         opt_data_dir, opt_split_manifest = create_fixed_phase_data_dir(
@@ -966,6 +1130,7 @@ def main(
                         seeded_code=seeded_code,
                         phase_data_dir=opt_data_dir,
                         phase_split_manifest=opt_split_manifest,
+                        planner_guidance=planner_decision,
                     )
                 )
             else:
@@ -984,6 +1149,7 @@ def main(
         "sweep_best_run_index": sweep_best["best_run_index"],
         "sweep_best_metrics": sweep_best["best_metrics"],
         "optimized_families": [summary["family"] for summary in top_sweep_summaries] if optimize_winner else [],
+        "opt_planner_decision": planner_decision,
         "best_family": best_overall["family"],
         "best_run_index": best_overall["best_run_index"],
         "best_metrics": best_overall["best_metrics"],
@@ -1058,6 +1224,7 @@ def main(
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Agent_3 prompt-first autonomous experiment runner")
     parser.add_argument("--model", type=str, default="qwen2.5-coder:14b")
+    parser.add_argument("--opt-planner-model", type=str, default=OPT_PLANNER_MODEL)
     parser.add_argument("--family", type=str, choices=sorted(FAMILY_MODULES.keys()))
     parser.add_argument("--max-runs", type=int)
     parser.add_argument("--time-budget-minutes", type=int, default=60)
@@ -1071,4 +1238,5 @@ if __name__ == "__main__":
         persist=not args.fresh,
         time_budget_seconds=max(60, args.time_budget_minutes * 60),
         optimize_winner=not args.no_winner_optimization,
+        opt_planner_model=args.opt_planner_model,
     )

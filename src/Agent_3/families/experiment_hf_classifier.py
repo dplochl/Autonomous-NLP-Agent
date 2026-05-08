@@ -55,8 +55,8 @@ def _force_hf_cpu(code: str) -> str:
     fixed = force_cpu_execution(code)
     fixed = re.sub(r"use_cpu\s*=\s*False", "use_cpu=True", fixed)
     fixed = re.sub(r"use_cpu\s*=\s*True", "use_cpu=True", fixed)
-    fixed = re.sub(r"no_cuda\s*=\s*False", "no_cuda=True", fixed)
-    fixed = re.sub(r"no_cuda\s*=\s*True", "no_cuda=True", fixed)
+    fixed = re.sub(r"(?m)^[ \t]*use_cuda\s*=\s*(?:True|False)\s*,?\n", "", fixed)
+    fixed = re.sub(r"(?m)^[ \t]*no_cuda\s*=\s*(?:True|False)\s*,?\n", "", fixed)
     fixed = re.sub(r"dataloader_pin_memory\s*=\s*True", "dataloader_pin_memory=False", fixed)
     fixed = re.sub(r"dataloader_pin_memory\s*=\s*False", "dataloader_pin_memory=False", fixed)
     fixed = re.sub(r"fp16\s*=\s*True", "fp16=False", fixed)
@@ -65,7 +65,7 @@ def _force_hf_cpu(code: str) -> str:
         if "use_cpu=" not in fixed:
             fixed = fixed.replace(
                 "TrainingArguments(",
-                "TrainingArguments(\n    use_cpu=True,\n    no_cuda=True,\n    dataloader_pin_memory=False,",
+                "TrainingArguments(\n    use_cpu=True,\n    dataloader_pin_memory=False,",
                 1,
             )
         if "bf16=" not in fixed:
@@ -74,7 +74,52 @@ def _force_hf_cpu(code: str) -> str:
                 "dataloader_pin_memory=False,\n    bf16=False,",
                 1,
             )
+        fixed = _normalize_training_arguments_block(fixed)
     return fixed
+
+
+def _normalize_training_arguments_block(code: str) -> str:
+    match = re.search(r"TrainingArguments\((?P<body>[\s\S]*?)\n\)", code, re.MULTILINE)
+    if not match:
+        return code
+    body = match.group("body")
+    lines = body.splitlines()
+    cleaned: list[str] = []
+    seen_keys: set[str] = set()
+    indent = "    "
+    for line in lines:
+        stripped = line.strip()
+        if not stripped:
+            cleaned.append(line)
+            continue
+        key_match = re.match(r"([A-Za-z_][A-Za-z0-9_]*)\s*=", stripped)
+        if not key_match:
+            cleaned.append(line)
+            continue
+        key = key_match.group(1)
+        if key == "use_cuda":
+            continue
+        if key in seen_keys:
+            continue
+        seen_keys.add(key)
+        indent_match = re.match(r"([ \t]*)", line)
+        if indent_match:
+            indent = indent_match.group(1) or indent
+        cleaned.append(line)
+
+    required_defaults = [
+        ("use_cpu", "True"),
+        ("dataloader_pin_memory", "False"),
+        ("bf16", "False"),
+        ("fp16", "False"),
+    ]
+    present = {re.match(r"([A-Za-z_][A-Za-z0-9_]*)\s*=", line.strip()).group(1) for line in cleaned if re.match(r"([A-Za-z_][A-Za-z0-9_]*)\s*=", line.strip())}
+    inserts = [f"{indent}{key}={value}," for key, value in required_defaults if key not in present]
+    if inserts:
+        cleaned = inserts + cleaned
+
+    replacement = "TrainingArguments(" + ("\n" + "\n".join(cleaned) if cleaned else "") + "\n)"
+    return code[: match.start()] + replacement + code[match.end() :]
 
 
 def _flatten_tokenizer_tensors(code: str) -> str:

@@ -208,26 +208,140 @@ def apply_light_autofixes(code: str, spec: dict[str, object]) -> str:
         "test_preds.extend(np.atleast_1d(preds))",
     )
     fixed = fixed.replace(
+        "all_preds.extend(preds)",
+        "all_preds.extend(np.atleast_1d(preds).tolist())",
+    )
+    fixed = fixed.replace(
+        "all_labels.extend(labels.cpu().numpy())",
+        "all_labels.extend(np.atleast_1d(labels.cpu().numpy()).tolist())",
+    )
+    fixed = fixed.replace("x = x[0].to(device)", "x = x.to(device)")
+    fixed = fixed.replace(
+        "self.labels.iloc[idx] if hasattr(self.labels, 'iloc') else self.labels[idx]",
+        "self.labels[idx]",
+    )
+    fixed = fixed.replace(
         "val_labels = val_labels.to_numpy()\nval_labels = val_labels.numpy()\n",
         "val_labels = np.asarray(val_labels)\n",
     )
-    fixed = fixed.replace(
-        "submission_df.to_csv(submission_path, index=False)",
-        "os.makedirs(os.path.dirname(submission_path), exist_ok=True)\nsubmission_df.to_csv(submission_path, index=False)",
+    fixed = re.sub(
+        r"(?ms)\n(?:[ \t]*submission_df\s*=\s*pd\.DataFrame\(\{.*?submission_df\.to_csv\(submission_path,\s*index=False\)\n)+",
+        "\n",
+        fixed,
+    )
+    return _canonicalize_eval_and_submission(fixed, spec)
+
+
+def _canonicalize_eval_and_submission(code: str, spec: dict[str, object]) -> str:
+    epochs = int(spec["epochs"])
+    threshold_min = float(spec["threshold_min"])
+    threshold_max = float(spec["threshold_max"])
+    threshold_steps = int(spec["threshold_steps"])
+    max_vocab = int(spec["max_vocab"])
+    embedding_dim = int(spec["embedding_dim"])
+    channels = int(spec["channels"])
+    dropout = float(spec["dropout"])
+    batch_size = int(spec["batch_size"])
+    learning_rate = float(spec["learning_rate"])
+    val_block = f"""# Validation
+def collect_probs_and_labels(model, loader):
+    model.eval()
+    all_probs = []
+    all_labels = []
+    with torch.no_grad():
+        for inputs, labels in loader:
+            inputs = inputs.to(device)
+            labels = labels.to(device)
+            outputs = model(inputs).squeeze()
+            probs = torch.sigmoid(outputs).detach().cpu().numpy()
+            all_probs.extend(np.atleast_1d(probs).tolist())
+            all_labels.extend(np.atleast_1d(labels.cpu().numpy()).tolist())
+    return np.asarray(all_probs), np.asarray(all_labels)
+
+val_probs, val_labels = collect_probs_and_labels(model, val_loader)
+
+# Choose best threshold
+best_threshold = 0.5
+best_f1 = 0.0
+for threshold in np.linspace({threshold_min}, {threshold_max}, {threshold_steps}):
+    val_preds = (val_probs > threshold).astype(int)
+    f1 = f1_score(val_labels, val_preds)
+    if f1 > best_f1:
+        best_f1 = f1
+        best_threshold = threshold
+
+# Final submission
+test_preds = np.array([], dtype=int)
+if WRITE_SUBMISSION:
+    class _UnlabeledTextDataset(Dataset):
+        def __init__(self, texts):
+            self.texts = list(texts)
+
+        def __len__(self):
+            return len(self.texts)
+
+        def __getitem__(self, idx):
+            text = self.texts[idx]
+            if 'tokenize' in globals():
+                token_ids = tokenize(text, vocab, {int(spec["max_len"])})
+            else:
+                token_ids = text_to_sequence(text, vocab, {int(spec["max_len"])})
+            return torch.tensor(token_ids, dtype=torch.long)
+
+    test_loader = DataLoader(_UnlabeledTextDataset(test_df['text']), batch_size={batch_size}, shuffle=False, pin_memory=False)
+    if FINAL_SUBMISSION:
+        final_model = TextCNN(vocab_size=len(vocab) + 1, embedding_dim={embedding_dim}, channels={channels}, kernel_sizes=[3, 4, 5], dropout={dropout}).to(device)
+        optimizer_final = torch.optim.Adam(final_model.parameters(), lr={learning_rate})
+        criterion_final = nn.BCEWithLogitsLoss()
+        final_train_loader = DataLoader(train_dataset, batch_size={batch_size}, shuffle=True, pin_memory=False)
+        for epoch in range({epochs}):
+            final_model.train()
+            for inputs, labels in final_train_loader:
+                inputs = inputs.to(device)
+                labels = labels.to(device)
+                optimizer_final.zero_grad()
+                outputs = final_model(inputs).squeeze()
+                loss = criterion_final(outputs, labels)
+                loss.backward()
+                optimizer_final.step()
+        test_model = final_model
+    else:
+        test_model = model
+
+    test_model.eval()
+    test_probs = []
+    with torch.no_grad():
+        for inputs in test_loader:
+            if isinstance(inputs, (list, tuple)):
+                inputs = inputs[0]
+            inputs = inputs.to(device)
+            outputs = test_model(inputs).squeeze()
+            probs = torch.sigmoid(outputs).detach().cpu().numpy()
+            test_probs.extend(np.atleast_1d(probs).tolist())
+    test_preds = (np.asarray(test_probs) > best_threshold).astype(int)
+
+    submission_df = pd.DataFrame({{
+        'id': test_df['id'],
+        'target': test_preds
+    }})
+    os.makedirs(os.path.dirname(submission_path), exist_ok=True)
+    submission_df.to_csv(submission_path, index=False)
+
+"""
+    fixed = re.sub(
+        r"# Validation[\s\S]*?(?=# Metrics)",
+        val_block,
+        code,
+        count=1,
     )
     fixed = re.sub(
-        r"(\n[ \t]*)for (\w+) in loader:\n(?![ \t]*if isinstance)",
-        r"\1for \2 in loader:\n\1    if isinstance(\2, (list, tuple)):\n\1        \2 = \2[0]\n",
+        r"TextCNN\(\s*SPEC\['max_vocab'\]\s*,\s*SPEC\['embedding_dim'\]\s*,\s*SPEC\['channels'\]\s*,\s*SPEC\['kernel_sizes'\]\s*,\s*SPEC\['dropout'\]\s*\)",
+        f"TextCNN(vocab_size=len(vocab) + 1, embedding_dim={embedding_dim}, channels={channels}, kernel_sizes=[3, 4, 5], dropout={dropout})",
         fixed,
     )
     fixed = re.sub(
-        r"(\n[ \t]*)for (\w+) in val_loader:\n(?![ \t]*if isinstance)",
-        r"\1for \2 in val_loader:\n\1    if isinstance(\2, (list, tuple)):\n\1        \2 = \2[0]\n",
-        fixed,
-    )
-    fixed = re.sub(
-        r"(\n[ \t]*)for (\w+) in test_loader:\n(?![ \t]*if isinstance)",
-        r"\1for \2 in test_loader:\n\1    if isinstance(\2, (list, tuple)):\n\1        \2 = \2[0]\n",
+        r"TextCNN\(\s*spec\[[\"']max_vocab[\"']\]\s*,\s*spec\[[\"']embedding_dim[\"']\]\s*,\s*spec\[[\"']channels[\"']\]\s*,\s*spec\[[\"']kernel_sizes[\"']\]\s*,\s*spec\[[\"']dropout[\"']\]\s*\)",
+        f"TextCNN(vocab_size=len(vocab) + 1, embedding_dim={embedding_dim}, channels={channels}, kernel_sizes=[3, 4, 5], dropout={dropout})",
         fixed,
     )
     return fixed
