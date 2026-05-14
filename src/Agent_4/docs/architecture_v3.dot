@@ -1,0 +1,77 @@
+digraph V3 {
+    graph [rankdir=TB, bgcolor=white, fontname="Helvetica",
+           labelloc="t", label=<<B>V3 — Multi-family Modular LLM Agent</B>>,
+           fontsize=22, dpi=160, nodesep=0.5, ranksep=0.7, compound=true, newrank=true];
+    node [fontname="Helvetica", fontsize=12, shape=box, style="rounded,filled", color="#333333"];
+    edge [fontname="Helvetica", fontsize=10, color="#555555"];
+
+    /* LEFT: LLM router (2 models) */
+    subgraph cluster_llm {
+        label=<<B>LLM Router  (llm.py)</B>>; style="rounded,filled";
+        color="#5a3b8c"; fillcolor="#f1ecfa"; fontname="Helvetica-Bold"; fontsize=13; margin=14;
+        llm_orch [label=<<B>ORCHESTRATOR</B><br/><FONT POINT-SIZE="10">gemma3:4b<br/>analyze · search</FONT>>, fillcolor="#e3d6f7"];
+        llm_code [label=<<B>CODE</B><br/><FONT POINT-SIZE="10">qwen2.5-coder:14b<br/>spec gen · code gen · repair</FONT>>, fillcolor="#cfe0fa"];
+        llm_orch -> llm_code [style=invis];
+    }
+
+    /* CENTER: pipeline */
+    trigger [label="python src/Agent_3/agent.py", shape=oval, fillcolor="#E0F0FF", color="#3a78b8"];
+
+    subgraph cluster_loop {
+        label=<<B>Per-family loop  (execute_family)</B>>;
+        style="rounded,dashed,filled"; color="#2f7a3a"; fillcolor="#eaf6ec";
+        fontname="Helvetica-Bold"; fontsize=13; margin=14;
+
+        s1 [label=<<B>1. spec generation</B><br/><FONT POINT-SIZE="10">validated against\nexperiment_schema.json</FONT>>, fillcolor="#ffffff"];
+        s2 [label=<<B>2. code generation</B><br/><FONT POINT-SIZE="10">family-specific template\n+ LLM fills it</FONT>>, fillcolor="#ffffff"];
+        s3 [label=<<B>3. sandbox</B><br/><FONT POINT-SIZE="10">dry-run + full run</FONT>>, fillcolor="#ffffff"];
+        s4 [label=<<B>4. surgical repair</B><br/><FONT POINT-SIZE="10">up to 8 attempts</FONT>>, fillcolor="#fde2e2", color="#a83232"];
+        s5 [label=<<B>5. analyze + log</B>>, fillcolor="#ffffff"];
+
+        s1 -> s2 -> s3;
+        s3 -> s4 [label="failure", color="#a83232", fontcolor="#a83232"];
+        s4 -> s3 [label="patched", style=dashed, color="#a83232", fontcolor="#a83232"];
+        s3 -> s5 [label="success or final failure"];
+    }
+
+    sweep [label=<<B>SWEEP phase</B><br/><FONT POINT-SIZE="10">walk all 8 families<br/>4k labeled rows · 80/20 split</FONT>>, fillcolor="#d6e8f5", color="#3a78b8"];
+    optimize [label=<<B>OPTIMIZE phase</B><br/><FONT POINT-SIZE="10">top-2 architectures<br/>10k rows · 80/20 · seeded from sweep best</FONT>>, fillcolor="#d6e8f5", color="#3a78b8"];
+    final [label=<<B>FINAL retrain</B><br/><FONT POINT-SIZE="10">best model on FULL labeled set\npredict test.csv</FONT>>, fillcolor="#fde6d6", color="#b87a3a"];
+    submission [label="submissions/best_overall_submission.csv", shape=cylinder, fillcolor="#e0f5e8", color="#2b8a3e"];
+    kaggle [label="Kaggle upload (optional)", shape=oval, fillcolor="#f5f5f5", color="#888888"];
+
+    /* RIGHT: families + memory */
+    subgraph cluster_fams {
+        label=<<B>Families package</B>>; style="rounded,filled"; color="#3a78b8"; fillcolor="#eaf2fa";
+        fontname="Helvetica-Bold"; fontsize=13; margin=14;
+        fam_list [label=<<B>experiment_bow.py</B><br/>experiment_bow_advanced.py<br/>experiment_cnn.py<br/>experiment_lstm.py<br/>experiment_embedding_dl.py<br/>experiment_roberta.py<br/>experiment_bertweet.py>, fillcolor="#ffffff"];
+    }
+
+    subgraph cluster_mem {
+        label=<<B>Memory</B>>; style="rounded,filled"; color="#2f7a3a"; fillcolor="#e6f4e8";
+        fontname="Helvetica-Bold"; fontsize=13; margin=14;
+        mem_tier1 [label=<<B>Tier 1</B> · Static brief", fillcolor="#ffffff">];
+        mem_tier2 [label=<<B>Tier 2</B> · Rolling log", fillcolor="#ffffff">];
+        mem_milestone [label=<<B>Milestone</B><br/>Best F1 ever>, fillcolor="#ffffff"];
+        mem_archq [label=<<B>Arch queue</B><br/>fixed family order>, fillcolor="#ffffff"];
+        mem_tier1 -> mem_tier2 [style=invis];
+        mem_tier2 -> mem_milestone [style=invis];
+        mem_milestone -> mem_archq [style=invis];
+    }
+
+    artifacts [label="agent3_log.json\n(flat list of trials)", shape=cylinder, fillcolor="#fffae0", color="#c2a200"];
+
+    /* FLOW */
+    trigger -> s1 [lhead=cluster_loop];
+    s5 -> sweep [ltail=cluster_loop];
+    sweep -> optimize [label="top-2 by F1"];
+    optimize -> final [label="best overall"];
+    final -> submission;
+    submission -> kaggle [style=dashed];
+
+    s5 -> artifacts [style=dotted, color="#c2a200", ltail=cluster_loop, constraint=false];
+
+    { rank=same; llm_orch; trigger; mem_tier1; }
+    { rank=same; llm_code; s1; mem_tier2; }
+    { rank=same; sweep; fam_list; mem_archq; }
+}

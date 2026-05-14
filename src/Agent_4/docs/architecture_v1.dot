@@ -1,0 +1,25 @@
+digraph V1 {
+    graph [rankdir=TB, bgcolor=white, fontname="Helvetica",
+           labelloc="t", label=<<B>V1 — Single-architecture LLM Baseline Agent</B>>,
+           fontsize=22, dpi=160, nodesep=0.5, ranksep=0.7];
+    node [fontname="Helvetica", fontsize=12, shape=box, style="rounded,filled", color="#333333"];
+    edge [fontname="Helvetica", fontsize=10, color="#555555"];
+
+    trigger [label="python src/agent_vs.py v1", shape=oval, fillcolor="#E0F0FF", color="#3a78b8"];
+    ollama  [label=<<B>Ollama LLM</B><br/><FONT POINT-SIZE="10">proposes one experiment dict<br/>(model_type · vocab_size · seq_length · embed_dim)</FONT>>, fillcolor="#cfe0fa"];
+    sanitize [label=<<B>sanitize_experiment</B><br/><FONT POINT-SIZE="10">clamp to allowed values:<br/>avg_embed | lstm<br/>vocab 5k / 10k · seq 50/100 · dim 32/64</FONT>>, fillcolor="#ffffff"];
+    build   [label=<<B>build_model + Keras train</B><br/><FONT POINT-SIZE="10">Embedding + (avg pool | LSTM)<br/>train on 80% · validate on 20%</FONT>>, fillcolor="#d6e8f5"];
+    eval    [label=<<B>evaluate</B><br/><FONT POINT-SIZE="10">F1 on validation</FONT>>, fillcolor="#d6e8f5"];
+    log     [label="append result to\nlogs/v1_simple_log.jsonl", shape=cylinder, fillcolor="#fffae0"];
+    history [label=<<B>history</B><br/><FONT POINT-SIZE="10">all prior trials passed back<br/>to the next prompt</FONT>>, fillcolor="#e6f4e8"];
+    best    [label="save best\nresult.json", shape=cylinder, fillcolor="#e0f5e8", color="#2b8a3e"];
+
+    trigger -> ollama [label="prompt with history"];
+    ollama -> sanitize;
+    sanitize -> build;
+    build -> eval;
+    eval -> log;
+    log -> history [style=dashed];
+    history -> ollama [label="next iteration", style=dashed];
+    log -> best [label="if best so far"];
+}

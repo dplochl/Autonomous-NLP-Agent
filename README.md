@@ -53,45 +53,58 @@ roles of a local Ollama-hosted LLM to:
 The earlier Agent_3 source code is intentionally absent on this branch. Only its
 runs/ history is retained so the experiment log is still available for analysis.
 
-## Entry point
+## Quick start — one command
+
+After cloning, from the repo root:
 
 ```bash
-python3 src/Agent_4/agent.py
+./run.sh
 ```
 
-The default budget is 60 minutes (45 min sweep + 15 min final retrain + submission).
+That script creates the virtualenv on first run, installs the dependencies,
+checks Ollama is up, makes sure `qwen2.5-coder:14b` is pulled, verifies the
+dataset is in place, and then launches the agent for the default 60-minute
+budget. Re-running it skips work already done and goes straight to the agent.
+
+Useful variants:
+
+```bash
+./run.sh --time-budget-minutes 10   # quick smoke run
+./run.sh --family bow               # one trial of a specific family
+./run.sh dashboard                  # serve the live dashboard at http://localhost:5050
+```
 
 ## Prerequisites
 
-1. Python 3.11+ in a virtual environment
-2. Ollama running locally on `http://localhost:11434`
-3. The code-gen model pulled:
+The script handles steps 1, 3 and the dependency install for you. You only need
+to install these once on the machine:
 
-```bash
-ollama serve
-ollama pull qwen2.5-coder:14b
-```
+1. **Python 3.11+** (`brew install python@3.11` on macOS)
+2. **Ollama** running locally on `http://localhost:11434`
+   (`brew install ollama` then `ollama serve` in another terminal, or install
+   from <https://ollama.com/download>)
+3. **Kaggle Disaster Tweets data** at `data/train.csv` and `data/test.csv`
+   (already included in this branch — overwrite with your own copy if needed).
 
-4. Kaggle Disaster Tweets data at `data/train.csv` and `data/test.csv` (already
-   included in this branch — overwrite with your own copy if needed).
-
-## Installation
+If you prefer the manual flow without the bootstrap script:
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+ollama serve &                                  # in another terminal, or already running
+ollama pull qwen2.5-coder:14b                   # one-time, ~9 GB
+python3 src/Agent_4/agent.py                    # default 60-minute budget
 ```
-
-You can reuse a venv created for any prior version of this repo — `requirements.txt`
-hasn't changed.
 
 ## Running the agent
 
-Full LLM-driven 1-hour sweep + final submission:
+The bootstrap script above (`./run.sh`) is the easiest way. If you want to call
+the Python entrypoint directly, the equivalent commands are:
 
 ```bash
-python3 src/Agent_4/agent.py
+source .venv/bin/activate
+python3 src/Agent_4/agent.py                # full LLM-driven 60-minute run
 ```
 
 Force one trial of a specific family (bypasses the sweep planner):

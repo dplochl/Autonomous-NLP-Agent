@@ -1,0 +1,138 @@
+digraph Agent4 {
+    graph [
+        rankdir=TB,
+        bgcolor=white,
+        fontname="Helvetica",
+        labelloc="t",
+        label=<<B>Agent_4 — Three-Model LLM-Driven Experiment Loop</B>>,
+        fontsize=26,
+        compound=true,
+        newrank=true,
+        nodesep=0.55,
+        ranksep=0.9,
+        splines=spline,
+        dpi=170,
+        pad=0.4
+    ];
+    node [fontname="Helvetica", fontsize=12, shape=box, style="rounded,filled", color="#333333"];
+    edge [fontname="Helvetica", fontsize=10, color="#555555"];
+
+    /* ====== LEFT COLUMN: LLM Router ====== */
+    subgraph cluster_llm {
+        label=<<B>LLM Router  (llm.py)</B>>;
+        style="rounded,filled";
+        color="#5a3b8c";
+        fillcolor="#f1ecfa";
+        fontname="Helvetica-Bold";
+        fontsize=14;
+        margin=18;
+
+        llm_orch [label=<<B>ORCHESTRATOR</B><br/><FONT POINT-SIZE="11">gemma4:latest</FONT><br/><FONT POINT-SIZE="10">• analyze run<br/>• opt-phase planner<br/>• final analyze</FONT>>, fillcolor="#e3d6f7"];
+        llm_code [label=<<B>CODE</B><br/><FONT POINT-SIZE="11">qwen2.5-coder:14b</FONT><br/><FONT POINT-SIZE="10">• spec generation<br/>• code generation<br/>• surgical repair</FONT>>, fillcolor="#cfe0fa"];
+        llm_sweep [label=<<B>SWEEP PLANNER ★ NEW</B><br/><FONT POINT-SIZE="11">qwen2.5-coder:14b</FONT><br/><FONT POINT-SIZE="10">• next-family decision<br/>• reads state table</FONT>>, fillcolor="#d3f0db", color="#2b8a3e"];
+
+        llm_orch -> llm_code [style=invis];
+        llm_code -> llm_sweep [style=invis];
+    }
+
+    /* ====== CENTER: Main vertical pipeline ====== */
+    trigger [label="python src/Agent_4/agent.py", shape=oval, fillcolor="#E0F0FF", color="#3a78b8", fontsize=13];
+
+    subgraph cluster_planner {
+        label=<<B>Sweep Planner Loop  ★ NEW in V4</B>>;
+        style="rounded,dashed,filled";
+        color="#2b8a3e";
+        fillcolor="#f0fbf3";
+        fontname="Helvetica-Bold";
+        fontsize=14;
+        margin=18;
+
+        sp_state [label=<<B>per-family state table</B><br/><FONT POINT-SIZE="10">attempts · best_f1 · last_outcome<br/>repair_attempts · wall_seconds</FONT>>, fillcolor="#ffffff"];
+        sp_decision [label=<<B>LLM planner decision</B><br/><FONT POINT-SIZE="10">try_family · skip_family_permanently · stop</FONT>>, shape=diamond, fillcolor="#d3f0db", color="#2b8a3e"];
+        sp_gate [label=<<B>40-min wall-clock window</B><br/><FONT POINT-SIZE="10">AGENT4_SWEEP_DURATION_SECONDS<br/>OR planner returns "stop"</FONT>>, shape=note, fillcolor="#fff8d6", color="#c2a200"];
+
+        sp_state -> sp_decision [label="reads"];
+        sp_decision -> sp_gate [style=dashed, label="every step"];
+    }
+
+    subgraph cluster_loop {
+        label=<<B>Per-family loop  (execute_family, max_runs=1 per planner try)</B>>;
+        style="rounded,dashed,filled";
+        color="#2f7a3a";
+        fillcolor="#eaf6ec";
+        fontname="Helvetica-Bold";
+        fontsize=14;
+        margin=18;
+
+        s1 [label=<<B>1. spec generation</B><br/><FONT POINT-SIZE="10">generate_initial_spec OR<br/>propose_next_spec on revisit</FONT>>, fillcolor="#ffffff"];
+        s2 [label=<<B>2. code generation</B><br/><FONT POINT-SIZE="10">full training script<br/>(or reuse frozen baseline)</FONT>>, fillcolor="#ffffff"];
+        s3 [label=<<B>3. sandbox</B><br/><FONT POINT-SIZE="10">dry-run + full run</FONT>>, fillcolor="#ffffff"];
+        s4 [label=<<B>4. surgical repair</B><br/><FONT POINT-SIZE="10">up to 4 attempts</FONT>>, fillcolor="#fde2e2", color="#a83232"];
+        s5 [label=<<B>5. analyze + classify outcome</B><br/><FONT POINT-SIZE="10">success · training_crash · timeout<br/>code_gen_failed · no_metrics · repair_exhausted</FONT>>, fillcolor="#ffffff"];
+
+        s1 -> s2 -> s3;
+        s3 -> s4 [label="failure", color="#a83232", fontcolor="#a83232"];
+        s4 -> s3 [label="patched", style=dashed, color="#a83232", fontcolor="#a83232"];
+        s3 -> s5 [label="success or final failure"];
+    }
+
+    sweep [label=<<B>SWEEP phase</B><br/><FONT POINT-SIZE="10">LLM-driven family selection · 40-min window<br/></FONT><FONT POINT-SIZE="10" COLOR="#2b8a3e"><B>★ fixed 2k-row sample · 80/20 split</B><br/>(V3 was: walk all 8 families · 4k rows)</FONT>>, fillcolor="#d6e8f5", color="#3a78b8"];
+
+    optimize [label=<<B>OPTIMIZE phase</B><br/><FONT POINT-SIZE="10"><B>top-1</B> (was top-2) — chosen by opt planner<br/><B>2k-row sample</B> (was 10k) · 80/20 split<br/>up to 20 tuning trials · seeded from sweep best<br/>+ parameter focus from planner</FONT>>, fillcolor="#d6e8f5", color="#3a78b8"];
+
+    final [label=<<B>FINAL retrain</B><br/><FONT POINT-SIZE="10" COLOR="#a83232"><B>★ 2k-row sample (AGENT4_FINAL_TRAIN_ROWS)</B></FONT><br/><FONT POINT-SIZE="10">V3 was: full labeled set<br/>predicts unlabelled test.csv</FONT>>, fillcolor="#fde6d6", color="#b87a3a"];
+
+    submission [label="submissions/best_overall_submission.csv", shape=cylinder, fillcolor="#e0f5e8", color="#2b8a3e", fontsize=11];
+    kaggle [label="Kaggle upload (optional)\nAGENT3_AUTO_SUBMIT_KAGGLE=1", shape=oval, fillcolor="#f5f5f5", color="#888888"];
+
+    /* ====== RIGHT COLUMN: Memory + Artifacts ====== */
+    subgraph cluster_mem {
+        label=<<B>Memory</B>>;
+        style="rounded,filled";
+        color="#2f7a3a";
+        fillcolor="#e6f4e8";
+        fontname="Helvetica-Bold";
+        fontsize=14;
+        margin=18;
+
+        mem_tier1 [label=<<B>Tier 1</B> · Static brief<br/><FONT POINT-SIZE="10">FULL_SYSTEM +<br/>DATA_CONTEXT_TEMPLATE</FONT>>, fillcolor="#ffffff"];
+        mem_tier2 [label=<<B>Tier 2</B> · Rolling log<br/><FONT POINT-SIZE="10">last 20 runs</FONT>>, fillcolor="#ffffff"];
+        mem_milestone [label=<<B>Milestone</B><br/><FONT POINT-SIZE="10">Best F1 ever<br/>seeds opt phase</FONT>>, fillcolor="#ffffff"];
+        mem_familystate [label=<<B>Family state ★ NEW</B><br/><FONT POINT-SIZE="10">fed to sweep planner</FONT>>, fillcolor="#d3f0db", color="#2b8a3e"];
+        mem_archq [label=<<I>Arch queue (V3) — REMOVED</I>>, fillcolor="#f5f5f5", color="#999999", fontcolor="#777777"];
+
+        mem_tier1 -> mem_tier2 [style=invis];
+        mem_tier2 -> mem_milestone [style=invis];
+        mem_milestone -> mem_familystate [style=invis];
+        mem_familystate -> mem_archq [style=invis];
+    }
+
+    artifacts [label=<<B>Per-run artifacts</B><br/><FONT POINT-SIZE="10">src/Agent_4/runs/&lt;session&gt;/<br/>spec.json · prompt.txt · train.py<br/>metrics.json · run.log · summary.json<br/><BR/></FONT><FONT POINT-SIZE="10" COLOR="#2b8a3e"><B>★ NEW V4:</B><br/>runs/sweep_decisions.jsonl<br/>sweep_decision_&lt;ts&gt;_prompt.txt<br/>sweep_decision_&lt;ts&gt;_raw.txt<br/>opt_planner_decision.json</FONT>>, fillcolor="#fffae0", color="#c2a200"];
+
+    /* ====== MAIN FLOW ====== */
+    trigger -> sp_state [lhead=cluster_planner];
+    sp_decision -> s1 [label=<<B>try_family</B> ⇒ 1 trial>, lhead=cluster_loop, color="#2b8a3e", fontcolor="#2b8a3e"];
+    s5 -> sp_state [label="outcome updates state", style=dashed, color="#2b8a3e", fontcolor="#2b8a3e", ltail=cluster_loop, constraint=false];
+    sp_gate -> sweep [label="40 min done OR stop", style=bold];
+    sweep -> optimize [label="highest-F1 family"];
+    optimize -> final [label="best overall trial"];
+    final -> submission;
+    submission -> kaggle [style=dashed];
+
+    /* ====== COLUMN ANCHORING: same-rank groups across clusters
+       (newrank=true required). Order left→right: LLM | pipeline | memory.
+       Invisible edges enforce horizontal order on shared ranks.        */
+    { rank=same; llm_orch;       trigger;       mem_tier1; }
+    { rank=same; llm_code;       sp_state;      mem_tier2; }
+    { rank=same; llm_sweep;      sp_decision;   mem_milestone; }
+    { rank=same; sweep;          mem_familystate; }
+    { rank=same; optimize;       mem_archq; }
+    { rank=same; final;          artifacts; }
+
+    llm_orch -> trigger      [style=invis];
+    trigger -> mem_tier1     [style=invis];
+    llm_code -> sp_state     [style=invis];
+    sp_state -> mem_tier2    [style=invis];
+    llm_sweep -> sp_decision [style=invis];
+    sp_decision -> mem_milestone [style=invis];
+}

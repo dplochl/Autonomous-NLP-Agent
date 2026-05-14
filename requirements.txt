@@ -16,3 +16,6 @@ emoji==0.6.0
 
 # Optional: Kaggle submission automation
 kaggle>=1.6
+
+# Optional: live dashboard (python3 src/Agent_4/dashboard.py)
+flask>=3.0
