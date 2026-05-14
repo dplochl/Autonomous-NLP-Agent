@@ -1,0 +1,50 @@
+Write one complete runnable Python script for Kaggle Disaster Tweets.
+
+Family:
+- {{family}}
+- {{family_note}}
+
+Use this validated spec exactly:
+{{spec_json}}
+
+Required pipeline:
+- load only real train.csv and test.csv from DATA_DIR = os.environ.get("DISASTER_AGENT_DATA_DIR", "data")
+- DRY_RUN = os.environ.get("AGENT_DRY_RUN") == "1"
+- WRITE_SUBMISSION = os.environ.get("AGENT_WRITE_SUBMISSION") == "1"
+- FINAL_SUBMISSION = os.environ.get("AGENT_FINAL_SUBMISSION") == "1"
+- TRAIN_FRACTION = float(os.environ.get("AGENT_TRAIN_FRACTION", "1.0"))
+- SAMPLE_SEED = int(os.environ.get("AGENT_SAMPLE_SEED", "42"))
+- fillna keyword, location, text with ""
+- build one text field from keyword + " [SEP] " + text, else text
+- create X as raw text array and y as target array
+- if DRY_RUN, use head(dry_run_head)
+- else if TRAIN_FRACTION < 1.0, randomly sample that fraction of train_df with random_state=SAMPLE_SEED and reset_index(drop=True)
+- define stratify_labels = y if class counts allow, else None
+- use one train_test_split with test_size=val_size, random_state=42, stratify=stratify_labels; val_size is fixed at 0.2 for the runner
+- use sklearn TfidfVectorizer with spec values
+- use LogisticRegression with C from spec
+- predict validation probabilities always
+- if FINAL_SUBMISSION is true, after choosing the best cutoff, refit the vectorizer/model on every labeled row currently loaded in train_df before test prediction
+- predict test probabilities and write submission_path only if WRITE_SUBMISSION is true
+- choose best cutoff by looping over np.linspace(threshold_min, threshold_max, threshold_steps)
+- when WRITE_SUBMISSION is true, save columns id,target to submission_path
+- last line exactly:
+  print('METRICS: {"f1": ' + str(round(f1, 4)) + ', "accuracy": ' + str(round(acc, 4)) + '}')
+
+Do not use:
+- torch
+- tensorflow
+- keras
+- K-fold CV
+- mock/demo/sample data
+
+Dataset context:
+{{data_context}}
+
+Family history:
+{{history_summary}}
+
+Session trial summary:
+{{trial_summary}}
+
+Return code only.

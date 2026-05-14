@@ -16,6 +16,7 @@ venv/
 *.key
 *.json
 !src/Agent_3/experiment_schema.json
+!src/Agent_4/experiment_schema.json
 
 # Mac
 .DS_Store
@@ -56,6 +57,15 @@ src/Agent_V2/__pycache__/
 agent3_log.json
 src/Agent_3/runs/*
 !src/Agent_3/runs/.gitkeep
+
+# Agent_4 runtime artifacts — live runs/ kept, debug archives ignored
+src/Agent_4/runs/*
+!src/Agent_4/runs/.gitkeep
+src/Agent_4/runs_before_fix/
+src/Agent_4/runs_v2_fixed/
+src/Agent_4/runs_v3_partial/
+src/Agent_4/runs_v4_stuck_on_lstm/
+src/Agent_4/runs_v5_qwen_planner/
 
 # Streamlit cache
 .streamlit/
