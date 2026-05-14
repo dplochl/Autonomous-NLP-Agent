@@ -1,0 +1,12 @@
+```json
+{
+  "diagnosis": "The TrainingArguments class does not accept the 'evaluation_strategy' argument.",
+  "edits": [
+    {
+      "action": "replace",
+      "target": "evaluation_strategy=\"epoch\",",
+      "content": ""
+    }
+  ]
+}
+```

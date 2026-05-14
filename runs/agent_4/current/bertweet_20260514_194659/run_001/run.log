@@ -1,0 +1,40 @@
+success: True
+timed_out: False
+dry_run_failed: False
+
+[STDOUT]
+{'train_runtime': '280.6', 'train_samples_per_second': '17.1', 'train_steps_per_second': '1.069', 'train_loss': '0.398', 'epoch': '3'}
+METRICS: {"f1": 0.7668, "accuracy": 0.8175, "best_threshold": 0.49}
+
+
+[STDERR]
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+emoji is not installed, thus not converting emoticons or emojis into text. Install emoji: pip3 install emoji==0.6.0
+
+Loading weights:   0%|          | 0/197 [00:00<?, ?it/s]
+Loading weights: 100%|██████████| 197/197 [00:00<00:00, 77345.12it/s]
+[1mRobertaForSequenceClassification LOAD REPORT[0m from: vinai/bertweet-base
+Key                             | Status     | 
+--------------------------------+------------+-
+lm_head.dense.weight            | UNEXPECTED | 
+roberta.pooler.dense.bias       | UNEXPECTED | 
+lm_head.decoder.bias            | UNEXPECTED | 
+lm_head.bias                    | UNEXPECTED | 
+lm_head.dense.bias              | UNEXPECTED | 
+lm_head.decoder.weight          | UNEXPECTED | 
+roberta.pooler.dense.weight     | UNEXPECTED | 
+lm_head.layer_norm.weight       | UNEXPECTED | 
+lm_head.layer_norm.bias         | UNEXPECTED | 
+roberta.embeddings.position_ids | UNEXPECTED | 
+classifier.dense.bias           | MISSING    | 
+classifier.out_proj.bias        | MISSING    | 
+classifier.out_proj.weight      | MISSING    | 
+classifier.dense.weight         | MISSING    | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+- MISSING:	those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.
+
+
+[ANALYSIS]
+The experiment using BERTweet achieved a successful status with an F1 score of 0.7668 and accuracy of 0.8175. The training runtime was approximately 280.6 minutes, indicating that the model trained efficiently with a sample rate of about 17.1 samples per second. However, several parameters were marked as "UNEXPECTED" or "MISSING," suggesting potential issues with parameter alignment between the pre-trained model and the downstream task. For the next run, it is recommended to address these parameter discrepancies by ensuring that all necessary parameters are correctly initialized and aligned with the specific requirements of the downstream task. Additionally, experimenting with different learning rates or adjusting the weight decay might further improve performance.

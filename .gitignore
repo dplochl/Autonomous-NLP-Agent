@@ -18,43 +18,8 @@ venv/
 # Mac
 .DS_Store
 
-# Data
-data/
-!data/.gitkeep
-!data/train.csv
-!data/test.csv
-
-# Logs / outputs / models
-logs/
-outputs/
-models/
-results/
-fold_0/
-fold_1/
-checkpoint-*/
-**/checkpoint-*/
-
-# Agent_V2 runtime artifacts / local data
-src/Agent_V2/experiments/
-src/Agent_V2/outputs/
-src/Agent_V2/submissions/
-src/Agent_V2/experiment_log.json
-src/Agent_V2/*.csv
-src/Agent_V2/*.ipynb
-src/Agent_V2/*.pt
-src/Agent_V2/*.ckpt
-src/Agent_V2/*.bin
-src/Agent_V2/*.safetensors
-src/Agent_V2/*.onnx
-src/Agent_V2/*.pkl
-src/Agent_V2/*.joblib
-src/Agent_V2/__pycache__/
-
-# Agent_3 and Agent_4 runs/logs are tracked on this branch so they can be
-# analyzed alongside the code.
-
-# Streamlit cache
-.streamlit/
-
 # Hugging Face / Torch caches
 .cache/
+
+# Live agent working dir (snapshots are committed under runs/agent_4/current/)
+src/Agent_4/runs/
