@@ -515,7 +515,17 @@ def execute_family(
         run_name = f"{session_name}_run_{run_index:02d}"
         submission_path = os.path.join(run_dir, "submission.csv")
 
-        if run_index == 1 and seeded_trial is None:
+        # Decide whether the spec comes from a fresh LLM call (generate_initial_spec)
+        # or from the search/exploration path (propose_next_spec).
+        #
+        # We must NOT use generate_initial_spec on a sweep revisit. A revisit
+        # populates `seeded_trials` (the LIST) with the family's full prior
+        # history, and the LLM must see that history so it doesn't propose the
+        # exact same spec again. Earlier the condition only checked the singular
+        # `seeded_trial` (opt-phase only), which let revisits silently fall back
+        # to a fresh prompt and produce identical specs.
+        has_prior_history = bool(seeded_trial) or bool(seeded_trials) or len(trials) > 0
+        if run_index == 1 and not has_prior_history:
             spec_bundle = generate_initial_spec(
                 llm=llm,
                 module=module,
