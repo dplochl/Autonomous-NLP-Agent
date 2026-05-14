@@ -5,10 +5,11 @@ Design highlights:
 - Each planner decision = one trial of one family (no per-family attempt cap).
 - A family is never auto-consumed: the planner can revisit a success, retry a
   failure, or declare a family permanently dead via skip_family_permanently.
-- Sweep runs for a fixed 35-minute window (configurable). Then the opt phase
-  picks the highest-F1 family and tunes hyperparameters in it.
-- Final submission retrains on a 2k-row sample so it always fits inside the
-  1-hour wall-clock budget on CPU.
+- Sweep runs for a fixed wall-clock window (default 45 min). The planner
+  has the whole window to explore + revisit whichever families it finds
+  promising. There is no separate hyperparameter-tuning phase.
+- Final submission retrains the sweep winner on a 5k-row sample so it
+  always fits inside the 1-hour wall-clock budget on CPU.
 """
 
 from __future__ import annotations
@@ -66,10 +67,9 @@ DEFAULT_DATA_DIR = "data"
 MAX_SEARCH_RUNS = int(os.environ.get("AGENT4_MAX_RUNS", "4"))
 MAX_REPAIR_ATTEMPTS = int(os.environ.get("DISASTER_AGENT_MAX_REPAIRS", "4"))
 TOTAL_TIME_BUDGET_SECONDS = int(os.environ.get("AGENT4_TOTAL_TIME_BUDGET_SECONDS", str(60 * 60)))
-# Sweep runs for a fixed wall-clock window (default 45 min). Opt phase is
-# disabled — the sweep planner has the whole 45 min to explore + revisit
-# whichever families it finds promising. After the sweep deadline, we go
-# straight to final submission.
+# Sweep runs for a fixed wall-clock window (default 45 min). The planner
+# has the whole window to explore + revisit whichever families it finds
+# promising. After the sweep deadline, we go straight to final submission.
 SWEEP_DURATION_SECONDS = int(os.environ.get("AGENT4_SWEEP_DURATION_SECONDS", str(45 * 60)))
 SWEEP_SAMPLE_ROWS = int(os.environ.get("AGENT4_SWEEP_SAMPLE_ROWS", "2000"))
 # Final submission trains on a 5k sample (>= 2.5x the sweep sample). The
@@ -373,7 +373,7 @@ def constrain_phase_spec(spec: dict[str, Any]) -> dict[str, Any]:
 
 
 def phase_train_rows(phase_label: str) -> int | None:
-    if phase_label in {"sweep", "opt"}:
+    if phase_label == "sweep":
         return SWEEP_SAMPLE_ROWS
     return None
 
@@ -458,7 +458,8 @@ def execute_family(
     best_trial: dict[str, Any] | None = None
     best_code: str | None = seeded_code
     frozen_code: str | None = seeded_code
-    freeze_after_success = phase_label == "opt" and bool(getattr(module, "freeze_after_first_success", lambda: False)())
+    # Sweep is the only phase; nothing freezes mid-trial.
+    freeze_after_success = False
     # Multi-seed path (sweep planner revisits): show propose_next_spec the FULL
     # prior history of this family so it can avoid re-trying specs that already
     # underperformed and learn from the per-spec → F1 mapping.
@@ -488,8 +489,8 @@ def execute_family(
             f"propose_next_spec sees the full per-spec → F1 mapping."
         )
     elif seeded_trial:
-        # Single-seed path (opt phase): legacy behaviour, preserved for the
-        # winner-optimization flow which seeds only the best sweep trial.
+        # Single-seed path: rare fallback for direct callers that pass a
+        # single prior trial. The sweep loop uses the multi-seed path above.
         seed_record = dict(seeded_trial)
         seed_record["run_index"] = 0
         seed_record["analysis"] = seed_record.get("analysis", "Seeded from the best prior family run.")
@@ -528,8 +529,8 @@ def execute_family(
         # populates `seeded_trials` (the LIST) with the family's full prior
         # history, and the LLM must see that history so it doesn't propose the
         # exact same spec again. Earlier the condition only checked the singular
-        # `seeded_trial` (opt-phase only), which let revisits silently fall back
-        # to a fresh prompt and produce identical specs.
+        # `seeded_trial`, which let revisits silently fall back to a fresh
+        # prompt and produce identical specs.
         has_prior_history = bool(seeded_trial) or bool(seeded_trials) or len(trials) > 0
         if run_index == 1 and not has_prior_history:
             spec_bundle = generate_initial_spec(
@@ -873,8 +874,9 @@ def main(
     started_at = time.time()
     overall_deadline = started_at + time_budget_seconds
     # Sweep ends after a fixed wall-clock window (default 40 minutes), or when
-    # the planner decides to stop — whichever comes first. After that we roll
-    # over to the opt phase even if some families are still untried.
+    # the planner decides to stop — whichever comes first. After that we go
+    # straight to the final-submission step even if some families are still
+    # untried.
     sweep_deadline = min(started_at + SWEEP_DURATION_SECONDS, overall_deadline)
 
     # Prepare the sweep-planner LLM (a small fast model is fine; falls back
@@ -1036,9 +1038,9 @@ def main(
         reverse=True,
     )
     sweep_best = sweep_ranked[0]
-    # Opt phase removed: the sweep planner now owns all exploration within
-    # the 45-min sweep window. The best sweep family proceeds directly to
-    # the final-submission step, which retrains it on a 5k-row sample.
+    # The sweep planner owns all exploration within the 45-min sweep window.
+    # The best sweep family proceeds directly to the final-submission step,
+    # which retrains it on a 5k-row sample.
     print(
         f"[Sweep complete] best family = {sweep_best['family']} "
         f"with F1={metric_f1({'metrics': sweep_best.get('best_metrics', {})}):.4f}"
