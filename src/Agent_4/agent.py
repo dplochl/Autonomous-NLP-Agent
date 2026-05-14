@@ -338,6 +338,12 @@ def execute_final_submission(
         write_submission=True,
         final_submission=False,
         submission_path=submission_path,
+        # Skip the dry run. It exists to fail fast so the LLM can repair the
+        # script, but the final-submission step has no repair mechanism, and
+        # the dry run's hardcoded tail would clobber `submission_path` with a
+        # one-class CSV produced from 16 untrained rows. If the real run later
+        # fails, the published file would be that garbage.
+        skip_dry_run=True,
     )
     submission_error = validate_submission_file(submission_path)
     if submission_error is None:

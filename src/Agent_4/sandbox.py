@@ -194,22 +194,36 @@ def run_experiment(
     final_submission: bool = False,
     submission_path: str | None = None,
     data_dir: str | None = None,
+    skip_dry_run: bool = False,
 ) -> dict:
-    print(f"  [Sandbox] Dry run for '{name}'...")
-    dry_path = _write_temp_script(code, dry_run=True, write_submission=False, submission_path=submission_path)
-    dry_env = {DATA_DIR_ENV: data_dir} if data_dir else None
-    dry_result = _run(dry_path, DRY_RUN_TIMEOUT, monitor=False, env=dry_env)
-    os.unlink(dry_path)
-    if not dry_result["success"]:
-        print("  [Sandbox] Dry run FAILED.")
-        return {
-            "success": False,
-            "timed_out": dry_result["timed_out"],
-            "dry_run_failed": True,
-            "metrics": {},
-            "stdout": dry_result["stdout"],
-            "stderr": dry_result["stderr"],
-        }
+    # The dry run is a 60-second smoke test on a tiny data head. It exists so
+    # that the orchestrator can fail fast and ask the LLM for a repair before
+    # paying for the full training run. At the final-submission stage we have
+    # no repair mechanism (orchestrator owns the hardcoded tail and LLM
+    # repairs are disabled), so the dry run is pure downside: it predicts
+    # one class from 16 untrained rows and the hardcoded tail writes that
+    # garbage straight to the public `submission_path`. If the real run
+    # later times out or crashes, the dry-run output would be the published
+    # CSV. Callers that own their own validation (execute_final_submission)
+    # pass skip_dry_run=True.
+    if not skip_dry_run:
+        print(f"  [Sandbox] Dry run for '{name}'...")
+        dry_path = _write_temp_script(code, dry_run=True, write_submission=False, submission_path=submission_path)
+        dry_env = {DATA_DIR_ENV: data_dir} if data_dir else None
+        dry_result = _run(dry_path, DRY_RUN_TIMEOUT, monitor=False, env=dry_env)
+        os.unlink(dry_path)
+        if not dry_result["success"]:
+            print("  [Sandbox] Dry run FAILED.")
+            return {
+                "success": False,
+                "timed_out": dry_result["timed_out"],
+                "dry_run_failed": True,
+                "metrics": {},
+                "stdout": dry_result["stdout"],
+                "stderr": dry_result["stderr"],
+            }
+    else:
+        print(f"  [Sandbox] Skipping dry run for '{name}' (no repair mechanism downstream).")
 
     mode = "submission" if write_submission else "metrics-only"
     if data_dir:
@@ -221,7 +235,10 @@ def run_experiment(
             if train_rows and resolved_rows != train_rows
             else (f", train_rows={train_rows}" if train_rows else f", train_fraction={train_fraction:.2f}")
         )
-    print(f"  [Sandbox] Dry run passed. Starting {mode} run{row_note}...")
+    if skip_dry_run:
+        print(f"  [Sandbox] Starting {mode} run{row_note}...")
+    else:
+        print(f"  [Sandbox] Dry run passed. Starting {mode} run{row_note}...")
     sampled_dir = None if data_dir else _sampled_data_dir(train_fraction, test_rows=None if write_submission else 1, train_rows=train_rows)
     full_path = _write_temp_script(
         code,
