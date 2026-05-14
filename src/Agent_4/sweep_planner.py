@@ -52,6 +52,27 @@ TrialOutcome = Literal[
 DEGENERATE_F1_THRESHOLD = 0.4
 
 
+# Plateau definition: a family is plateaued when its last `PLATEAU_WINDOW`
+# successful trials all fall within `PLATEAU_TOLERANCE` of the family's best
+# F1 so far. We pull these into module-level constants so they can be tuned
+# from one place.
+#
+# This MUST be larger than the AGGRESSIVE EXPLORATION trigger in search.py
+# (_DIVERSIFY_AFTER_N_TIGHT_TRIALS = 2), otherwise the orchestrator would
+# kill a family before its explore-mode attempts get a chance to break out
+# of the tight band. Concretely with the current numbers:
+#   trial 1, 2: normal mode
+#   trial 3:    2 priors in band → EXPLORE MODE + possible wild card
+#   trial 4:    3 priors in band → EXPLORE MODE + possible wild card
+#   trial 5:    4 priors in band → EXPLORE MODE + possible wild card
+#   trial 6:    5 priors in band → HARD SKIP (plateaued)
+# That's three exploration attempts before giving up — enough room for the
+# wild card to actually fire and learn something, while still capping the
+# worst case so we don't grind forever on a family that can't move.
+PLATEAU_WINDOW = 5       # successful trials in tight band before we give up
+PLATEAU_TOLERANCE = 0.005  # F1 swing tolerance for "no movement"
+
+
 @dataclass
 class FamilyState:
     """Rolling summary of one family's trials during the sweep."""
@@ -65,6 +86,10 @@ class FamilyState:
     last_error_summary: str | None = None
     total_wall_seconds: float = 0.0
     skipped_permanently: bool = False
+    # Full successful-F1 history so we can detect a "tight band" plateau
+    # (multiple trials whose F1s are within PLATEAU_TOLERANCE of each other,
+    # even if they're not bit-identical).
+    success_f1s: list[float] = field(default_factory=list)
 
     @property
     def stagnant(self) -> bool:
@@ -75,6 +100,21 @@ class FamilyState:
             and self.last_f1 is not None
             and abs(self.last_f1 - self.best_f1) < 1e-6
         )
+
+    @property
+    def plateaued(self) -> bool:
+        """True when the family has had at least `PLATEAU_WINDOW` successful
+        trials and the spread of the most recent N is within
+        `PLATEAU_TOLERANCE` of the best. This catches "tight-band" plateaus
+        like F1=0.7261 / 0.7219 / 0.7237 / 0.7237 — where each trial proposed
+        a different spec but the score barely moved. Once plateaued, further
+        revisits rarely pay off and the budget is better spent elsewhere.
+        """
+        if len(self.success_f1s) < PLATEAU_WINDOW or self.best_f1 is None:
+            return False
+        window = self.success_f1s[-PLATEAU_WINDOW:]
+        return (self.best_f1 - min(window)) <= PLATEAU_TOLERANCE and \
+               (max(window) - min(window)) <= PLATEAU_TOLERANCE
 
     def update_from_trial(
         self,
@@ -90,6 +130,7 @@ class FamilyState:
         if outcome == "success" and f1 is not None:
             self.successes += 1
             self.last_f1 = float(f1)
+            self.success_f1s.append(float(f1))
             if self.best_f1 is None or float(f1) > self.best_f1:
                 self.best_f1 = float(f1)
         else:
@@ -194,6 +235,13 @@ def eligible_families(
             # Hard skip: 2+ degenerate_success (e.g., one-class predictor at F1=0)
             # with no real success. Without this, planner kept picking the same
             # broken family because F1=0 ran cleanly. Fix 4.
+            continue
+        if state.plateaued:
+            # Hard skip: tight-band plateau on the last PLATEAU_WINDOW
+            # successful trials. The planner LLM has historically refused to
+            # acknowledge this and kept revisiting the same family with tiny
+            # parameter twiddles. The orchestrator enforces stop here so the
+            # remaining budget goes to families that can still move F1.
             continue
         cost = cost_estimates.get(family_key, 480)
         if cost + start_buffer_seconds > time_remaining_seconds:

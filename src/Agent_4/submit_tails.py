@@ -278,10 +278,79 @@ def strip_submission_tail(code: str) -> str:
     return code[:idx].rstrip() + "\n"
 
 
+# Marker that surrounds the try/except wrap. Lets us detect and strip a
+# previously-applied wrap so repeated calls to append_submission_tail are
+# idempotent (the orchestrator calls it twice — once in
+# prepare_final_submission_payload and once in execute_final_submission).
+WRAP_BEGIN = "# === AGENT_4 TRY-WRAP BEGIN ===  (do not edit; see submit_tails.py)"
+WRAP_END   = "# === AGENT_4 TRY-WRAP END ==="
+
+
+def _strip_try_wrap(code: str) -> str:
+    """Remove a previously-applied try/except wrap from `code`. If the wrap
+    isn't present, returns the input unchanged."""
+    begin = code.find(WRAP_BEGIN)
+    end = code.find(WRAP_END)
+    if begin < 0 or end < 0 or end <= begin:
+        return code
+    # The original (un-indented) LLM code lives between WRAP_BEGIN and the
+    # start of the `try:` block. We reverse the wrap by extracting only the
+    # indented body of the try block and dedenting it. Lines that started
+    # empty / whitespace-only stay as-is.
+    inner_lines: list[str] = []
+    capturing = False
+    for line in code[begin:end].splitlines():
+        if line.lstrip().startswith("try:") and not capturing:
+            capturing = True
+            continue
+        if not capturing:
+            continue
+        if line.lstrip().startswith("except Exception as _agent4_wrap_exc"):
+            break
+        # Strip the leading 4 spaces we added.
+        inner_lines.append(line[4:] if line.startswith("    ") else line)
+    before = code[:begin].rstrip()
+    after = code[end + len(WRAP_END):].lstrip("\n")
+    middle = "\n".join(inner_lines).rstrip()
+    return (before + ("\n" if before else "") + middle + ("\n" + after if after else "\n"))
+
+
+def _wrap_in_try_except(code: str) -> str:
+    """Wrap `code` in a try/except so the orchestrator-owned tail that follows
+    runs even when the LLM's own test-prediction or submission-writing code
+    raises (e.g. shape-mismatch, wrong test split, broken pd.DataFrame call).
+
+    Variables assigned inside the try block (trainer, tokenizer, best_threshold,
+    test_df, ...) remain accessible at module scope after the except handler,
+    so the hardcoded tail downstream can still build a valid submission CSV
+    using whatever state was set up before the failure.
+
+    Idempotent: re-applying the wrap to already-wrapped code re-uses the
+    original (unindented) inner block.
+    """
+    # If we're re-wrapping previously-wrapped code, first strip the old wrap.
+    code = _strip_try_wrap(code)
+    indented = "\n".join("    " + line if line.strip() else line for line in code.splitlines())
+    return (
+        WRAP_BEGIN + "\n"
+        + "try:\n"
+        + indented
+        + "\nexcept Exception as _agent4_wrap_exc:\n"
+        + "    import traceback as _agent4_tb\n"
+        + "    print('[AGENT_4 WRAP] LLM section raised:', repr(_agent4_wrap_exc))\n"
+        + "    print('[AGENT_4 WRAP] traceback follows; hardcoded tail below will compensate.')\n"
+        + "    _agent4_tb.print_exc()\n"
+        + WRAP_END + "\n"
+    )
+
+
 def append_submission_tail(code: str, family_label: str) -> str:
     """Append the hardcoded submission tail. Strips any prior tail first
-    (defensive — in case the repair loop introduced one).
+    (defensive — in case the repair loop introduced one), then wraps the
+    rest of the script in a try/except so the tail is guaranteed to run
+    even when the LLM's own submission code raises.
     """
     tail = tail_for_family(family_label)
     base = strip_submission_tail(code)
-    return base.rstrip() + "\n\n" + tail.strip() + "\n"
+    wrapped = _wrap_in_try_except(base)
+    return wrapped.rstrip() + "\n\n" + tail.strip() + "\n"

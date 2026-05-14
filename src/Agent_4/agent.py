@@ -298,17 +298,16 @@ def execute_final_submission(
     is not used here.
     """
     del llm  # unused — kept for signature compatibility
-    code = str(payload["code"])  # already has the hardcoded tail appended
-    module = payload["module"]
+    code = str(payload["code"])  # already has autofixes + try-wrap + hardcoded tail
     run_name = str(payload["run_name"])
-    spec = dict(payload["spec"])
     submission_path = str(payload["submission_path"])
 
-    # Cheap, deterministic preprocessing only — no LLM calls.
-    if hasattr(module, "apply_light_autofixes"):
-        code = module.apply_light_autofixes(code, spec)
-    # Strip-and-reappend the tail in case apply_light_autofixes touched it.
-    code = append_submission_tail(code, str(payload["family"]))
+    # prepare_final_submission_payload already ran autofixes and appended the
+    # hardcoded tail (with the try-wrap around the LLM section). We deliberately
+    # do NOT re-apply autofix/tail here: re-applying autofix to the wrapped
+    # code can introduce syntax errors (e.g. line-deletion rules that match a
+    # `trainer = Trainer(` inside the try block but leave the closing `)`
+    # dangling). Trust the payload and run it as-is.
 
     ok, syntax_err = syntax_check(code)
     if not ok:

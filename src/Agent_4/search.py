@@ -6,11 +6,106 @@ import hashlib
 import json
 import math
 import os
+import random
 from typing import Any
 
 from json_utils import extract_json_object
 from prompts import SEARCH_SYSTEM
 from validate_spec import validate_spec
+
+
+# When the family has had this many successful trials with F1 stuck within
+# `_DIVERSIFY_TOLERANCE`, we switch the spec proposer into AGGRESSIVE EXPLORE
+# mode: the prompt instructs the LLM to make large parameter moves and
+# consider extreme values, instead of twiddling near the prior best.
+_DIVERSIFY_AFTER_N_TIGHT_TRIALS = 2
+_DIVERSIFY_TOLERANCE = 0.005
+
+# Probability of injecting a "wild card" hint — even outside plateau mode,
+# occasionally encourage the LLM to try an extreme value. Lets the agent
+# learn from genuinely unusual configurations instead of staying in a
+# comfort zone.
+_WILD_CARD_PROBABILITY = 0.25
+
+# Per-family extreme presets that the LLM is told it MAY try when in
+# explore mode. These are deliberately outside the typical Goldilocks range
+# — the point is to see what happens when capacity / regularization /
+# sequence length is pushed to an edge. Each list has 3-5 entries to give
+# the LLM real options.
+_FAMILY_EXTREME_PRESETS: dict[str, list[dict[str, Any]]] = {
+    "bow":           [{"max_features": 50000, "ngram_max": 3, "min_df": 1, "logreg_c": 0.1},
+                      {"max_features": 2000,  "ngram_max": 1, "min_df": 5, "logreg_c": 10.0},
+                      {"max_features": 30000, "ngram_max": 1, "min_df": 1, "logreg_c": 50.0}],
+    "bow_advanced":  [{"word_max_features": 50000, "char_max_features": 50000, "word_ngram_max": 4, "char_ngram_min": 2, "char_ngram_max": 6, "min_df": 1, "logreg_c": 0.5},
+                      {"word_max_features": 5000,  "char_max_features": 5000,  "word_ngram_max": 1, "char_ngram_min": 4, "char_ngram_max": 5, "min_df": 5, "logreg_c": 20.0},
+                      {"word_max_features": 30000, "char_max_features": 30000, "word_ngram_max": 2, "char_ngram_min": 3, "char_ngram_max": 7, "min_df": 1, "logreg_c": 0.01}],
+    "cnn":           [{"channels": 256, "kernel_sizes": [2,3,4,5,7], "dropout": 0.6, "epochs": 6, "learning_rate": 5e-4},
+                      {"channels": 32,  "kernel_sizes": [3,5,7],     "dropout": 0.2, "epochs": 2, "learning_rate": 5e-3},
+                      {"channels": 128, "kernel_sizes": [1,2,3,4,5,7,9], "dropout": 0.5, "epochs": 4, "learning_rate": 1e-4}],
+    "lstm":          [{"hidden_dim": 512, "num_layers": 2, "dropout": 0.5, "epochs": 5, "learning_rate": 5e-4},
+                      {"hidden_dim": 32,  "num_layers": 1, "dropout": 0.1, "epochs": 2, "learning_rate": 5e-3},
+                      {"hidden_dim": 256, "num_layers": 2, "dropout": 0.6, "epochs": 6, "learning_rate": 1e-4}],
+    "embedding_dl":  [{"embedding_dim": 300, "max_vocab": 50000, "hidden_dim": 256, "dropout": 0.5, "epochs": 6, "learning_rate": 5e-4},
+                      {"embedding_dim": 32,  "max_vocab": 5000,  "hidden_dim": 32,  "dropout": 0.1, "epochs": 2, "learning_rate": 5e-3},
+                      {"embedding_dim": 200, "max_vocab": 20000, "hidden_dim": 128, "dropout": 0.6, "epochs": 5, "learning_rate": 1e-4}],
+    "roberta":       [{"max_len": 256, "learning_rate": 5e-6,  "num_epochs": 5, "train_batch_size": 8,  "weight_decay": 0.1},
+                      {"max_len": 32,  "learning_rate": 5e-5,  "num_epochs": 2, "train_batch_size": 32, "weight_decay": 0.0},
+                      {"max_len": 192, "learning_rate": 1e-5,  "num_epochs": 4, "train_batch_size": 16, "weight_decay": 0.05}],
+    "bertweet":      [{"max_len": 256, "learning_rate": 5e-6,  "num_epochs": 5, "train_batch_size": 8,  "weight_decay": 0.1},
+                      {"max_len": 32,  "learning_rate": 5e-5,  "num_epochs": 2, "train_batch_size": 32, "weight_decay": 0.0},
+                      {"max_len": 192, "learning_rate": 1e-5,  "num_epochs": 4, "train_batch_size": 16, "weight_decay": 0.05}],
+}
+
+
+def _is_tight_band(trials: list[dict[str, Any]]) -> bool:
+    """True if the last 2+ successful trials are within _DIVERSIFY_TOLERANCE."""
+    successful = [t for t in trials if t.get("success")]
+    if len(successful) < _DIVERSIFY_AFTER_N_TIGHT_TRIALS:
+        return False
+    f1s = []
+    for t in successful[-_DIVERSIFY_AFTER_N_TIGHT_TRIALS:]:
+        m = t.get("metrics") or {}
+        f1 = m.get("f1")
+        if isinstance(f1, (int, float)):
+            f1s.append(float(f1))
+    return len(f1s) >= 2 and (max(f1s) - min(f1s)) <= _DIVERSIFY_TOLERANCE
+
+
+def _explore_block_for(family_key: str, prior_trials: list[dict[str, Any]], force_wild: bool) -> str:
+    """Build the aggressive-exploration prompt block for `family_key`."""
+    presets = _FAMILY_EXTREME_PRESETS.get(family_key, [])
+    if not presets:
+        return ""
+    chosen = random.choice(presets) if presets else None
+    header = (
+        "AGGRESSIVE EXPLORATION MODE.\n"
+        "The recent trials of this family clustered in a narrow F1 band —\n"
+        "small parameter twiddles are no longer paying off. You must break\n"
+        "out of that cluster. Rules for this proposal:\n"
+        "  - move at least TWO tunable keys by 2x or more from any prior\n"
+        "    spec (numerically, or to a structurally different value).\n"
+        "  - try at least one key at an EXTREME of its allowed range\n"
+        "    (e.g. an unusually low or high learning rate, a very wide or\n"
+        "    very narrow vocabulary, a deeper / shallower model).\n"
+        "  - do NOT propose another minor twiddle near the current best.\n"
+    )
+    if force_wild and chosen is not None:
+        wild = (
+            "\nWILD-CARD HINT (you are encouraged but not required to use\n"
+            "these values verbatim; they're a known-extreme region worth\n"
+            "exploring once for this family):\n"
+            f"  {json.dumps(chosen)}\n"
+        )
+        return header + wild
+    if chosen is not None:
+        sampler = (
+            "\nFor inspiration, here are extreme-region presets used by past\n"
+            "exploratory runs of this family — feel free to borrow any one\n"
+            "value (or several) but you don't have to match them exactly:\n"
+            f"  {json.dumps(chosen)}\n"
+        )
+        return header + sampler
+    return header
 
 
 def _safe_f1(trial: dict[str, Any]) -> float:
@@ -476,16 +571,32 @@ def propose_next_spec(
             "Follow the planner's chosen parameter focus and movement directions unless doing so would repeat an exact prior spec.\n"
             f"Prioritize these keys first: {', '.join(planner_focus_keys) if planner_focus_keys else 'none'}\n\n"
         )
+    # Decide whether to engage AGGRESSIVE EXPLORATION mode. Triggers when
+    # the most recent successful trials of this family clustered in a tight
+    # F1 band — i.e. small parameter changes are no longer moving the score.
+    # Also occasionally fire a "wild card" (a known extreme-region preset)
+    # to deliberately seed the agent with crazier configurations to learn from.
+    family_key_for_explore = getattr(module, "FAMILY_KEY", str(getattr(module, "FAMILY", "")).lower())
+    in_explore_mode = _is_tight_band(trials)
+    fire_wild_card = in_explore_mode and (random.random() < _WILD_CARD_PROBABILITY)
+    explore_block = (
+        _explore_block_for(family_key_for_explore, trials, force_wild=fire_wild_card) + "\n\n"
+        if in_explore_mode else ""
+    )
+
     prompt = (
         f"Propose the next {module.FAMILY} experiment spec.\n\n"
         f"{module.get_search_prompt()}\n\n"
+        f"{explore_block}"
         "Rules:\n"
         "- keep the architecture family fixed\n"
         "- keep the same overall prompt contract and pipeline shape\n"
         f"- vary only these tunable keys: {', '.join(tunable_keys)}\n"
         "- optimize against the best successful session trial, not the last run\n"
-        "- keep the best successful spec as the default anchor and mutate it only slightly\n"
-        f"{phase_rules}"
+        + ("- in AGGRESSIVE EXPLORATION mode, BREAK away from the best spec — large coordinated moves only\n"
+           if in_explore_mode else
+           "- keep the best successful spec as the default anchor and mutate it only slightly\n")
+        + f"{phase_rules}"
         "- do not repeat an exact spec already tried in this session\n"
         "- if a run timed out, reduce cost\n"
         "- if a run crashed, simplify the risky parameter region\n"
@@ -499,7 +610,9 @@ def propose_next_spec(
         f"Preferred keys for the next move: {', '.join(active_tunable_keys)}\n"
         f"Latest equal-F1 matched prior run: {repeated_match['run_index'] if repeated_match else 'none'}\n"
         f"Latest equal-F1 changed keys to avoid repeating: {', '.join(stale_changed_keys) if stale_changed_keys else 'none'}\n"
-        f"Repeated best F1 detected: {'yes' if repeated_f1 else 'no'}\n\n"
+        f"Repeated best F1 detected: {'yes' if repeated_f1 else 'no'}\n"
+        f"Aggressive exploration mode: {'YES (tight F1 band detected)' if in_explore_mode else 'no'}\n"
+        f"Wild card injection: {'YES (try an extreme region)' if fire_wild_card else 'no'}\n\n"
         f"{planner_notes}"
         "Default if unsure:\n"
         f"{json.dumps(default_spec, indent=2)}\n"
