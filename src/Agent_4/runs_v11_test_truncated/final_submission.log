@@ -1,0 +1,11 @@
+success: False
+timed_out: False
+repair_attempts: 3
+
+[STDOUT]
+METRICS: {"f1": 0.7255, "accuracy": 0.79, "best_threshold": 0.51}
+[AGENT_SUBMIT] wrote 1 rows to /Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/apa-disaster-tweets-agent-Nicc-copy/submissions/best_overall_submission.csv (threshold=0.5100, pos=0, neg=1)
+
+
+[STDERR]
+Repair error: Repair plan was not valid JSON.

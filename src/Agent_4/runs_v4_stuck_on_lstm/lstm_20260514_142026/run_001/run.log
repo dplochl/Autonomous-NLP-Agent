@@ -1,0 +1,58 @@
+success: False
+timed_out: False
+dry_run_failed: True
+
+[STDOUT]
+
+
+[STDERR]
+/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/.venv/lib/python3.13/site-packages/torch/nn/modules/rnn.py:1013: UserWarning: dropout option adds dropout after all but last recurrent layer, so non-zero dropout expects num_layers greater than 1, but got dropout=0.3 and num_layers=1
+  super().__init__("LSTM", *args, **kwargs)
+Traceback (most recent call last):
+  File "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/.venv/lib/python3.13/site-packages/pandas/core/indexes/base.py", line 3641, in get_loc
+    return self._engine.get_loc(casted_key)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+  File "pandas/_libs/index.pyx", line 168, in pandas._libs.index.IndexEngine.get_loc
+  File "pandas/_libs/index.pyx", line 197, in pandas._libs.index.IndexEngine.get_loc
+  File "pandas/_libs/hashtable_class_helper.pxi", line 2761, in pandas._libs.hashtable.Int64HashTable.get_item
+  File "pandas/_libs/hashtable_class_helper.pxi", line 2785, in pandas._libs.hashtable.Int64HashTable.get_item
+KeyError: 0
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/var/folders/rp/_q6137ys147f688vnf1knc4w0000gn/T/agent3_3or10der.py", line 176, in <module>
+    val_probs, val_labels = collect_probs_and_labels(model, val_loader)
+                            ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "/var/folders/rp/_q6137ys147f688vnf1knc4w0000gn/T/agent3_3or10der.py", line 168, in collect_probs_and_labels
+    for sequences, labels in loader:
+                             ^^^^^^
+  File "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/.venv/lib/python3.13/site-packages/torch/utils/data/dataloader.py", line 741, in __next__
+    data = self._next_data()
+  File "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/.venv/lib/python3.13/site-packages/torch/utils/data/dataloader.py", line 801, in _next_data
+    data = self._dataset_fetcher.fetch(index)  # may raise StopIteration
+  File "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/.venv/lib/python3.13/site-packages/torch/utils/data/_utils/fetch.py", line 54, in fetch
+    data = [self.dataset[idx] for idx in possibly_batched_index]
+            ~~~~~~~~~~~~^^^^^
+  File "/var/folders/rp/_q6137ys147f688vnf1knc4w0000gn/T/agent3_3or10der.py", line 117, in __getitem__
+    label = torch.tensor(self.labels[idx], dtype=torch.float32)
+                         ~~~~~~~~~~~^^^^^
+  File "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/.venv/lib/python3.13/site-packages/pandas/core/series.py", line 959, in __getitem__
+    return self._get_value(key)
+           ~~~~~~~~~~~~~~~^^^^^
+  File "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/.venv/lib/python3.13/site-packages/pandas/core/series.py", line 1046, in _get_value
+    loc = self.index.get_loc(label)
+  File "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/.venv/lib/python3.13/site-packages/pandas/core/indexes/base.py", line 3648, in get_loc
+    raise KeyError(key) from err
+KeyError: 0
+
+Repair error: Edit 1 target not found for replace.
+
+[ANALYSIS]
+The experiment `lstm_20260514_142026_run_01` using an LSTM architecture encountered a crash due to a KeyError in the data loading process. The error indicates that the dataset's indexing was incorrect, specifically when trying to access the label for index 0. This suggests that there might be an issue with how the labels are being indexed or loaded from the dataset.
+
+What worked: The experiment setup included standard parameters such as batch size, dropout rate, learning rate, and model architecture, which are typical configurations for training LSTM models.
+
+What failed: The primary failure was in the data handling part of the code. The KeyError during data loading indicates a mismatch between the expected indices and those present in the dataset, leading to the crash.
+
+For the next run, it is crucial to ensure that the dataset's labels are correctly indexed and loaded. This can be achieved by reviewing the dataset creation and preprocessing steps to confirm that all indices align properly. Additionally, implementing error handling around data loading could help identify and resolve issues early in the training process.

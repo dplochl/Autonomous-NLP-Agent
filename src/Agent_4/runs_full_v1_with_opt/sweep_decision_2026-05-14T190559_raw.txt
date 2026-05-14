@@ -1,0 +1,3 @@
+```json
+{"action":"try_family","family_key":"bow_advanced","reason":"The family has shown signal but hasn't plateaued yet."}
+```

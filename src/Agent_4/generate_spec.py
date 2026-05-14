@@ -1,4 +1,4 @@
-"""Initial spec generation for Agent_3."""
+"""Initial spec generation for Agent_4."""
 
 from __future__ import annotations
 

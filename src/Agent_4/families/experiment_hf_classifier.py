@@ -1,4 +1,4 @@
-"""Shared Hugging Face sequence-classifier helpers for Agent_3 families."""
+"""Shared Hugging Face sequence-classifier helpers for Agent_4 families."""
 
 from __future__ import annotations
 

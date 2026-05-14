@@ -1,4 +1,4 @@
-"""Artifact helpers for Agent_3 runs."""
+"""Artifact helpers for Agent_4 runs."""
 
 from __future__ import annotations
 

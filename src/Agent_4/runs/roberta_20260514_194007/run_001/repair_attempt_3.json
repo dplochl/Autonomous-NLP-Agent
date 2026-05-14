@@ -1,0 +1,12 @@
+```json
+{
+  "diagnosis": "The variable 'y' is a list, which does not have the 'nunique' method. This causes an AttributeError when trying to check its uniqueness and value counts.",
+  "edits": [
+    {
+      "action": "replace",
+      "target": "stratify_labels = y if y.nunique() > 1 and y.value_counts().min() >= 2 else None",
+      "content": "stratify_labels = np.array(y) if len(set(y)) > 1 and min(np.bincount(y)) >= 2 else None"
+    }
+  ]
+}
+```

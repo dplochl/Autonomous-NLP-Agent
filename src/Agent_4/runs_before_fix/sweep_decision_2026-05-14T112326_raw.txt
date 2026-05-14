@@ -1,0 +1,1 @@
+{"action":"stop","reason":"The only eligible family is stagnant, suggesting diminishing returns for further sweeping."}

@@ -1,40 +1,27 @@
-"""Persistent run memory for Agent_3."""
+"""Per-invocation run memory for Agent_4.
+
+Agent_4 never loads prior-launch history into its decisions, so this module
+only records trial records for the current launch and writes them to
+`agent4_log.json` as a write-only audit log. The agent3-style cross-launch
+memory has been removed.
+"""
 
 from __future__ import annotations
 
 import json
-import os
 from datetime import datetime
 from typing import Any
 
 
-LOG_PATH = "agent3_log.json"
+LOG_PATH = "agent4_log.json"
 ROLLING_WINDOW = 20
 
 
-def _safe_f1(record: dict[str, Any]) -> float:
-    try:
-        return float((record.get("metrics") or {}).get("f1", -1.0))
-    except (TypeError, ValueError):
-        return -1.0
-
-
-class Agent3Memory:
-    def __init__(self, persist: bool = True, log_path: str = LOG_PATH, load_existing: bool = False):
+class Agent4Memory:
+    def __init__(self, persist: bool = True, log_path: str = LOG_PATH):
         self.persist = persist
         self.log_path = log_path
-        self.load_existing = load_existing
         self.records: list[dict[str, Any]] = []
-        self._load()
-
-    def _load(self) -> None:
-        if not self.persist or not self.load_existing:
-            self.records = []
-            return
-        if os.path.exists(self.log_path):
-            with open(self.log_path, "r", encoding="utf-8") as f:
-                self.records = json.load(f)
-            print(f"[Memory] Loaded {len(self.records)} Agent_3 runs from {self.log_path}")
 
     def _save(self) -> None:
         if not self.persist:
@@ -72,15 +59,6 @@ class Agent3Memory:
         }
         self.records.append(record)
         self._save()
-
-    def best_for_family(self, family: str) -> dict[str, Any] | None:
-        candidates = [
-            record for record in self.records
-            if record["family"] == family and record["success"] and record["metrics"].get("f1") is not None
-        ]
-        if not candidates:
-            return None
-        return max(candidates, key=_safe_f1)
 
     def history_summary(self, family: str | None = None) -> str:
         records = self.records if family is None else [r for r in self.records if r["family"] == family]

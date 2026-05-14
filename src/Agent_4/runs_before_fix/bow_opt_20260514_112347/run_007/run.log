@@ -1,0 +1,13 @@
+success: True
+timed_out: False
+dry_run_failed: False
+
+[STDOUT]
+METRICS: {"f1": 0.7197, "accuracy": 0.78}
+
+
+[STDERR]
+
+
+[ANALYSIS]
+The experiment `bow_opt_20260514_112347_run_07` using a Bag of Words (BoW) architecture achieved a success status with an F1 score of 0.7197 and accuracy of 0.78, indicating that the model performed reasonably well on the validation set. The use of TF-IDF vectorization for word features likely contributed to the good performance, as it effectively captures the importance of words in the context of disaster tweets. However, the experiment did not explore other potential improvements such as different n-gram ranges or additional feature engineering techniques, which could further enhance model accuracy and F1 score. For the next run, consider expanding the exploration of hyperparameters, including trying out character-level n-grams or incorporating pre-trained embeddings to capture semantic meaning more effectively. Additionally, experimenting with ensemble methods could help in boosting the overall performance by combining predictions from multiple models.

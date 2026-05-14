@@ -1,0 +1,1 @@
+{"action":"try_family","family_key":"cnn","reason":"The family is untried and has a moderate wall cost, providing high information value for exploration."}

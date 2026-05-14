@@ -1,4 +1,4 @@
-"""Adaptive search planning for Agent_3."""
+"""Adaptive search planning for Agent_4."""
 
 from __future__ import annotations
 

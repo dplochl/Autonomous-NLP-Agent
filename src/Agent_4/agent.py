@@ -1,14 +1,14 @@
 """Agent_4 — autonomous experiment runner with LLM-driven sweep planner.
 
-Differences from Agent_3:
-- Sweep order is decided by an LLM planner each step, not by a hardcoded list.
-- Each planner decision = one trial of one family (no per-family 4-attempt cap).
+Design highlights:
+- Sweep order is decided by an LLM planner each step, not a hardcoded list.
+- Each planner decision = one trial of one family (no per-family attempt cap).
 - A family is never auto-consumed: the planner can revisit a success, retry a
   failure, or declare a family permanently dead via skip_family_permanently.
-- Sweep runs for a fixed 40-minute window (configurable). Then the opt phase
+- Sweep runs for a fixed 35-minute window (configurable). Then the opt phase
   picks the highest-F1 family and tunes hyperparameters in it.
-- Final submission retrains on a 2k-row sample (not the full 7.6k) so it
-  always fits inside the 1-hour wall-clock budget on CPU.
+- Final submission retrains on a 2k-row sample so it always fits inside the
+  1-hour wall-clock budget on CPU.
 """
 
 from __future__ import annotations
@@ -18,7 +18,6 @@ import ast
 import atexit
 import json
 import os
-import re
 import shutil
 import tempfile
 import time
@@ -33,12 +32,11 @@ from generate_spec import generate_initial_spec
 from json_utils import extract_json_object, pretty_json
 from kaggle_submit import auto_submit_enabled, submit_and_wait
 from llm import OllamaClient
-from memory import Agent3Memory
+from memory import Agent4Memory
 from prompts import (
     ANALYSIS_PROMPT_TEMPLATE,
     DATA_CONTEXT_TEMPLATE,
     FULL_SYSTEM,
-    OPT_PLANNER_SYSTEM,
     SWEEP_PLANNER_SYSTEM,
 )
 from render_templates import render_family_prompt
@@ -52,6 +50,7 @@ from sweep_planner import (
     decision_to_log_record,
     select_next_sweep_action,
 )
+from submit_tails import append_submission_tail
 
 import families.experiment_bow as exp_bow
 import families.experiment_bow_advanced as exp_bow_advanced
@@ -66,22 +65,21 @@ DATA_DIR_ENV = "DISASTER_AGENT_DATA_DIR"
 DEFAULT_DATA_DIR = "data"
 MAX_SEARCH_RUNS = int(os.environ.get("AGENT4_MAX_RUNS", "4"))
 MAX_REPAIR_ATTEMPTS = int(os.environ.get("DISASTER_AGENT_MAX_REPAIRS", "4"))
-FINAL_SUBMISSION_MAX_REPAIRS = int(os.environ.get("AGENT4_FINAL_SUBMISSION_MAX_REPAIRS", "6"))
 TOTAL_TIME_BUDGET_SECONDS = int(os.environ.get("AGENT4_TOTAL_TIME_BUDGET_SECONDS", str(60 * 60)))
-# Sweep runs for a fixed wall-clock window (default 40 min). When the deadline
-# hits, the agent rolls over to the opt phase regardless of how much
-# exploration the planner thinks is left.
-SWEEP_DURATION_SECONDS = int(os.environ.get("AGENT4_SWEEP_DURATION_SECONDS", str(40 * 60)))
+# Sweep runs for a fixed wall-clock window (default 45 min). Opt phase is
+# disabled — the sweep planner has the whole 45 min to explore + revisit
+# whichever families it finds promising. After the sweep deadline, we go
+# straight to final submission.
+SWEEP_DURATION_SECONDS = int(os.environ.get("AGENT4_SWEEP_DURATION_SECONDS", str(45 * 60)))
 SWEEP_SAMPLE_ROWS = int(os.environ.get("AGENT4_SWEEP_SAMPLE_ROWS", "2000"))
-# Final submission trains on a 2k sample (same shape the sweep+opt evaluated
-# on) so the retrain reliably fits in the remaining ~20 minutes after sweep,
-# rather than risking a long full-data run that overruns the 1-hour budget.
-FINAL_TRAIN_ROWS = int(os.environ.get("AGENT4_FINAL_TRAIN_ROWS", "2000"))
+# Final submission trains on a 5k sample (>= 2.5x the sweep sample). The
+# 5k retrain gives the final model more data than the per-trial 2k seen
+# during sweep, at the cost of ~12-15 min wall on CPU for a transformer.
+# With sweep capped at 45 min, the remaining 15 min comfortably fit a
+# 5k retrain + test prediction.
+FINAL_TRAIN_ROWS = int(os.environ.get("AGENT4_FINAL_TRAIN_ROWS", "5000"))
 VALIDATION_FRACTION = min(max(float(os.environ.get("AGENT4_VALIDATION_FRACTION", "0.2")), 0.05), 0.5)
-TOP_ARCHITECTURES_TO_OPTIMIZE = int(os.environ.get("AGENT4_TOP_ARCHITECTURES_TO_OPTIMIZE", "1"))
-WINNER_OPTIMIZATION_MAX_RUNS = int(os.environ.get("AGENT4_WINNER_OPTIMIZATION_MAX_RUNS", "20"))
 RUN_START_BUFFER_SECONDS = int(os.environ.get("AGENT4_RUN_START_BUFFER_SECONDS", "120"))
-OPT_PLANNER_MODEL = os.environ.get("AGENT4_OPT_PLANNER_MODEL", "gemma4:e4b")
 # Use the smarter code-gen LLM for the sweep planner. The small gemma model
 # could not reliably read multi-row state tables (kept hallucinating attempt
 # counts), which broke Fix B's "skip after 2 consecutive code_gen_failed" rule.
@@ -207,138 +205,6 @@ def best_trial_from_summary(summary: dict[str, Any]) -> dict[str, Any] | None:
     return None
 
 
-def _planner_family_rows(summaries: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    rows: list[dict[str, Any]] = []
-    for summary in summaries:
-        best_trial = best_trial_from_summary(summary)
-        best_metrics = summary.get("best_metrics") or {}
-        trials = summary.get("trials", [])
-        successful_runs = sum(1 for trial in trials if trial.get("success"))
-        failed_runs = sum(1 for trial in trials if not trial.get("success"))
-        rows.append(
-            {
-                "family_key": summary.get("family_key"),
-                "family": summary.get("family"),
-                "best_f1": best_metrics.get("f1"),
-                "best_accuracy": best_metrics.get("accuracy"),
-                "best_run_index": summary.get("best_run_index"),
-                "successful_runs": successful_runs,
-                "failed_runs": failed_runs,
-                "best_spec": best_trial.get("spec") if best_trial else {},
-                "tunable_keys": list(FAMILY_MODULES[summary["family_key"]].get_tunable_keys()),
-            }
-        )
-    return rows
-
-
-def build_opt_planner_prompt(
-    sweep_ranked: list[dict[str, Any]],
-    chosen_summary: dict[str, Any],
-) -> str:
-    planner_rows = _planner_family_rows(sweep_ranked)
-    chosen_module = FAMILY_MODULES[chosen_summary["family_key"]]
-    chosen_trial = best_trial_from_summary(chosen_summary)
-    return (
-        "You are planning the optimization stage after a family sweep for Kaggle Disaster Tweets.\n\n"
-        "Rules:\n"
-        "- choose the optimization family from the highest best_f1 sweep family only\n"
-        "- do not invent a new family\n"
-        "- output one JSON object only\n"
-        "- focus on safe local optimization around the chosen family's current best spec\n"
-        "- choose 2 or 3 parameter keys to focus during opt\n"
-        "- for each key, provide a direction from: keep, up_small, down_small, up_medium, down_medium\n"
-        "- use only tunable keys valid for the chosen family\n\n"
-        f"Chosen highest-F1 family:\n{pretty_json({'family_key': chosen_summary['family_key'], 'family': chosen_summary['family'], 'best_metrics': chosen_summary.get('best_metrics', {}), 'best_spec': chosen_trial.get('spec', {}) if chosen_trial else {}, 'tunable_keys': chosen_module.get_tunable_keys()})}\n\n"
-        f"Sweep family table:\n{pretty_json({'families': planner_rows})}\n\n"
-        "Return this schema exactly:\n"
-        '{\n'
-        '  "chosen_family_key": "family key from highest-F1 row",\n'
-        '  "strategy": "local_exploit|cautious_exploit",\n'
-        '  "parameter_focus": [\n'
-        '    {"key": "learning_rate", "direction": "down_small", "reason": "short reason"}\n'
-        "  ],\n"
-        '  "reason": "short paragraph",\n'
-        '  "confidence": 0.0\n'
-        "}\n"
-    )
-
-
-def plan_opt_family_and_parameters(
-    planner_llm: OllamaClient | None,
-    sweep_ranked: list[dict[str, Any]],
-) -> dict[str, Any]:
-    chosen_summary = sweep_ranked[0]
-    fallback = {
-        "planner_model": getattr(planner_llm, "model", None),
-        "chosen_family_key": chosen_summary["family_key"],
-        "chosen_family": chosen_summary["family"],
-        "strategy": "local_exploit",
-        "parameter_focus": [],
-        "reason": "Fallback to the highest sweep F1 family.",
-        "confidence": 0.0,
-        "used_fallback": True,
-        "raw_response": "",
-    }
-    if planner_llm is None:
-        return fallback
-
-    prompt = build_opt_planner_prompt(sweep_ranked, chosen_summary)
-    raw_response = planner_llm.respond(OPT_PLANNER_SYSTEM, prompt)
-    raw_json = extract_json_object(raw_response)
-    if not raw_json:
-        fallback["reason"] = "Fallback to the highest sweep F1 family because the planner returned no valid JSON."
-        fallback["raw_response"] = raw_response
-        return fallback
-
-    chosen_family_key = raw_json.get("chosen_family_key")
-    if chosen_family_key != chosen_summary["family_key"]:
-        chosen_family_key = chosen_summary["family_key"]
-    parameter_focus: list[dict[str, Any]] = []
-    valid_keys = set(FAMILY_MODULES[chosen_family_key].get_tunable_keys())
-    for item in raw_json.get("parameter_focus", []):
-        if not isinstance(item, dict):
-            continue
-        key = item.get("key")
-        direction = item.get("direction")
-        if not isinstance(key, str) or key not in valid_keys or key == "val_size":
-            continue
-        if direction not in {"keep", "up_small", "down_small", "up_medium", "down_medium"}:
-            continue
-        parameter_focus.append(
-            {
-                "key": key,
-                "direction": direction,
-                "reason": str(item.get("reason", ""))[:200],
-            }
-        )
-        if len(parameter_focus) >= 3:
-            break
-    if not parameter_focus:
-        top_keys = [key for key in FAMILY_MODULES[chosen_family_key].get_tunable_keys() if key != "val_size"][:3]
-        parameter_focus = [{"key": key, "direction": "keep", "reason": "Fallback focus key."} for key in top_keys]
-        used_fallback = True
-    else:
-        used_fallback = False
-
-    try:
-        confidence = float(raw_json.get("confidence", 0.0))
-    except (TypeError, ValueError):
-        confidence = 0.0
-
-    return {
-        "planner_model": planner_llm.model,
-        "chosen_family_key": chosen_family_key,
-        "chosen_family": FAMILY_MODULES[chosen_family_key].FAMILY,
-        "strategy": str(raw_json.get("strategy", "local_exploit")),
-        "parameter_focus": parameter_focus,
-        "reason": str(raw_json.get("reason", fallback["reason"]))[:1000],
-        "confidence": max(0.0, min(confidence, 1.0)),
-        "used_fallback": used_fallback,
-        "raw_response": raw_response,
-        "prompt": prompt,
-    }
-
-
 def load_text_if_exists(path: str | None) -> str | None:
     if not path or not os.path.exists(path):
         return None
@@ -351,44 +217,12 @@ def build_kaggle_submission_message(best_overall: dict[str, Any]) -> str:
     f1 = metrics.get("f1", "NA")
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     return (
-        "Agent_3 auto-submit | "
+        "Agent_4 auto-submit | "
         f"family={best_overall.get('family', 'unknown')} | "
         f"run={best_overall.get('best_run_index', 'NA')} | "
         f"f1={f1} | "
         f"ts={timestamp}"
     )
-
-
-def force_submission_path(code: str, old_path: str | None, new_path: str) -> str:
-    fixed = code
-    if old_path:
-        fixed = fixed.replace(str(old_path), new_path)
-    fixed = re.sub(
-        r"os\.environ\.get\((['\"])AGENT_SUBMISSION_PATH\1,\s*(['\"])[^'\"]*submission\.csv\2\)",
-        f"os.environ.get('DISASTER_AGENT_SUBMISSION_PATH', {new_path!r})",
-        fixed,
-    )
-    fixed = re.sub(
-        r"os\.environ\.get\((['\"])DISASTER_AGENT_SUBMISSION_PATH\1,\s*(['\"])[^'\"]*submission\.csv\2\)",
-        f"os.environ.get('DISASTER_AGENT_SUBMISSION_PATH', {new_path!r})",
-        fixed,
-    )
-    fixed = re.sub(
-        r"submission_path\s*=\s*(['\"])[^'\"]*submission[^'\"]*\.csv\1",
-        f"submission_path = os.environ.get('DISASTER_AGENT_SUBMISSION_PATH', {new_path!r})",
-        fixed,
-    )
-    fixed = re.sub(
-        r"((?:['\"])submission_path(?:['\"])\s*:\s*)(['\"])[^'\"]*submission[^'\"]*\.csv\2",
-        rf"\g<1>os.environ.get('DISASTER_AGENT_SUBMISSION_PATH', {new_path!r})",
-        fixed,
-    )
-    fixed = re.sub(
-        r"(['\"])submissions/[^'\"]+_submission\.csv\1",
-        f"os.environ.get('DISASTER_AGENT_SUBMISSION_PATH', {new_path!r})",
-        fixed,
-    )
-    return fixed
 
 
 def validate_submission_file(submission_path: str) -> str | None:
@@ -424,7 +258,6 @@ def prepare_final_submission_payload(summary: dict[str, Any], public_submission_
 
     module = FAMILY_MODULES[summary["family_key"]]
     spec = dict(best_trial.get("spec", {}))
-    old_submission_path = spec.get("submission_path")
     spec["submission_path"] = public_submission_path
     spec["experiment_name"] = "best_overall_submission"
     spec["val_size"] = VALIDATION_FRACTION
@@ -434,8 +267,13 @@ def prepare_final_submission_payload(summary: dict[str, Any], public_submission_
         code = module.tune_frozen_code(code, spec, "best_overall_submission")
     if hasattr(module, "apply_light_autofixes"):
         code = module.apply_light_autofixes(code, spec)
+    # Append the orchestrator-owned hardcoded submission tail. This is what
+    # actually writes the CSV — the LLM's WRITE_SUBMISSION/FINAL_SUBMISSION
+    # blocks never run (both env vars are 0 at final time), so we don't need
+    # to patch their paths.
+    code = append_submission_tail(code, summary["family"])
     return {
-        "code": force_submission_path(code, old_submission_path if old_submission_path is not None else None, public_submission_path),
+        "code": code,
         "family": summary["family"],
         "family_key": summary["family_key"],
         "module": module,
@@ -446,176 +284,80 @@ def prepare_final_submission_payload(summary: dict[str, Any], public_submission_
     }, None
 
 
-def execute_final_submission_with_repairs(
+def execute_final_submission(
     llm: OllamaClient,
     payload: dict[str, Any],
 ) -> tuple[str, dict[str, Any], int]:
-    code = str(payload["code"])
-    family = str(payload["family"])
+    """Run the frozen training script once with the orchestrator-owned
+    submission tail appended. No LLM-driven repair attempts at this stage —
+    the tail is hardcoded so there is nothing for the LLM to fix, and
+    historically every repair attempt at final time has corrupted the tail
+    or introduced new bugs. If the run fails, we accept that failure.
+
+    The `llm` argument is kept for signature compatibility with callers but
+    is not used here.
+    """
+    del llm  # unused — kept for signature compatibility
+    code = str(payload["code"])  # already has the hardcoded tail appended
     module = payload["module"]
     run_name = str(payload["run_name"])
     spec = dict(payload["spec"])
     submission_path = str(payload["submission_path"])
-    runs_root = os.path.join(os.path.dirname(__file__), "runs")
-    attempt = 0
-    result: dict[str, Any] | None = None
 
-    while attempt <= FINAL_SUBMISSION_MAX_REPAIRS:
-        if hasattr(module, "apply_light_autofixes"):
-            code = module.apply_light_autofixes(code, spec)
-        issues = module.preflight_issues(code, spec)
-        if issues:
-            if attempt == FINAL_SUBMISSION_MAX_REPAIRS:
-                result = {
-                    "success": False,
-                    "timed_out": False,
-                    "dry_run_failed": False,
-                    "metrics": {},
-                    "stdout": "",
-                    "stderr": "Final submission preflight validation failed:\n- " + "\n- ".join(issues),
-                }
-                break
-            repair = request_surgical_repair(
-                llm=llm,
-                module=module,
-                family=family,
-                run_name=run_name,
-                submission_path=submission_path,
-                failed_code=code,
-                stderr_text="Final submission preflight validation failed:\n- " + "\n- ".join(issues),
-                stdout_text="",
-                attempt=attempt + 1,
-                max_attempts=FINAL_SUBMISSION_MAX_REPAIRS,
-                extra_context=(
-                    "Validated spec:\n"
-                    + pretty_json(spec)
-                    + "\n\nThis is final submission mode. The script must create the submission CSV, "
-                    "use the final full-data retraining path when AGENT_FINAL_SUBMISSION=1, and still print METRICS."
-                ),
-            )
-            write_text(os.path.join(runs_root, f"final_submission_repair_attempt_{attempt + 1}.json"), repair["raw_response"])
-            if not repair["code"]:
-                result = {
-                    "success": False,
-                    "timed_out": False,
-                    "dry_run_failed": False,
-                    "metrics": {},
-                    "stdout": "",
-                    "stderr": "Final submission preflight failed and repair returned no patch.\n" + repair["error"],
-                }
-                break
-            code = repair["code"]
-            attempt += 1
-            continue
+    # Cheap, deterministic preprocessing only — no LLM calls.
+    if hasattr(module, "apply_light_autofixes"):
+        code = module.apply_light_autofixes(code, spec)
+    # Strip-and-reappend the tail in case apply_light_autofixes touched it.
+    code = append_submission_tail(code, str(payload["family"]))
 
-        ok, syntax_err = syntax_check(code)
-        if not ok:
-            if attempt == FINAL_SUBMISSION_MAX_REPAIRS:
-                result = {
-                    "success": False,
-                    "timed_out": False,
-                    "dry_run_failed": False,
-                    "metrics": {},
-                    "stdout": "",
-                    "stderr": syntax_err,
-                }
-                break
-            repair = request_surgical_repair(
-                llm=llm,
-                module=module,
-                family=family,
-                run_name=run_name,
-                submission_path=submission_path,
-                failed_code=code,
-                stderr_text=syntax_err,
-                stdout_text="",
-                attempt=attempt + 1,
-                max_attempts=FINAL_SUBMISSION_MAX_REPAIRS,
-                extra_context=(
-                    "Validated spec:\n"
-                    + pretty_json(spec)
-                    + "\n\nThis is final submission mode. The script must create the submission CSV, "
-                    "use the final full-data retraining path when AGENT_FINAL_SUBMISSION=1, and still print METRICS."
-                ),
-            )
-            write_text(os.path.join(runs_root, f"final_submission_repair_attempt_{attempt + 1}.json"), repair["raw_response"])
-            if not repair["code"]:
-                result = {
-                    "success": False,
-                    "timed_out": False,
-                    "dry_run_failed": False,
-                    "metrics": {},
-                    "stdout": "",
-                    "stderr": syntax_err + "\n" + repair["error"],
-                }
-                break
-            code = repair["code"]
-            attempt += 1
-            continue
+    ok, syntax_err = syntax_check(code)
+    if not ok:
+        return code, {
+            "success": False,
+            "timed_out": False,
+            "dry_run_failed": False,
+            "metrics": {},
+            "stdout": "",
+            "stderr": "Final submission script has a syntax error after tail injection:\n" + syntax_err,
+        }, 0
 
-        result = run_experiment(
-            code,
-            run_name,
-            train_fraction=1.0,
-            train_rows=FINAL_TRAIN_ROWS,
-            write_submission=True,
-            final_submission=True,
-            submission_path=submission_path,
-        )
-        submission_error = validate_submission_file(submission_path)
-        if submission_error is None and not result.get("success"):
+    # Single-shot run. The tail is deterministic; if the script still fails,
+    # there is nothing useful an LLM patch can do without risking the tail.
+    #
+    # write_submission=True so sandbox.run_experiment loads the full
+    # 3,263-row test.csv (not the 1-row truncation it uses during sweep).
+    # final_submission=False keeps the LLM's `if FINAL_SUBMISSION:` retrain
+    # branch dormant — that branch is historically the buggiest part of
+    # the script and we don't need it: the tail predicts directly using
+    # the 80%-trained model that produced the reported val F1.
+    result = run_experiment(
+        code,
+        run_name,
+        train_fraction=1.0,
+        train_rows=FINAL_TRAIN_ROWS,
+        write_submission=True,
+        final_submission=False,
+        submission_path=submission_path,
+    )
+    submission_error = validate_submission_file(submission_path)
+    if submission_error is None:
+        # Accept the run as success if the CSV is valid, even if the script
+        # exited non-zero (e.g., a warning was treated as error after the
+        # tail had already written the CSV).
+        if not result.get("success"):
             result["success"] = True
             result["stderr"] = (
                 result.get("stderr", "").rstrip()
                 + ("\n" if result.get("stderr") else "")
                 + "Accepted final submission because a valid submission CSV was created."
             ).strip()
-        if result.get("success") and submission_error is None:
-            break
-        if attempt == FINAL_SUBMISSION_MAX_REPAIRS:
-            if result.get("success") and submission_error:
-                result["success"] = False
-                result["stderr"] = (result.get("stderr", "") + "\n" + submission_error).strip()
-            break
-        repair_stderr = result.get("stderr", "")
-        if result.get("success") and submission_error:
-            repair_stderr = (repair_stderr + "\n" + submission_error).strip()
-            result["success"] = False
-        repair = request_surgical_repair(
-            llm=llm,
-            module=module,
-            family=family,
-            run_name=run_name,
-            submission_path=submission_path,
-            failed_code=code,
-            stderr_text=repair_stderr,
-            stdout_text=result.get("stdout", ""),
-            attempt=attempt + 1,
-            max_attempts=FINAL_SUBMISSION_MAX_REPAIRS,
-            extra_context=(
-                "Validated spec:\n"
-                + pretty_json(spec)
-                + "\n\nThis is final submission mode. The script must create the submission CSV, "
-                "use the final full-data retraining path when AGENT_FINAL_SUBMISSION=1, and still print METRICS."
-            ),
-        )
-        write_text(os.path.join(runs_root, f"final_submission_repair_attempt_{attempt + 1}.json"), repair["raw_response"])
-        if not repair["code"]:
-            result["stderr"] = (result.get("stderr", "") + "\nRepair error: " + repair["error"]).strip()
-            break
-        code = repair["code"]
-        attempt += 1
+    else:
+        # CSV is missing or malformed. Flag the failure but don't ask the LLM
+        # to fix it — repairs have historically made things worse.
+        result["success"] = False
+        result["stderr"] = (result.get("stderr", "") + "\n" + submission_error).strip()
 
-    if result is None:
-        result = {
-            "success": False,
-            "timed_out": False,
-            "dry_run_failed": False,
-            "metrics": {},
-            "stdout": "",
-            "stderr": "Final submission failed without a result payload.",
-        }
-    return code, result, attempt
+    return code, result, 0
 
 
 def constrain_phase_spec(spec: dict[str, Any]) -> dict[str, Any]:
@@ -648,7 +390,7 @@ def create_fixed_phase_data_dir(
     if test_rows is not None:
         test = test.head(test_rows)
 
-    data_dir = tempfile.mkdtemp(prefix=f"agent3_{phase_label}_fixed_data_")
+    data_dir = tempfile.mkdtemp(prefix=f"agent4_{phase_label}_fixed_data_")
     train.to_csv(os.path.join(data_dir, "train.csv"), index=False)
     test.to_csv(os.path.join(data_dir, "test.csv"), index=False)
 
@@ -686,12 +428,13 @@ def cleanup_phase_data_dirs(paths: list[str]) -> None:
 
 def execute_family(
     llm: OllamaClient,
-    memory: Agent3Memory,
+    memory: Agent4Memory,
     family_key: str,
     max_runs: int | None,
     stop_after_ts: float | None = None,
     phase_label: str = "sweep",
     seeded_trial: dict[str, Any] | None = None,
+    seeded_trials: list[dict[str, Any]] | None = None,
     seeded_code: str | None = None,
     phase_data_dir: str | None = None,
     phase_split_manifest: dict[str, Any] | None = None,
@@ -710,7 +453,37 @@ def execute_family(
     best_code: str | None = seeded_code
     frozen_code: str | None = seeded_code
     freeze_after_success = phase_label == "opt" and bool(getattr(module, "freeze_after_first_success", lambda: False)())
-    if seeded_trial:
+    # Multi-seed path (sweep planner revisits): show propose_next_spec the FULL
+    # prior history of this family so it can avoid re-trying specs that already
+    # underperformed and learn from the per-spec → F1 mapping.
+    if seeded_trials:
+        for idx, prior in enumerate(seeded_trials):
+            seed_record = dict(prior)
+            # Use negative indices so seeded records do not collide with the
+            # real run_index of the current trial.
+            seed_record["run_index"] = -(idx + 1)
+            seed_record["analysis"] = seed_record.get(
+                "analysis", f"Seeded from earlier {family} attempt."
+            )
+            seed_record["seeded"] = True
+            trials.append(seed_record)
+        # Pick the highest-F1 seeded as the best so far.
+        try:
+            best_seeded = max(
+                seeded_trials,
+                key=lambda t: float((t.get("metrics") or {}).get("f1", -1.0)),
+            )
+            best_trial = dict(best_seeded)
+            best_trial["seeded"] = True
+        except (ValueError, TypeError):
+            pass
+        print(
+            f"[Seed] {family} sweep revisit seeded with {len(seeded_trials)} prior trial(s); "
+            f"propose_next_spec sees the full per-spec → F1 mapping."
+        )
+    elif seeded_trial:
+        # Single-seed path (opt phase): legacy behaviour, preserved for the
+        # winner-optimization flow which seeds only the best sweep trial.
         seed_record = dict(seeded_trial)
         seed_record["run_index"] = 0
         seed_record["analysis"] = seed_record.get("analysis", "Seeded from the best prior family run.")
@@ -1055,28 +828,17 @@ def main(
     max_runs: int | None,
     persist: bool,
     time_budget_seconds: int,
-    optimize_winner: bool,
-    opt_planner_model: str,
     sweep_planner_model: str = SWEEP_PLANNER_MODEL,
 ) -> None:
     try:
         llm = OllamaClient(model=model)
     except Exception as exc:  # noqa: BLE001
         raise SystemExit(
-            "Agent_3 could not connect to Ollama. "
+            "Agent_4 could not connect to Ollama. "
             "Start Ollama and ensure the requested model is available.\n"
             f"Details: {exc}"
         ) from exc
-    opt_planner_llm: OllamaClient | None = None
-    if optimize_winner:
-        try:
-            opt_planner_llm = OllamaClient(model=opt_planner_model)
-        except Exception as exc:  # noqa: BLE001
-            print(
-                "[Planner] Could not initialize optimization planner model "
-                f"'{opt_planner_model}'. Falling back to heuristic opt selection. Details: {exc}"
-            )
-    memory = Agent3Memory(persist=persist, load_existing=False)
+    memory = Agent4Memory(persist=persist)
     public_submissions_dir = reset_public_submissions_dir()
     phase_data_dirs: list[str] = []
     atexit.register(cleanup_phase_data_dirs, phase_data_dirs)
@@ -1097,7 +859,7 @@ def main(
     # Sweep ends after a fixed wall-clock window (default 40 minutes), or when
     # the planner decides to stop — whichever comes first. After that we roll
     # over to the opt phase even if some families are still untried.
-    sweep_deadline = min(started_at + SWEEP_DURATION_SECONDS, overall_deadline) if optimize_winner else overall_deadline
+    sweep_deadline = min(started_at + SWEEP_DURATION_SECONDS, overall_deadline)
 
     # Prepare the sweep-planner LLM (a small fast model is fine; falls back
     # to deterministic round-robin if the planner can't be reached).
@@ -1137,7 +899,10 @@ def main(
         family_state: dict[str, FamilyState] = {
             key: FamilyState(family_key=key) for key in FAMILY_MODULES.keys()
         }
-        best_trial_per_family: dict[str, dict[str, Any]] = {}
+        # Track ALL prior trials of each family (not just the best). Passing
+        # the full history into propose_next_spec on revisits lets the LLM
+        # see the per-spec → F1 mapping and avoid re-trying losing specs.
+        prior_trials_per_family: dict[str, list[dict[str, Any]]] = {}
 
         while time.time() < sweep_deadline:
             remaining = sweep_deadline - time.time()
@@ -1208,10 +973,12 @@ def main(
                 print(f"[Sweep Planner] Skipping malformed decision: {decision}")
                 continue
 
-            # Seed the trial with the best prior success for this family (if any).
-            # On a revisit, this makes execute_family use propose_next_spec instead
-            # of generate_initial_spec, so the LLM evolves the prior winning spec.
-            seeded = best_trial_per_family.get(family_key)
+            # Seed the trial with the FULL prior history of this family.
+            # On a first attempt, this list is empty -> generate_initial_spec.
+            # On a revisit, propose_next_spec sees every prior spec + F1, not
+            # just the best one — so it can avoid re-proposing losing specs
+            # and reason about which knob actually moved F1.
+            seeded_history = prior_trials_per_family.get(family_key) or None
 
             summary = execute_family(
                 llm,
@@ -1220,13 +987,14 @@ def main(
                 max_runs=1,
                 stop_after_ts=sweep_deadline,
                 phase_label="sweep",
-                seeded_trial=seeded,
+                seeded_trials=seeded_history,
                 phase_data_dir=sweep_data_dir,
                 phase_split_manifest=sweep_split_manifest,
             )
             family_summaries.append(summary)
 
-            # Fold the latest trial into family_state.
+            # Fold the latest trial into family_state and append it to the
+            # per-family history for future revisits.
             actual_trials = [t for t in summary.get("trials", []) if not t.get("seeded")]
             if actual_trials:
                 last = actual_trials[-1]
@@ -1236,15 +1004,9 @@ def main(
                     wall_seconds=last.get("wall_seconds", 0.0),
                     error_summary=last.get("error_summary"),
                 )
-                # Track best successful trial across all planner-driven sessions for this family.
-                if last.get("success"):
-                    prev = best_trial_per_family.get(family_key)
-                    if (
-                        prev is None
-                        or metric_f1({"metrics": last.get("metrics", {})})
-                        > metric_f1({"metrics": prev.get("metrics", {})})
-                    ):
-                        best_trial_per_family[family_key] = last
+                # Append to per-family history. We keep ALL trials (success
+                # AND failure) so propose_next_spec can see what failed too.
+                prior_trials_per_family.setdefault(family_key, []).append(last)
 
     successful = [summary for summary in family_summaries if summary.get("best_run_index") is not None]
     if not successful:
@@ -1258,81 +1020,13 @@ def main(
         reverse=True,
     )
     sweep_best = sweep_ranked[0]
-    planner_decision: dict[str, Any] | None = None
-    top_sweep_summaries = sweep_ranked[:max(1, TOP_ARCHITECTURES_TO_OPTIMIZE)]
-    if optimize_winner:
-        planner_decision = plan_opt_family_and_parameters(opt_planner_llm, sweep_ranked)
-        selected_family_key = planner_decision["chosen_family_key"]
-        selected_summary = next((summary for summary in sweep_ranked if summary["family_key"] == selected_family_key), sweep_best)
-        top_sweep_summaries = [selected_summary]
-        planner_dir = os.path.join(os.path.dirname(__file__), "runs")
-        write_json(os.path.join(planner_dir, "opt_planner_decision.json"), planner_decision)
-        if planner_decision.get("prompt"):
-            write_text(os.path.join(planner_dir, "opt_planner_prompt.txt"), planner_decision["prompt"])
-        if planner_decision.get("raw_response"):
-            write_text(os.path.join(planner_dir, "opt_planner_raw_response.txt"), planner_decision["raw_response"])
-        focus_keys = [item["key"] for item in planner_decision.get("parameter_focus", [])]
-        print(
-            "[Planner] "
-            f"family={planner_decision['chosen_family']} | "
-            f"strategy={planner_decision.get('strategy', 'local_exploit')} | "
-            f"focus={focus_keys or ['none']}"
-        )
-
-    if optimize_winner:
-        opt_data_dir, opt_split_manifest = create_fixed_phase_data_dir(
-            "opt",
-            phase_train_rows("opt"),
-            test_rows=1,
-        )
-        phase_data_dirs.append(opt_data_dir)
-        print(
-            "[Fixed Split] opt "
-            f"sample_rows={opt_split_manifest['sample_rows']} "
-            f"train={opt_split_manifest['expected_train_rows']} "
-            f"validation={opt_split_manifest['expected_validation_rows']}"
-        )
-        print(
-            "[Optimize] Top sweep architectures: "
-            + ", ".join(
-                f"{summary['family']} f1={metric_f1({'metrics': summary.get('best_metrics', {})}):.4f}"
-                for summary in top_sweep_summaries
-            )
-        )
-        for idx, selected in enumerate(top_sweep_summaries):
-            slots_left = len(top_sweep_summaries) - idx
-            phase_deadline = time.time() + max(0, remaining_seconds(overall_deadline) // max(slots_left, 1))
-            phase_deadline = min(phase_deadline, overall_deadline)
-            if not can_start_run(selected["family_key"], phase_deadline):
-                print(
-                    f"[Optimize] Skipping family={selected['family']} because only "
-                    f"{remaining_seconds(phase_deadline)}s remain in its allocation."
-                )
-                continue
-            seeded_trial = best_trial_from_summary(selected)
-            seeded_code = load_text_if_exists(os.path.join(os.path.dirname(__file__), "runs", selected["session_name"], "best_train.py"))
-            if seeded_trial and seeded_code:
-                print(
-                    f"[Optimize] Tuning top architecture {idx + 1}/{len(top_sweep_summaries)}: "
-                    f"family={selected['family']} with {remaining_seconds(phase_deadline)}s allocated."
-                )
-                family_summaries.append(
-                    execute_family(
-                        llm,
-                        memory,
-                        selected["family_key"],
-                        max_runs=WINNER_OPTIMIZATION_MAX_RUNS,
-                        stop_after_ts=phase_deadline,
-                        phase_label="opt",
-                        seeded_trial=seeded_trial,
-                        seeded_code=seeded_code,
-                        phase_data_dir=opt_data_dir,
-                        phase_split_manifest=opt_split_manifest,
-                        planner_guidance=planner_decision,
-                    )
-                )
-            else:
-                print(f"[Optimize] Skipped family={selected['family']} because its best run code/spec could not be loaded.")
+    # Opt phase removed: the sweep planner now owns all exploration within
+    # the 45-min sweep window. The best sweep family proceeds directly to
+    # the final-submission step, which retrains it on a 5k-row sample.
+    print(
+        f"[Sweep complete] best family = {sweep_best['family']} "
+        f"with F1={metric_f1({'metrics': sweep_best.get('best_metrics', {})}):.4f}"
+    )
 
     best_overall = max(
         [summary for summary in family_summaries if summary.get("best_run_index") is not None],
@@ -1349,8 +1043,6 @@ def main(
         "sweep_best_family": sweep_best["family"],
         "sweep_best_run_index": sweep_best["best_run_index"],
         "sweep_best_metrics": sweep_best["best_metrics"],
-        "optimized_families": [summary["family"] for summary in top_sweep_summaries] if optimize_winner else [],
-        "opt_planner_decision": planner_decision,
         "best_family": best_overall["family"],
         "best_run_index": best_overall["best_run_index"],
         "best_metrics": best_overall["best_metrics"],
@@ -1362,7 +1054,7 @@ def main(
     final_submission_success = False
     if final_payload:
         print("[Final Submission] Re-running the selected best model on full data for one test prediction file.")
-        final_code, final_result, final_repair_attempts = execute_final_submission_with_repairs(llm, final_payload)
+        final_code, final_result, final_repair_attempts = execute_final_submission(llm, final_payload)
         overall_summary["final_submission_result"] = {
             "success": final_result.get("success", False),
             "timed_out": final_result.get("timed_out", False),
@@ -1425,8 +1117,6 @@ def main(
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Agent_4 — LLM-driven autonomous experiment runner")
     parser.add_argument("--model", type=str, default="qwen2.5-coder:14b")
-    parser.add_argument("--opt-planner-model", type=str, default=OPT_PLANNER_MODEL,
-                        help="LLM used to pick the opt-phase family and parameter focus.")
     parser.add_argument("--sweep-planner-model", type=str, default=SWEEP_PLANNER_MODEL,
                         help="LLM used to pick which family to try next during the sweep.")
     parser.add_argument("--family", type=str, choices=sorted(FAMILY_MODULES.keys()),
@@ -1434,7 +1124,6 @@ if __name__ == "__main__":
     parser.add_argument("--max-runs", type=int,
                         help="Cap on per-call trial count (mostly only useful with --family).")
     parser.add_argument("--time-budget-minutes", type=int, default=60)
-    parser.add_argument("--no-winner-optimization", action="store_true")
     parser.add_argument("--fresh", action="store_true", help="Do not persist the per-run log this invocation.")
     args = parser.parse_args()
     main(
@@ -1443,7 +1132,5 @@ if __name__ == "__main__":
         max_runs=args.max_runs,
         persist=not args.fresh,
         time_budget_seconds=max(60, args.time_budget_minutes * 60),
-        optimize_winner=not args.no_winner_optimization,
-        opt_planner_model=args.opt_planner_model,
         sweep_planner_model=args.sweep_planner_model,
     )

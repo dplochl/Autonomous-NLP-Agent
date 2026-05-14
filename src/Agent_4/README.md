@@ -1,57 +1,95 @@
 # Agent_4
 
-`Agent_4` is the LLM-driven evolution of `Agent_3`. The orchestration code, family hooks, repair contract, sandbox, and prompt templates are inherited from `Agent_3`. The thing that changes is who decides what to try next during the sweep.
+`Agent_4` is an autonomous experiment runner for the Kaggle Disaster Tweets binary text classification task. It uses local LLMs (via Ollama) to plan family selection, generate training scripts, and repair them when they break — all inside a fixed 1-hour CPU budget.
 
-## What's different from Agent_3
+## Design at a glance
 
-1. **Sweep order is decided by an LLM planner, not a hardcoded list.**
-   Each iteration the planner reads the per-family state (attempts, best F1, last outcome, repair attempts, wall time so far) and picks one of three actions:
-   - `try_family` — run one trial of one family.
-   - `skip_family_permanently` — declare a family dead so it stops appearing in the eligible list.
-   - `stop` — end the sweep and roll over to the opt phase.
-2. **One trial per planner decision.** No per-family attempt cap baked into the sweep loop. The planner can revisit a family that already succeeded (and `propose_next_spec` evolves the prior winning spec), or retry one that failed if the failure mode looks fixable. A hard safety cap of 5 attempts per family exists only to stop a degenerate loop.
-3. **Sweep ends at a fixed wall-clock boundary (default 40 min)** instead of as a fraction of the total budget. Whatever sweep is doing at 40 minutes, the agent rolls over to the opt phase.
-4. **Final submission trains on a 2{,}000-row sample**, not the full 7{,}613 rows. Retraining on the full data on CPU often pushed past the 1-hour budget; the 2k retrain reliably finishes in the remaining time after sweep + opt.
-5. **A new `sweep_decisions.jsonl` artifact** in `runs/` logs every planner decision (timestamp, eligible families, action, family chosen, one-sentence reason). Per-decision prompt and raw response are written next to it.
+1. **Sweep planner LLM** decides which model family to try next, based on observed trial outcomes. Each decision = one trial of one family.
+2. **Code-generation LLM** writes a full training script for the chosen family + spec, then the script runs in a sandboxed subprocess on CPU.
+3. **Repair loop** asks the LLM for a structured JSON edit-plan whenever the script breaks (up to 4 patches per trial).
+4. After the sweep window (45 min by default), the **final submission** step retrains the best-overall script on a 5 000-row sample and writes `id,target` predictions for the full test set. There is no separate "opt" phase — every trial in the budget is a sweep trial.
 
-Everything else — family hooks, templates, the surgical-edit repair contract, the opt-phase planner, the Kaggle submission pipeline — is unchanged from `Agent_3`.
+Every planner decision is logged to `runs/sweep_decisions.jsonl` — the audit trail for the agent's exploration behaviour.
 
-## Families (unchanged from Agent_3)
+## Families
 
-- `bow`, `bow_advanced`, `cnn`, `embedding_dl`, `lstm`, `roberta`, `bertweet`
+- `bow` — TF-IDF + Logistic Regression
+- `bow_advanced` — word + char n-grams + Logistic Regression
+- `cnn` — 1D convolutional text classifier
+- `lstm` — bidirectional LSTM
+- `embedding_dl` — learned or GloVe embeddings + GRU/LSTM
+- `roberta` — `roberta-base` fine-tuning
+- `bertweet` — `vinai/bertweet-base` fine-tuning
 
-## How one launch goes
+## How a run goes
 
-1. **Sweep phase (≤ 40 min).** While inside the sweep window, the LLM planner is asked at every step for the next decision. Each `try_family` decision triggers one call to `execute_family(..., max_runs=1)`. On revisits the orchestrator seeds the call with the prior best trial for that family, so `propose_next_spec` evolves the previous winning spec.
-2. **Opt phase.** When sweep ends, the opt-phase planner (gemma4:e4b) picks the highest-F1 family across all sweep trials and chooses 2–3 hyperparameters to tune. Up to 20 tuning trials, time-shared until the budget runs out.
-3. **Final submission.** Best-overall trial across sweep + opt is rerun on a 2{,}000-row sample with `AGENT_FINAL_SUBMISSION=1`, then test predictions are written. Optional Kaggle auto-submit if `AGENT4_AUTO_SUBMIT_KAGGLE=1`.
+1. **Sweep phase (≤ 45 min by default).** The planner is asked at every step for the next decision. Each `try_family` triggers exactly one trial. Revisits seed `propose_next_spec` with the family's full prior history so the spec proposer can avoid repeating itself.
+2. **Final submission (≤ 15 min by default).** Best-overall trial's frozen `best_train.py` is reloaded, a **hardcoded** submission tail is appended (orchestrator owns the inference step — no LLM involvement at this stage, no repair attempts), and the script is rerun with `AGENT_WRITE_SUBMISSION=1` on a 5 000-row training sample. Test predictions are written to `submissions/best_overall_submission.csv`. Optional Kaggle auto-submit if `AGENT4_AUTO_SUBMIT_KAGGLE=1`.
+
+## Sweep planner actions
+
+The planner returns one of three actions per decision:
+
+- `try_family` — run one trial of one family
+- `skip_family_permanently` — declare a family dead so it stops appearing in the eligible list
+- `stop` — end the sweep early
+
+The planner reasons purely from observed evidence (per-family state table). It has no prior beliefs about which family will perform best — it has to discover that through the trials it authorises.
+
+## Safety nets (orchestrator-side)
+
+The orchestrator enforces these defensively regardless of the planner's choice:
+
+- **Hard per-family cap:** `MAX_ATTEMPTS_PER_FAMILY = 5`. Almost never binds.
+- **Auto-skip after 2 code_gen_failed:** if the code-generation LLM cannot produce working code for a family twice in a row, the family drops out of eligibility.
+- **Auto-skip after 2 degenerate_success:** if a trained model collapses to predicting one class (F1 < 0.4) twice in a row, the family drops out.
+- **Time eligibility filter:** families whose estimated cost + buffer doesn't fit in remaining time are filtered out.
+- **Fallback round-robin:** if the planner LLM can't be reached, the orchestrator falls back to deterministic family iteration.
+
+## Trial outcome classes
+
+Each trial is classified into one of:
+
+- `success` — finished with `F1 ≥ 0.4`
+- `degenerate_success` — finished, but `F1 < 0.4` (one-class predictor); counts towards the auto-skip rule
+- `code_gen_failed` — the LLM never produced a runnable script, even after repairs
+- `training_crash` — the script ran but raised an exception
+- `timeout` — the script exceeded the sandbox timeout
+- `no_metrics` — the script finished without printing the expected `METRICS` line
 
 ## Files
 
 ```
 src/Agent_4/
-├── agent.py                # main orchestrator with LLM-driven sweep loop
-├── sweep_planner.py        # NEW: per-family state, prompt, decision parsing
-├── prompts.py              # adds SWEEP_PLANNER_SYSTEM
-├── llm.py                  # unchanged Ollama client
-├── repair.py               # unchanged surgical JSON-patch repair
-├── sandbox.py              # unchanged CPU-only subprocess runner
-├── search.py               # unchanged intra-family spec proposer
-├── families/               # unchanged family hooks
-├── templates/              # unchanged Jinja-ish prompt templates
-└── runs/                   # per-launch artifacts (sweep_decisions.jsonl lives here)
+├── agent.py                # main orchestrator + planner-driven sweep loop + final submission
+├── sweep_planner.py        # per-family state, prompt, decision parsing, eligibility filter
+├── prompts.py              # system prompts for code-gen, repair, spec, and sweep planner
+├── submit_tails.py         # hardcoded final-submission tails (sparse / transformer / deep)
+├── llm.py                  # Ollama client
+├── repair.py               # surgical JSON-patch repair
+├── sandbox.py              # CPU-only subprocess runner with dry-run + full-run timeouts
+├── search.py               # intra-family spec proposer with stagnation detection
+├── generate_spec.py        # initial spec generation
+├── validate_spec.py        # type coercion + range clamping for specs
+├── memory.py               # in-launch run history (write-only by default)
+├── render_templates.py     # Jinja-ish {{key}} replacer
+├── artifacts.py            # session/run directory helpers
+├── kaggle_submit.py        # optional Kaggle CLI auto-submit
+├── json_utils.py           # extract_json_object + pretty_json
+├── families/               # one hook per architecture family
+└── templates/              # one Jinja-ish prompt template per family
 ```
 
 ## Run
 
 ```bash
-# Full LLM-driven 1-hour sweep + opt + final
+# Full LLM-driven 1-hour sweep + final submission
 python3 src/Agent_4/agent.py
 
 # Force one trial of a specific family (bypasses the sweep planner)
 python3 src/Agent_4/agent.py --family bertweet
 
-# Override the sweep planner model (defaults to gemma4:e4b)
+# Override the sweep planner model (defaults to qwen2.5-coder:14b)
 python3 src/Agent_4/agent.py --sweep-planner-model gemma4:e4b
 
 # Shorter run for a smoke test
@@ -63,35 +101,37 @@ python3 src/Agent_4/agent.py --time-budget-minutes 10
 | Variable | Default | Purpose |
 |---|---|---|
 | `AGENT4_TOTAL_TIME_BUDGET_SECONDS` | `3600` | Overall wall-clock budget. |
-| `AGENT4_SWEEP_DURATION_SECONDS` | `2400` (40 min) | Hard sweep cutoff. |
-| `AGENT4_FINAL_TRAIN_ROWS` | `2000` | Rows used by the final retrain step. |
-| `AGENT4_SWEEP_SAMPLE_ROWS` | `2000` | Rows in the fixed sweep+opt sample. |
+| `AGENT4_SWEEP_DURATION_SECONDS` | `2700` (45 min) | Hard sweep cutoff before the final-submission step. |
+| `AGENT4_FINAL_TRAIN_ROWS` | `5000` | Rows used by the final retrain step. |
+| `AGENT4_SWEEP_SAMPLE_ROWS` | `2000` | Rows in the fixed sweep sample. |
 | `AGENT4_VALIDATION_FRACTION` | `0.2` | Local val split. |
 | `AGENT4_MAX_ATTEMPTS_PER_FAMILY` | `5` | Hard safety cap (rarely binds). |
-| `AGENT4_WINNER_OPTIMIZATION_MAX_RUNS` | `20` | Opt-phase per-family cap. |
 | `AGENT4_RUN_START_BUFFER_SECONDS` | `120` | Cushion against budget overrun. |
-| `AGENT4_SWEEP_PLANNER_MODEL` | `gemma4:e4b` | LLM for next-family decisions. |
-| `AGENT4_OPT_PLANNER_MODEL` | `gemma4:e4b` | LLM for opt-phase family + parameter focus. |
-| `DISASTER_AGENT_DATA_DIR` | `data` | Where train.csv and test.csv live. |
-| `DISASTER_AGENT_MAX_REPAIRS` | `4` | Repair budget per trial. |
+| `AGENT4_SWEEP_PLANNER_MODEL` | `qwen2.5-coder:14b` | LLM for next-family decisions. |
+| `DISASTER_AGENT_DATA_DIR` | `data` | Where `train.csv` and `test.csv` live. |
+| `DISASTER_AGENT_MAX_REPAIRS` | `4` | Repair budget per trial during the sweep. The final submission step uses **zero** LLM repairs. |
+| `AGENT4_AUTO_SUBMIT_KAGGLE` | unset | If `1`, upload `submissions/best_overall_submission.csv` to Kaggle. |
 
-## Why this design
+## Prerequisites
 
-Agent_3's sweep iterates families in a hardcoded list. That makes the "agent" part of the agent narrow — it chooses hyperparameters within a family, but not which family to try. Agent_4 widens that so the LLM has to reason at every step about cost-benefit:
+1. Python 3.11+ in a virtual environment
+2. Ollama running locally on `http://localhost:11434`
+3. The code-gen model pulled: `ollama pull qwen2.5-coder:14b`
+4. `data/train.csv` and `data/test.csv` available (download with `kaggle competitions download -c nlp-getting-started -p data`)
+5. Dependencies from the repo-level `requirements.txt`:
 
-- Untried families: information value vs. wall-clock cost.
-- Stagnant successes: rarely improve on revisit; consider untried or stop.
-- `code_gen_failed` families: the code-gen LLM is stuck — retrying usually fails the same way. Prefer skip.
-- `training_crash` / `timeout` / `no_metrics` failures: often fixable by `propose_next_spec`. Worth one more shot if time allows.
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
 
-These bullets are written verbatim into the planner's system prompt so the LLM has the cost-benefit logic explicit. Every decision is logged to `runs/sweep_decisions.jsonl` — that file is the audit trail for the agent's exploration behaviour.
+## Outputs
 
-## Falls-back when the planner LLM is unavailable
-
-If the sweep-planner model can't be loaded or returns nonsense, the orchestrator falls back to a deterministic round-robin over untried families, matching `Agent_3`'s old behaviour. So Agent_4 is a strict superset of Agent_3's reliability.
-
-## Notes
-
-- Ollama must be running on `localhost:11434` and the requested models must be pulled.
-- Data is read from `data/train.csv` and `data/test.csv` unless `DISASTER_AGENT_DATA_DIR` is set.
-- Kaggle auto-submit reuses Agent_3's `kaggle_submit.py`. Set `AGENT3_AUTO_SUBMIT_KAGGLE=1` (the variable name kept for compatibility with the existing CLI helper).
+- Per-trial artifacts: `src/Agent_4/runs/<family>_<ts>/run_NNN/` (spec.json, train.py, metrics.json, run.log, prompt.txt, repair_attempt_*.json)
+- Per-family aggregate: `src/Agent_4/runs/<family>_<ts>/summary.json` + `best_train.py` + `best_metrics.json`
+- Planner audit trail: `src/Agent_4/runs/sweep_decisions.jsonl` (plus `sweep_decision_<ts>_prompt.txt` and `_raw.txt` per decision)
+- Cross-family summary: `src/Agent_4/runs/overall_best.json`
+- Final-submission artifacts: `src/Agent_4/runs/final_submission_train.py` + `final_submission.log`
+- Kaggle-ready CSV: `submissions/best_overall_submission.csv`
+- Write-only in-launch log: `agent4_log.json` (at the repository root)

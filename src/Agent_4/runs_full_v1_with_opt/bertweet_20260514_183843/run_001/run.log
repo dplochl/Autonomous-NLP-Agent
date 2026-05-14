@@ -1,0 +1,41 @@
+success: True
+timed_out: False
+dry_run_failed: False
+
+[STDOUT]
+{'train_runtime': '279.6', 'train_samples_per_second': '17.16', 'train_steps_per_second': '1.073', 'train_loss': '0.4129', 'epoch': '3'}
+METRICS: {"f1": 0.7678, "accuracy": 0.8125, "best_threshold": 0.56}
+
+
+[STDERR]
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+emoji is not installed, thus not converting emoticons or emojis into text. Install emoji: pip3 install emoji==0.6.0
+
+Loading weights:   0%|          | 0/197 [00:00<?, ?it/s]
+Loading weights: 100%|██████████| 197/197 [00:00<00:00, 50450.48it/s]
+[1mRobertaForSequenceClassification LOAD REPORT[0m from: vinai/bertweet-base
+Key                             | Status     | 
+--------------------------------+------------+-
+roberta.pooler.dense.weight     | UNEXPECTED | 
+roberta.embeddings.position_ids | UNEXPECTED | 
+roberta.pooler.dense.bias       | UNEXPECTED | 
+lm_head.dense.bias              | UNEXPECTED | 
+lm_head.layer_norm.bias         | UNEXPECTED | 
+lm_head.dense.weight            | UNEXPECTED | 
+lm_head.bias                    | UNEXPECTED | 
+lm_head.decoder.weight          | UNEXPECTED | 
+lm_head.decoder.bias            | UNEXPECTED | 
+lm_head.layer_norm.weight       | UNEXPECTED | 
+classifier.dense.weight         | MISSING    | 
+classifier.out_proj.bias        | MISSING    | 
+classifier.dense.bias           | MISSING    | 
+classifier.out_proj.weight      | MISSING    | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+- MISSING:	those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.
+`logging_dir` is deprecated and will be removed in v5.2. Please set `TENSORBOARD_LOGGING_DIR` instead.
+
+
+[ANALYSIS]
+The experiment using BERTweet architecture achieved a good F1 score of 0.7678 and accuracy of 0.8125, indicating that the model performed well on the classification task. However, there were unexpected issues with certain parameters during loading, which could be due to differences in the task or architecture. Additionally, several classifier parameters were missing from the checkpoint, suggesting they were newly initialized, which might affect performance if not properly trained for the downstream task. For the next run, it is recommended to address the unexpected parameter discrepancies and ensure all necessary parameters are correctly loaded from the checkpoint to maintain consistency across experiments.

@@ -1,4 +1,4 @@
-"""Shared generated-code autofixes for Agent_3 family hooks."""
+"""Shared generated-code autofixes for Agent_4 family hooks."""
 
 from __future__ import annotations
 

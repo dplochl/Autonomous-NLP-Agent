@@ -1,0 +1,12 @@
+```json
+{
+  "diagnosis": "Syntax error due to unexpected indent in the final submission logic block.",
+  "edits": [
+    {
+      "action": "replace",
+      "target": "if WRITE_SUBMISSION:\n        submission_df = pd.DataFrame({'id': test_df['id'], 'target': y_test_pred})\n                if 'DISASTER_AGENT_SUBMISSION_PATH' not in os.environ:\n            os.environ['DISASTER_AGENT_SUBMISSION_PATH'] = '/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/apa-disaster-tweets-agent-Nicc-copy/submissions/best_overall_submission.csv'\nsubmission_df.to_csv(os.environ.get('DISASTER_AGENT_SUBMISSION_PATH', '/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/apa-disaster-tweets-agent-Nicc-copy/submissions/best_overall_submission.csv'), index=False)",
+      "content": "if WRITE_SUBMISSION:\n    submission_df = pd.DataFrame({'id': test_df['id'], 'target': y_test_pred})\n    if 'DISASTER_AGENT_SUBMISSION_PATH' not in os.environ:\n        os.environ['DISASTER_AGENT_SUBMISSION_PATH'] = '/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/apa-disaster-tweets-agent-Nicc-copy/submissions/best_overall_submission.csv'\n    submission_df.to_csv(os.environ.get('DISASTER_AGENT_SUBMISSION_PATH', '/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/apa-disaster-tweets-agent-Nicc-copy/submissions/best_overall_submission.csv'), index=False)"
+    }
+  ]
+}
+```

@@ -1,0 +1,189 @@
+```python
+import os
+import pandas as pd
+import numpy as np
+import torch
+from torch.utils.data import Dataset, DataLoader
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import f1_score, accuracy_score
+from collections import Counter
+
+# Environment variables
+DRY_RUN = os.environ.get("AGENT_DRY_RUN") == "1"
+WRITE_SUBMISSION = os.environ.get("AGENT_WRITE_SUBMISSION") == "1"
+FINAL_SUBMISSION = os.environ.get("AGENT_FINAL_SUBMISSION") == "1"
+TRAIN_FRACTION = float(os.environ.get("AGENT_TRAIN_FRACTION", "1.0"))
+SAMPLE_SEED = int(os.environ.get("AGENT_SAMPLE_SEED", "42"))
+
+# Constants
+DATA_DIR = os.environ.get("DISASTER_AGENT_DATA_DIR", "data")
+EXPERIMENT_NAME = "cnn_20260514_111659_run_01"
+SUBMISSION_PATH = "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/apa-disaster-tweets-agent-Nicc-copy/src/Agent_4/runs/cnn_20260514_111659/run_001/submission.csv"
+DEVICE = torch.device("cpu")
+
+# Load data
+train_df = pd.read_csv(os.path.join(DATA_DIR, "train.csv"))
+test_df = pd.read_csv(os.path.join(DATA_DIR, "test.csv"))
+
+# Preprocessing
+train_df['text'] = train_df['keyword'].fillna('') + ' [SEP] ' + train_df['text']
+test_df['text'] = test_df['keyword'].fillna('') + ' [SEP] ' + test_df['text']
+
+if DRY_RUN:
+    train_df = train_df.head(200)
+
+# Sample training data if needed
+if TRAIN_FRACTION < 1.0:
+    train_df = train_df.sample(frac=TRAIN_FRACTION, random_state=SAMPLE_SEED).reset_index(drop=True)
+
+# Tokenizer and vocabulary
+def build_vocab(texts, max_vocab):
+    word_counts = Counter()
+    for text in texts:
+        words = text.split()
+        word_counts.update(words)
+    vocab = {word: idx for idx, (word, _) in enumerate(word_counts.most_common(max_vocab - 1))}
+    vocab['<PAD>'] = max_vocab - 1
+    return vocab
+
+vocab = build_vocab(train_df['text'], 20000)
+
+def text_to_sequence(text, vocab, max_len):
+    sequence = [vocab.get(word, vocab['<PAD>']) for word in text.split()]
+    if len(sequence) > max_len:
+        sequence = sequence[:max_len]
+    return sequence + [vocab['<PAD>']] * (max_len - len(sequence))
+
+train_df['sequence'] = train_df['text'].apply(lambda x: text_to_sequence(x, vocab, 48))
+test_df['sequence'] = test_df['text'].apply(lambda x: text_to_sequence(x, vocab, 48))
+
+# Dataset and DataLoader
+class TweetDataset(Dataset):
+    def __init__(self, sequences, labels=None):
+        self.sequences = sequences
+        self.labels = labels
+
+    def __len__(self):
+        return len(self.sequences)
+
+    def __getitem__(self, idx):
+        sequence = torch.tensor(self.sequences[idx], dtype=torch.long)
+        if self.labels is not None:
+            label = torch.tensor(self.labels[idx], dtype=torch.float32)
+            return sequence, label
+        else:
+            return sequence
+
+train_sequences = train_df['sequence'].tolist()
+train_labels = train_df['target'].tolist()
+
+stratify_labels = train_labels if len(set(train_labels)) > 1 else None
+train_sequences, val_sequences, train_labels, val_labels = train_test_split(
+    train_sequences, train_labels, test_size=0.2, random_state=42, stratify=stratify_labels
+)
+
+train_dataset = TweetDataset(train_sequences, train_labels)
+val_dataset = TweetDataset(val_sequences, val_labels)
+test_dataset = TweetDataset(test_df['sequence'].tolist())
+
+train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True, pin_memory=False)
+val_loader = DataLoader(val_dataset, batch_size=64, shuffle=False, pin_memory=False)
+test_loader = DataLoader(test_dataset, batch_size=64, shuffle=False, pin_memory=False)
+
+# Model
+class TextCNN(nn.Module):
+    def __init__(self, vocab_size, embedding_dim, channels, kernel_sizes, dropout):
+        super(TextCNN, self).__init__()
+        self.embedding = nn.Embedding(vocab_size, embedding_dim)
+        self.convs = nn.ModuleList([
+            nn.Conv1d(embedding_dim, channels, kernel_size=k) for k in kernel_sizes
+        ])
+        self.pool = nn.AdaptiveMaxPool1d(1)
+        self.dropout = nn.Dropout(dropout)
+        self.fc = nn.Linear(channels * len(kernel_sizes), 1)
+
+    def forward(self, x):
+        x = self.embedding(x).permute(0, 2, 1)  # (batch_size, embedding_dim, max_len)
+        conv_outputs = [self.pool(torch.relu(conv(x))).squeeze(-1) for conv in self.convs]
+        x = torch.cat(conv_outputs, dim=1)  # (batch_size, channels * len(kernel_sizes))
+        x = self.dropout(x)
+        x = torch.sigmoid(self.fc(x))  # (batch_size, 1)
+        return x
+
+model = TextCNN(vocab_size=len(vocab), embedding_dim=128, channels=128, kernel_sizes=[3, 4, 5], dropout=0.3).to(DEVICE)
+
+# Training
+optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+criterion = nn.BCELoss()
+
+def train_epoch(model, loader, optimizer):
+    model.train()
+    for sequences, labels in loader:
+        sequences, labels = sequences.to(DEVICE), labels.to(DEVICE)
+        optimizer.zero_grad()
+        outputs = model(sequences).squeeze()
+        loss = criterion(outputs, labels)
+        loss.backward()
+        optimizer.step()
+
+def validate(model, loader):
+    model.eval()
+    all_preds = []
+    all_labels = []
+    with torch.no_grad():
+        for sequences, labels in loader:
+            sequences, labels = sequences.to(DEVICE), labels.to(DEVICE)
+            outputs = model(sequences).squeeze()
+            preds = (outputs > 0.5).float().cpu().numpy()
+            all_preds.extend(preds)
+            all_labels.extend(labels.cpu().numpy())
+    return f1_score(all_labels, all_preds), accuracy_score(all_labels, all_preds)
+
+if not DRY_RUN:
+    for epoch in range(3):
+        train_epoch(model, train_loader, optimizer)
+        val_f1, val_acc = validate(model, val_loader)
+        print(f'Epoch {epoch+1}, Val F1: {val_f1:.4f}, Val Acc: {val_acc:.4f}')
+
+# Final submission
+if FINAL_SUBMISSION:
+    best_threshold = 0.5
+    best_f1 = 0
+    for threshold in np.linspace(0.3, 0.7, 41):
+        val_preds = []
+        with torch.no_grad():
+            for sequences, labels in val_loader:
+                sequences, labels = sequences.to(DEVICE), labels.to(DEVICE)
+                outputs = model(sequences).squeeze()
+                preds = (outputs > threshold).float().cpu().numpy()
+                val_preds.extend(preds)
+        val_f1 = f1_score(val_labels, val_preds)
+        if val_f1 > best_f1:
+            best_f1 = val_f1
+            best_threshold = threshold
+
+    # Retrain on full training data
+    model = TextCNN(vocab_size=len(vocab), embedding_dim=128, channels=128, kernel_sizes=[3, 4, 5], dropout=0.3).to(DEVICE)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+    for epoch in range(3):
+        train_epoch(model, train_loader, optimizer)
+
+# Predict test set
+test_preds = []
+with torch.no_grad():
+    for sequences in test_loader:
+        sequences = sequences.to(DEVICE)
+        outputs = model(sequences).squeeze()
+        preds = (outputs > best_threshold).float().cpu().numpy()
+        test_preds.extend(preds)
+
+# Write submission
+if WRITE_SUBMISSION:
+    os.makedirs(os.path.dirname(SUBMISSION_PATH), exist_ok=True)
+    submission_df = pd.DataFrame({'id': test_df['id'], 'target': test_preds})
+    submission_df.to_csv(SUBMISSION_PATH, index=False)
+
+# Metrics
+val_f1, val_acc = validate(model, val_loader)
+print('METRICS: {"f1": ' + str(round(val_f1, 4)) + ', "accuracy": ' + str(round(val_acc, 4)) + '}')
+```

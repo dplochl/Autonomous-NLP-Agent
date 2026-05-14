@@ -1,0 +1,1 @@
+{"action":"try_family","family_key":"bow_advanced","reason":"It is an untried family with a moderate cost, offering high information value for exploration."}

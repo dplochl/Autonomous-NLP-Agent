@@ -1,0 +1,13 @@
+success: True
+timed_out: False
+dry_run_failed: False
+
+[STDOUT]
+METRICS: {"f1": 0.7246, "accuracy": 0.7625, "best_threshold": 0.43}
+
+
+[STDERR]
+
+
+[ANALYSIS]
+The experiment "bow_advanced_20260514_184706_run_01" successfully achieved an F1 score of 0.7246 and accuracy of 0.7625 using a BoW (Bag of Words) advanced architecture with specific configurations for character and word n-grams, as well as logistic regression parameters. The model's performance was optimized by finding the best threshold at 0.43 through a range of threshold values from 0.3 to 0.7 in increments of 0.01. However, there is room for improvement, particularly in terms of reducing overfitting or increasing the F1 score further. For the next run, consider experimenting with different hyperparameters such as adjusting the `logreg_c` value, exploring additional feature extraction techniques like TF-IDF, or incorporating more sophisticated models to potentially enhance performance.

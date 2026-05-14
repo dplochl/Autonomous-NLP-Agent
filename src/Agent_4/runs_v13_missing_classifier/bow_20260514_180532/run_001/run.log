@@ -1,0 +1,13 @@
+success: True
+timed_out: False
+dry_run_failed: False
+
+[STDOUT]
+METRICS: {"f1": 0.7188, "accuracy": 0.775, "best_threshold": 0.47}
+
+
+[STDERR]
+
+
+[ANALYSIS]
+The experiment `bow_20260514_180532_run_01` using a Bag of Words (BoW) architecture achieved a reasonable performance with an F1 score of 0.7188 and accuracy of 0.775, indicating that the model effectively captured the underlying patterns in the data for classification tasks related to disaster tweets. The use of TF-IDF vectorization and a logistic regression classifier with a regularization parameter (`logreg_c`) set to 1.0 contributed positively to the results. However, the experiment could have benefited from exploring different n-gram ranges or experimenting with other vectorization techniques like word embeddings to potentially improve performance further. For the next run, consider increasing the `ngram_max` parameter to capture more complex linguistic features and explore alternative vectorizers such as Word2Vec or GloVe to see if they yield better results. Additionally, tuning hyperparameters like the regularization strength (`logreg_c`) could help in optimizing the model's performance further.

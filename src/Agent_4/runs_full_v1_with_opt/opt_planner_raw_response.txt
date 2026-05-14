@@ -1,0 +1,8 @@
+```json
+{
+  "chosen_family_key": "embedding_model",
+  "strategy": "exploit",
+  "reason": "The best performing models are often those that are more complex or require more tuning, suggesting an 'exploit' strategy to refine the current best approach.",
+  "confidence": 0.8
+}
+```

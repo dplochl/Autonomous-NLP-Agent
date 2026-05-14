@@ -1,0 +1,37 @@
+```json
+{
+  "diagnosis": "ChainedAssignmentError due to inplace modifications on DataFrame copies",
+  "edits": [
+    {
+      "action": "replace",
+      "target": "train_df['keyword'].fillna('', inplace=True)",
+      "content": "train_df['keyword'] = train_df['keyword'].fillna('')"
+    },
+    {
+      "action": "replace",
+      "target": "train_df['location'].fillna('', inplace=True)",
+      "content": "train_df['location'] = train_df['location'].fillna('')"
+    },
+    {
+      "action": "replace",
+      "target": "train_df['text'].fillna('', inplace=True)",
+      "content": "train_df['text'] = train_df['text'].fillna('')"
+    },
+    {
+      "action": "replace",
+      "target": "test_df['keyword'].fillna('', inplace=True)",
+      "content": "test_df['keyword'] = test_df['keyword'].fillna('')"
+    },
+    {
+      "action": "replace",
+      "target": "test_df['location'].fillna('', inplace=True)",
+      "content": "test_df['location'] = test_df['location'].fillna('')"
+    },
+    {
+      "action": "replace",
+      "target": "test_df['text'].fillna('', inplace=True)",
+      "content": "test_df['text'] = test_df['text'].fillna('')"
+    }
+  ]
+}
+```

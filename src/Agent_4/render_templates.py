@@ -1,4 +1,4 @@
-"""Prompt rendering utilities for Agent_3."""
+"""Prompt rendering utilities for Agent_4."""
 
 from __future__ import annotations
 

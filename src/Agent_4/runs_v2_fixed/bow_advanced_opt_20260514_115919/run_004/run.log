@@ -1,0 +1,13 @@
+success: True
+timed_out: False
+dry_run_failed: False
+
+[STDOUT]
+METRICS: {"f1": 0.7184, "accuracy": 0.755}
+
+
+[STDERR]
+
+
+[ANALYSIS]
+The experiment `bow_advanced_opt_20260514_115919_run_04` successfully executed with a BoW (Bag of Words) advanced architecture, achieving an F1 score of 0.7184 and accuracy of 0.755. The model utilized character-level n-grams from 3 to 4, with a maximum of 20,000 character features and 30,000 word features. The logistic regression parameter `C` was set to 4.2, which likely contributed to the moderate performance as it balances regularization strength. For the next run, consider experimenting with different values for `C`, exploring additional feature engineering techniques such as TF-IDF weighting, or adjusting the n-gram ranges to better capture linguistic patterns in the data.

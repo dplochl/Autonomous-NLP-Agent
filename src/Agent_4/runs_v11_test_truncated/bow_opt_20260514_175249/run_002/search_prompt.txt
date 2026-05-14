@@ -1,0 +1,124 @@
+Propose the next BoW experiment spec.
+
+Explore nearby sparse-text settings around the best successful run. If F1 improves, vary max_features, ngrams, or C locally. If performance is flat, try a slightly different feature density before changing thresholds.
+
+Rules:
+- keep the architecture family fixed
+- keep the same overall prompt contract and pipeline shape
+- vary only these tunable keys: max_features, ngram_max, min_df, logreg_c, val_size, threshold_min, threshold_max, threshold_steps
+- optimize against the best successful session trial, not the last run
+- keep the best successful spec as the default anchor and mutate it only slightly
+- this is the top-architecture optimization phase, so stay near this architecture's current best spec
+- usually change 2 to 4 tunable keys because the sweep used the smaller labeled sample
+- prefer coordinated local changes such as learning_rate, dropout, batch_size, epochs, weight_decay, sequence length, and threshold settings
+- validation size is controlled by the runner and should remain at 0.2
+- avoid large capacity jumps unless the history strongly suggests they help
+- do not repeat an exact spec already tried in this session
+- if a run timed out, reduce cost
+- if a run crashed, simplify the risky parameter region
+- if repeated runs get the same F1, switch to different tunable keys instead of repeating weak ones
+- return one JSON object only
+
+Dataset context:
+DATASET CONTEXT:
+- train.csv: 7613 rows, columns: id, keyword, location, text, target
+- test.csv: 3263 rows, columns: id, keyword, location, text
+- Class balance: 4342 not-disaster (57.0%), 3271 disaster (43.0%)
+- Missing keyword: 0.8%
+- Missing location: 33.3%
+
+
+Family history:
+- [1] bow_20260514_175058_run_01 run 1 | F1=0.708 | OK | The experiment `bow_20260514_175058_run_01` using a Bag of Words (BoW) architecture achieved a reaso
+
+Session trials so far:
+- run 0: status=OK, f1=0.708, spec={"architecture": "BoW", "dry_run_head": 100, "experiment_name": "bow_20260514_175058_run_01", "logreg_c": 1.0, "max_features": 10000, "min_df": 3, "ngram_max": 2, "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/apa-disaster-tweets-agent-Nicc-copy/src/Agent_4/runs/bow_20260514_175058/run_001/submission.csv", "threshold_max": 0.6, "threshold_min": 0.4, "threshold_steps": 21, "val_size": 0.2, "vectorizer_type": "tfidf_word"}
+- run 1: status=OK, f1=0.7159, spec={"architecture": "BoW", "dry_run_head": 100, "experiment_name": "bow_opt_20260514_175249_run_01", "logreg_c": 1.0, "max_features": 5313, "min_df": 4, "ngram_max": 3, "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/apa-disaster-tweets-agent-Nicc-copy/src/Agent_4/runs/bow_opt_20260514_175249/run_001/submission.csv", "threshold_max": 0.6, "threshold_min": 0.4, "threshold_steps": 21, "val_size": 0.2, "vectorizer_type": "tfidf_word"}
+
+Best session trial so far:
+{
+  "run_index": 1,
+  "spec": {
+    "architecture": "BoW",
+    "vectorizer_type": "tfidf_word",
+    "max_features": 5313,
+    "ngram_max": 3,
+    "min_df": 4,
+    "logreg_c": 1.0,
+    "val_size": 0.2,
+    "threshold_min": 0.4,
+    "threshold_max": 0.6,
+    "threshold_steps": 21,
+    "dry_run_head": 100,
+    "experiment_name": "bow_opt_20260514_175249_run_01",
+    "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/apa-disaster-tweets-agent-Nicc-copy/src/Agent_4/runs/bow_opt_20260514_175249/run_001/submission.csv"
+  },
+  "success": true,
+  "metrics": {
+    "f1": 0.7159,
+    "accuracy": 0.75,
+    "best_threshold": 0.41
+  },
+  "analysis": "The experiment `bow_opt_20260514_175249_run_01` using a Bag of Words (BoW) architecture achieved a reasonable F1 score of 0.7159 and accuracy of 0.75, indicating that the model performed well on the validation set. The use of TF-IDF vectorization with a maximum feature count of 5313 and considering up to trigram features contributed positively to the model's performance. However, the experiment did not explore different hyperparameters such as varying the regularization strength (`logreg_c`) or adjusting the minimum document frequency (`min_df`), which could potentially improve the model further. For the next run, it would be beneficial to conduct a grid search over these hyperparameters and possibly increase the complexity of the model by exploring more advanced architectures like LSTM or BERT to see if they can yield better performance on the task.",
+  "run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/apa-disaster-tweets-agent-Nicc-copy/src/Agent_4/runs/bow_opt_20260514_175249/run_001",
+  "outcome": "success",
+  "wall_seconds": 47.1,
+  "error_summary": "",
+  "repair_attempts": 0
+}
+
+Stagnant keys from equal-F1 or same-prediction runs: none
+Preferred keys for the next move: max_features, ngram_max, min_df, logreg_c, threshold_min, threshold_max, threshold_steps
+Latest equal-F1 matched prior run: none
+Latest equal-F1 changed keys to avoid repeating: none
+Repeated best F1 detected: no
+
+Optimization planner guidance:
+{
+  "planner_model": "gemma4:e4b",
+  "chosen_family_key": "bow",
+  "chosen_family": "BoW",
+  "strategy": "local_exploit",
+  "parameter_focus": [
+    {
+      "key": "max_features",
+      "direction": "down_small",
+      "reason": "Testing slightly fewer features to reduce noise and improve generalization."
+    },
+    {
+      "key": "ngram_max",
+      "direction": "up_small",
+      "reason": "Exploring trigrams (3) to capture more contextual information, which is critical for text classification."
+    },
+    {
+      "key": "min_df",
+      "direction": "up_small",
+      "reason": "Increasing the minimum document frequency to filter out extremely rare terms that might be overfitting."
+    }
+  ],
+  "reason": "The BoW family is the highest performing. Since this is a sparse family, the focus must remain on feature engineering parameters. I am performing a local exploit by slightly adjusting max_features, ngram_max, and min_df. These parameters control the vocabulary size and feature richness, offering the highest potential for marginal gains without risking a broad search.",
+  "confidence": 0.0,
+  "used_fallback": false,
+  "raw_response": "```json\n{\n  \"chosen_family_key\": \"bow\",\n  \"strategy\": \"local_exploit\",\n  \"parameter_focus\": [\n    {\n      \"key\": \"max_features\",\n      \"direction\": \"down_small\",\n      \"reason\": \"Testing slightly fewer features to reduce noise and improve generalization.\"\n    },\n    {\n      \"key\": \"ngram_max\",\n      \"direction\": \"up_small\",\n      \"reason\": \"Exploring trigrams (3) to capture more contextual information, which is critical for text classification.\"\n    },\n    {\n      \"key\": \"min_df\",\n      \"direction\": \"up_small\",\n      \"reason\": \"Increasing the minimum document frequency to filter out extremely rare terms that might be overfitting.\"\n    }\n  ],\n  \"reason\": \"The BoW family is the highest performing. Since this is a sparse family, the focus must remain on feature engineering parameters. I am performing a local exploit by slightly adjusting max_features, ngram_max, and min_df. These parameters control the vocabulary size and feature richness, offering the highest potential for marginal gains without risking a broad search.\",\n  \"confidence\": 0.0\n}\n```",
+  "prompt": "You are planning the optimization stage after a family sweep for Kaggle Disaster Tweets.\n\nRules:\n- choose the optimization family from the highest best_f1 sweep family only\n- do not invent a new family\n- output one JSON object only\n- focus on safe local optimization around the chosen family's current best spec\n- choose 2 or 3 parameter keys to focus during opt\n- for each key, provide a direction from: keep, up_small, down_small, up_medium, down_medium\n- use only tunable keys valid for the chosen family\n\nChosen highest-F1 family:\n{\n  \"best_metrics\": {\n    \"accuracy\": 0.7525,\n    \"best_threshold\": 0.43,\n    \"f1\": 0.708\n  },\n  \"best_spec\": {\n    \"architecture\": \"BoW\",\n    \"dry_run_head\": 100,\n    \"experiment_name\": \"bow_20260514_175058_run_01\",\n    \"logreg_c\": 1.0,\n    \"max_features\": 10000,\n    \"min_df\": 3,\n    \"ngram_max\": 2,\n    \"submission_path\": \"/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/apa-disaster-tweets-agent-Nicc-copy/src/Agent_4/runs/bow_20260514_175058/run_001/submission.csv\",\n    \"threshold_max\": 0.6,\n    \"threshold_min\": 0.4,\n    \"threshold_steps\": 21,\n    \"val_size\": 0.2,\n    \"vectorizer_type\": \"tfidf_word\"\n  },\n  \"family\": \"BoW\",\n  \"family_key\": \"bow\",\n  \"tunable_keys\": [\n    \"max_features\",\n    \"ngram_max\",\n    \"min_df\",\n    \"logreg_c\",\n    \"val_size\",\n    \"threshold_min\",\n    \"threshold_max\",\n    \"threshold_steps\"\n  ]\n}\n\nSweep family table:\n{\n  \"families\": [\n    {\n      \"best_accuracy\": 0.7525,\n      \"best_f1\": 0.708,\n      \"best_run_index\": 1,\n      \"best_spec\": {\n        \"architecture\": \"BoW\",\n        \"dry_run_head\": 100,\n        \"experiment_name\": \"bow_20260514_175058_run_01\",\n        \"logreg_c\": 1.0,\n        \"max_features\": 10000,\n        \"min_df\": 3,\n        \"ngram_max\": 2,\n        \"submission_path\": \"/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/apa-disaster-tweets-agent-Nicc-copy/src/Agent_4/runs/bow_20260514_175058/run_001/submission.csv\",\n        \"threshold_max\": 0.6,\n        \"threshold_min\": 0.4,\n        \"threshold_steps\": 21,\n        \"val_size\": 0.2,\n        \"vectorizer_type\": \"tfidf_word\"\n      },\n      \"failed_runs\": 0,\n      \"family\": \"BoW\",\n      \"family_key\": \"bow\",\n      \"successful_runs\": 1,\n      \"tunable_keys\": [\n        \"max_features\",\n        \"ngram_max\",\n        \"min_df\",\n        \"logreg_c\",\n        \"val_size\",\n        \"threshold_min\",\n        \"threshold_max\",\n        \"threshold_steps\"\n      ]\n    }\n  ]\n}\n\nReturn this schema exactly:\n{\n  \"chosen_family_key\": \"family key from highest-F1 row\",\n  \"strategy\": \"local_exploit|cautious_exploit\",\n  \"parameter_focus\": [\n    {\"key\": \"learning_rate\", \"direction\": \"down_small\", \"reason\": \"short reason\"}\n  ],\n  \"reason\": \"short paragraph\",\n  \"confidence\": 0.0\n}\n"
+}
+
+Follow the planner's chosen parameter focus and movement directions unless doing so would repeat an exact prior spec.
+Prioritize these keys first: max_features, ngram_max, min_df
+
+Default if unsure:
+{
+  "architecture": "BoW",
+  "vectorizer_type": "tfidf_word",
+  "max_features": 5313,
+  "ngram_max": 3,
+  "min_df": 4,
+  "logreg_c": 1.0,
+  "val_size": 0.2,
+  "threshold_min": 0.4,
+  "threshold_max": 0.6,
+  "threshold_steps": 21,
+  "dry_run_head": 100,
+  "experiment_name": "bow_opt_20260514_175249_run_02",
+  "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/apa-disaster-tweets-agent-Nicc-copy/src/Agent_4/runs/bow_opt_20260514_175249/run_002/submission.csv"
+}

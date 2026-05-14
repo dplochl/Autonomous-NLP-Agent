@@ -1,0 +1,17 @@
+```json
+{
+  "diagnosis": "The error is due to the use of np.atleast_1d which returns a numpy array that does not support the __round__ method when used directly with round().",
+  "edits": [
+    {
+      "action": "replace",
+      "target": "np.atleast_1d(outputs.detach().cpu().numpy()).tolist()",
+      "content": "outputs.detach().cpu().numpy().tolist()"
+    },
+    {
+      "action": "replace",
+      "target": "np.atleast_1d(labels.cpu().numpy()).tolist()",
+      "content": "labels.cpu().numpy().tolist()"
+    }
+  ]
+}
+```

@@ -1,0 +1,12 @@
+```json
+{
+  "diagnosis": "The function `evaluate_model` is not defined.",
+  "edits": [
+    {
+      "action": "insert_before",
+      "target": "# Metrics\nval_preds = (val_probs > best_threshold).astype(int)\nf1 = f1_score(val_labels, val_preds)\nacc = accuracy_score(val_labels, val_preds)",
+      "content": "def evaluate_model(model, loader):\n    model.eval()\n    all_probs = []\n    all_labels = []\n    with torch.no_grad():\n        for sequences, labels in loader:\n            sequences = sequences.to(device)\n            labels = labels.to(device)\n            outputs = model(sequences)\n            all_probs.extend(np.atleast_1d(outputs.detach().cpu().numpy()).tolist())\n            all_labels.extend(np.atleast_1d(labels.cpu().numpy()).tolist())\n    return f1_score(all_labels, (np.array(all_probs) > 0.5).astype(int)), accuracy_score(all_labels, (np.array(all_probs) > 0.5).astype(int))"
+    }
+  ]
+}
+```

@@ -1,0 +1,1 @@
+{"action":"try_family","family_key":"bow","reason":"It is the only tried family with an observation and no untried families remain eligible."}

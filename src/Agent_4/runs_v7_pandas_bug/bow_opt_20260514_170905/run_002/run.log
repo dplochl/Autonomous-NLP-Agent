@@ -1,0 +1,57 @@
+success: True
+timed_out: False
+dry_run_failed: False
+
+[STDOUT]
+METRICS: {"f1": 0.7188, "accuracy": 0.775, "best_threshold": 0.47}
+
+
+[STDERR]
+/var/folders/rp/_q6137ys147f688vnf1knc4w0000gn/T/agent4_o748yx3g.py:31: ChainedAssignmentError: A value is being set on a copy of a DataFrame or Series through chained assignment using an inplace method.
+Such inplace method never works to update the original DataFrame or Series, because the intermediate object on which we are setting values always behaves as a copy (due to Copy-on-Write).
+
+For example, when doing 'df[col].method(value, inplace=True)', try using 'df.method({col: value}, inplace=True)' instead, to perform the operation inplace on the original object, or try to avoid an inplace operation using 'df[col] = df[col].method(value)'.
+
+See the documentation for a more detailed explanation: https://pandas.pydata.org/pandas-docs/stable/user_guide/copy_on_write.html
+  train_df['keyword'].fillna('', inplace=True)
+/var/folders/rp/_q6137ys147f688vnf1knc4w0000gn/T/agent4_o748yx3g.py:32: ChainedAssignmentError: A value is being set on a copy of a DataFrame or Series through chained assignment using an inplace method.
+Such inplace method never works to update the original DataFrame or Series, because the intermediate object on which we are setting values always behaves as a copy (due to Copy-on-Write).
+
+For example, when doing 'df[col].method(value, inplace=True)', try using 'df.method({col: value}, inplace=True)' instead, to perform the operation inplace on the original object, or try to avoid an inplace operation using 'df[col] = df[col].method(value)'.
+
+See the documentation for a more detailed explanation: https://pandas.pydata.org/pandas-docs/stable/user_guide/copy_on_write.html
+  train_df['location'].fillna('', inplace=True)
+/var/folders/rp/_q6137ys147f688vnf1knc4w0000gn/T/agent4_o748yx3g.py:33: ChainedAssignmentError: A value is being set on a copy of a DataFrame or Series through chained assignment using an inplace method.
+Such inplace method never works to update the original DataFrame or Series, because the intermediate object on which we are setting values always behaves as a copy (due to Copy-on-Write).
+
+For example, when doing 'df[col].method(value, inplace=True)', try using 'df.method({col: value}, inplace=True)' instead, to perform the operation inplace on the original object, or try to avoid an inplace operation using 'df[col] = df[col].method(value)'.
+
+See the documentation for a more detailed explanation: https://pandas.pydata.org/pandas-docs/stable/user_guide/copy_on_write.html
+  train_df['text'].fillna('', inplace=True)
+/var/folders/rp/_q6137ys147f688vnf1knc4w0000gn/T/agent4_o748yx3g.py:35: ChainedAssignmentError: A value is being set on a copy of a DataFrame or Series through chained assignment using an inplace method.
+Such inplace method never works to update the original DataFrame or Series, because the intermediate object on which we are setting values always behaves as a copy (due to Copy-on-Write).
+
+For example, when doing 'df[col].method(value, inplace=True)', try using 'df.method({col: value}, inplace=True)' instead, to perform the operation inplace on the original object, or try to avoid an inplace operation using 'df[col] = df[col].method(value)'.
+
+See the documentation for a more detailed explanation: https://pandas.pydata.org/pandas-docs/stable/user_guide/copy_on_write.html
+  test_df['keyword'].fillna('', inplace=True)
+/var/folders/rp/_q6137ys147f688vnf1knc4w0000gn/T/agent4_o748yx3g.py:36: ChainedAssignmentError: A value is being set on a copy of a DataFrame or Series through chained assignment using an inplace method.
+Such inplace method never works to update the original DataFrame or Series, because the intermediate object on which we are setting values always behaves as a copy (due to Copy-on-Write).
+
+For example, when doing 'df[col].method(value, inplace=True)', try using 'df.method({col: value}, inplace=True)' instead, to perform the operation inplace on the original object, or try to avoid an inplace operation using 'df[col] = df[col].method(value)'.
+
+See the documentation for a more detailed explanation: https://pandas.pydata.org/pandas-docs/stable/user_guide/copy_on_write.html
+  test_df['location'].fillna('', inplace=True)
+/var/folders/rp/_q6137ys147f688vnf1knc4w0000gn/T/agent4_o748yx3g.py:37: ChainedAssignmentError: A value is being set on a copy of a DataFrame or Series through chained assignment using an inplace method.
+Such inplace method never works to update the original DataFrame or Series, because the intermediate object on which we are setting values always behaves as a copy (due to Copy-on-Write).
+
+For example, when doing 'df[col].method(value, inplace=True)', try using 'df.method({col: value}, inplace=True)' instead, to perform the operation inplace on the original object, or try to avoid an inplace operation using 'df[col] = df[col].method(value)'.
+
+See the documentation for a more detailed explanation: https://pandas.pydata.org/pandas-docs/stable/user_guide/copy_on_write.html
+  test_df['text'].fillna('', inplace=True)
+
+
+[ANALYSIS]
+The experiment `bow_opt_20260514_170905_run_02` using a Bag of Words (BoW) architecture achieved a success status with an F1 score of 0.7188 and accuracy of 0.775, indicating that the model performed reasonably well on the validation set. However, the experiment encountered several `ChainedAssignmentError` warnings during execution, specifically related to the use of `inplace=True` methods on DataFrame columns. These errors suggest that the operations intended to update the original DataFrame were not effective due to pandas' Copy-on-Write mechanism.
+
+For the next run, it is recommended to address these warnings by modifying the code to avoid chained assignment with `inplace=True`. This can be done by either using direct assignment or employing methods that allow for in-place updates without chaining. Additionally, optimizing hyperparameters such as `logreg_c`, `max_features`, and `min_df` could further enhance model performance.

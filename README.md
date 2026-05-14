@@ -3,26 +3,25 @@
 Autonomous research agent for the Kaggle competition `nlp-getting-started`:
 https://www.kaggle.com/competitions/nlp-getting-started
 
-The active implementation in this repository is `src/Agent_3/`. It uses a local Ollama-hosted LLM to:
-- propose experiment specs
-- generate runnable training code
-- dry-run and execute experiments
-- repair failing code
-- analyze results
-- iterate across multiple model families
-- attempt one final Kaggle-style submission rerun from the best run
+The active implementation in this repository is `src/Agent_4/`. It uses two roles of a local Ollama-hosted LLM to:
+- pick the next model family to try (sweep planner)
+- generate runnable training code for that family + spec
+- dry-run and execute the generated script in a CPU sandbox
+- repair failing code with surgical JSON edit-plans
+- log metrics, planner decisions, and artifacts for every trial
+- retrain the best overall script on a larger sample and write a Kaggle-ready submission
 
-## Current Entry Point
+## Current entry point
 
-Run the agent from:
+Run the agent from the repository root:
 
 ```bash
-python3 src/Agent_3/agent.py
+python3 src/Agent_4/agent.py
 ```
 
-There are no active `agent_vs.py`, `Agent_V2`, dashboard, or legacy entrypoints in the current repository flow.
+The default budget is 60 minutes (45 min sweep + 15 min final retrain + submission).
 
-## Repository Layout
+## Repository layout
 
 ```text
 apa-disaster-tweets-agent/
@@ -30,52 +29,56 @@ apa-disaster-tweets-agent/
 │   ├── train.csv
 │   └── test.csv
 ├── submissions/
+│   └── best_overall_submission.csv
 ├── src/
-│   └── Agent_3/
+│   ├── Agent_3/            # earlier baseline implementation (retained for reference)
+│   │   └── runs/           # logs from prior Agent_3 launches (for analysis)
+│   └── Agent_4/            # active implementation
 │       ├── agent.py
+│       ├── sweep_planner.py
 │       ├── llm.py
 │       ├── sandbox.py
 │       ├── search.py
 │       ├── memory.py
 │       ├── repair.py
+│       ├── submit_tails.py
 │       ├── families/
 │       ├── templates/
-│       └── runs/
+│       └── runs/           # logs from Agent_4 launches
 ├── requirements.txt
 └── README.md
 ```
 
 Important output locations:
-- run artifacts: `src/Agent_3/runs/`
-- public final submission copy after a successful final rerun: `submissions/best_overall_submission.csv`
-- invocation log: `agent3_log.json`
+- per-trial artifacts: `src/Agent_4/runs/<family>_<ts>/run_NNN/`
+- planner audit trail: `src/Agent_4/runs/sweep_decisions.jsonl`
+- final submission CSV: `submissions/best_overall_submission.csv`
+- in-launch write-only log: `agent4_log.json`
 
-## Supported Model Families
+## Supported model families
 
-`Agent_3` can sweep these families:
-- `bow`
-- `bow_advanced`
-- `cnn`
-- `embedding_dl`
-- `lstm`
-- `roberta`
-- `bertweet`
+`Agent_4` can sweep across these families:
+
+- `bow` — TF-IDF + Logistic Regression
+- `bow_advanced` — word + char n-grams + Logistic Regression
+- `cnn` — 1D convolutional text classifier
+- `lstm` — bidirectional LSTM
+- `embedding_dl` — learned or GloVe embeddings + GRU/LSTM
+- `roberta` — `roberta-base` fine-tuning
+- `bertweet` — `vinai/bertweet-base` fine-tuning
 
 ## Prerequisites
 
-1. Python 3.11+ with a virtual environment
+1. Python 3.11+ in a virtual environment
 2. Ollama running locally on `http://localhost:11434`
-3. At least one pulled local model for code generation
-4. Kaggle Disaster Tweets data available at `data/train.csv` and `data/test.csv`
-
-Recommended Ollama setup:
+3. At least the code-gen model pulled:
 
 ```bash
 ollama serve
 ollama pull qwen2.5-coder:14b
 ```
 
-The default agent model is `qwen2.5-coder:14b`. You can override it with `--model`.
+4. Kaggle Disaster Tweets data available at `data/train.csv` and `data/test.csv`
 
 ## Installation
 
@@ -85,7 +88,7 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-## Dataset Setup
+## Dataset setup
 
 The agent expects:
 - `data/train.csv`
@@ -99,73 +102,78 @@ kaggle competitions download -c nlp-getting-started -p data
 unzip data/nlp-getting-started.zip -d data
 ```
 
-You can also point the agent to a different dataset directory:
+Point the agent at a different dataset directory if needed:
 
 ```bash
 export DISASTER_AGENT_DATA_DIR="/absolute/path/to/data"
 ```
 
-## Running the Agent
+## Running the agent
 
-Run all families with the default model:
-
-```bash
-python3 src/Agent_3/agent.py --time-budget-minutes 60
-```
-
-Run a single family:
+Full LLM-driven 1-hour sweep + final submission:
 
 ```bash
-python3 src/Agent_3/agent.py --family bertweet --max-runs 2 --time-budget-minutes 20
+python3 src/Agent_4/agent.py
 ```
 
-Use a different local Ollama model:
+Force one trial of a specific family (bypasses the sweep planner):
 
 ```bash
-python3 src/Agent_3/agent.py --model gemma4:e4b
+python3 src/Agent_4/agent.py --family bertweet
 ```
 
-Run without writing to `agent3_log.json`:
+Override the sweep planner LLM:
 
 ```bash
-python3 src/Agent_3/agent.py --fresh
+python3 src/Agent_4/agent.py --sweep-planner-model gemma4:e4b
 ```
 
-Disable the winner-optimization phase:
+Shorter run for a smoke test:
 
 ```bash
-python3 src/Agent_3/agent.py --no-winner-optimization
+python3 src/Agent_4/agent.py --time-budget-minutes 10
 ```
 
-## What the Agent Does
+Disable persistence of the in-launch log:
 
-For each family, the current flow is:
-1. generate an experiment spec
-2. validate and clamp the spec
-3. render a family-specific prompt
-4. ask the local LLM for a full Python training script
-5. dry-run the script
-6. execute the full run
-7. attempt surgical repairs if the script fails
-8. log metrics, stdout/stderr, analysis, and artifacts
-9. rank families by best sweep F1
-10. optimize the top architecture candidates
-11. rerun the best overall model to produce a final submission file
+```bash
+python3 src/Agent_4/agent.py --fresh
+```
+
+## What the agent does, per trial
+
+1. The **sweep planner LLM** picks the next family to try (or stops the sweep)
+2. The orchestrator filters out families that fail eligibility (recurring code-gen failures, recurring degenerate F1, can't fit in remaining time)
+3. The **code-generation LLM** writes a full training script for the chosen family and spec
+4. The script is dry-run in a CPU sandbox (60 s timeout), then run to completion (1000 s timeout)
+5. On failure, the LLM is asked for a small JSON edit-plan (one of `replace`, `insert_before`, `insert_after`); up to 4 repair attempts per trial
+6. The trial outcome is recorded (`success`, `degenerate_success`, `code_gen_failed`, `training_crash`, `timeout`, `no_metrics`)
+7. Per-trial artifacts (spec, code, metrics, log, prompts, repair attempts) are written to `runs/<family>_<ts>/run_NNN/`
+
+After the sweep window ends:
+
+1. The orchestrator loads the best-overall trial's frozen `best_train.py`
+2. A **hardcoded** submission tail is appended (orchestrator owns the inference step — no LLM, no repairs)
+3. The script is rerun on a 5 000-row training sample and predicts the full test set
+4. `submissions/best_overall_submission.csv` is written
 
 ## Configuration
 
 Common runtime controls:
 
-- `DISASTER_AGENT_DATA_DIR`: override the dataset directory
-- `AGENT3_MAX_RUNS`: default max runs per family when `--max-runs` is not passed
-- `AGENT3_TOTAL_TIME_BUDGET_SECONDS`: total wall-clock budget
-- `AGENT3_SWEEP_BUDGET_FRACTION`: fraction reserved for sweep before winner optimization
-- `AGENT3_SWEEP_SAMPLE_ROWS`: labeled rows used during sweep
-- `AGENT3_FINAL_TRAIN_ROWS`: labeled rows used for the final best-model rerun
-- `DISASTER_AGENT_LLM_TIMEOUT`: Ollama request timeout in seconds
-- `DISASTER_AGENT_MAX_REPAIRS`: max repair attempts per generated script
+| Variable | Default | Purpose |
+|---|---|---|
+| `AGENT4_TOTAL_TIME_BUDGET_SECONDS` | `3600` | Overall wall-clock budget |
+| `AGENT4_SWEEP_DURATION_SECONDS` | `2700` (45 min) | Hard sweep cutoff |
+| `AGENT4_FINAL_TRAIN_ROWS` | `5000` | Rows used by the final retrain step |
+| `AGENT4_SWEEP_SAMPLE_ROWS` | `2000` | Rows in the fixed sweep sample |
+| `AGENT4_VALIDATION_FRACTION` | `0.2` | Local val split |
+| `AGENT4_MAX_ATTEMPTS_PER_FAMILY` | `5` | Hard safety cap (rarely binds) |
+| `AGENT4_SWEEP_PLANNER_MODEL` | `qwen2.5-coder:14b` | LLM for next-family decisions |
+| `DISASTER_AGENT_DATA_DIR` | `data` | Where `train.csv` and `test.csv` live |
+| `DISASTER_AGENT_MAX_REPAIRS` | `4` | Repair budget per trial (zero at final-submission time) |
 
-## Optional Kaggle Auto-Submit
+## Optional Kaggle auto-submit
 
 The agent can optionally submit the final CSV through the Kaggle CLI.
 
@@ -173,23 +181,23 @@ Requirements:
 - Kaggle CLI installed in the environment
 - Kaggle credentials configured via `~/.kaggle/kaggle.json` or `KAGGLE_USERNAME` and `KAGGLE_KEY`
 
-Enable it with:
+Enable it:
 
 ```bash
-export AGENT3_AUTO_SUBMIT_KAGGLE=1
-python3 src/Agent_3/agent.py --time-budget-minutes 60
+export AGENT4_AUTO_SUBMIT_KAGGLE=1
+python3 src/Agent_4/agent.py
 ```
 
 Optional submission controls:
-- `AGENT3_KAGGLE_COMPETITION`
-- `AGENT3_KAGGLE_MESSAGE`
-- `AGENT3_KAGGLE_POLL_SECONDS`
-- `AGENT3_KAGGLE_TIMEOUT_SECONDS`
+- `AGENT4_KAGGLE_COMPETITION`
+- `AGENT4_KAGGLE_MESSAGE`
+- `AGENT4_KAGGLE_POLL_SECONDS`
+- `AGENT4_KAGGLE_TIMEOUT_SECONDS`
 - `KAGGLE_CLI_PATH`
 
 ## Notes
 
-- The local LLM is used for planning, code generation, repair, and analysis.
+- The local LLM does planning, code generation, and repair. Final-submission inference is handled by a hardcoded tail in the orchestrator and uses **no** LLM.
 - Hugging Face model families may download pretrained checkpoints on first use unless already cached locally.
-- `src/Agent_3/runs/` contains generated code and experiment artifacts from previous runs.
-- The generated scripts are part of the agent workflow; the hand-written source of truth is under `src/Agent_3/`.
+- Generated scripts under `src/Agent_4/runs/` are part of the agent workflow; the hand-written source of truth is under `src/Agent_4/` itself.
+- `src/Agent_3/runs/` is retained on this branch so the experiment history from the earlier baseline implementation remains available for analysis.

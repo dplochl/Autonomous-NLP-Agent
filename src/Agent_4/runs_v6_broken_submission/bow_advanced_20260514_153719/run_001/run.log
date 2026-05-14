@@ -1,0 +1,15 @@
+success: True
+timed_out: False
+dry_run_failed: False
+
+[STDOUT]
+METRICS: {"f1": 0.7252, "accuracy": 0.7575}
+
+
+[STDERR]
+
+
+[ANALYSIS]
+The experiment `bow_advanced_20260514_153719_run_01` successfully executed with a BoW (Bag of Words) advanced architecture, achieving an F1 score of 0.7252 and accuracy of 0.7575. The model utilized a combination of character n-grams (min=3, max=6) and word n-grams (max=3), with feature limits set at 18,000 for characters and 19,000 for words. The logistic regression parameter `C` was set to 2.0, and the validation size was 20%. 
+
+While the model performed reasonably well, there is room for improvement. The F1 score could be enhanced by experimenting with different n-gram ranges or feature extraction methods. Additionally, tuning hyperparameters such as `min_df` and adjusting the logistic regression's regularization strength might yield better results. For the next run, consider increasing the complexity of the model by incorporating more sophisticated feature engineering techniques or trying out alternative machine learning algorithms to see if they offer superior performance on this dataset.

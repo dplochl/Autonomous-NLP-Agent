@@ -13,7 +13,7 @@ The eligibility filter handles the safety floor:
 - at least one successful trial must exist before "stop" is allowed
 
 If the LLM call fails or returns nonsense, we fall back to a deterministic
-round-robin over untried families (matches Agent_3's old behavior).
+round-robin over untried families.
 """
 
 from __future__ import annotations

@@ -1,1 +1,1 @@
-"""Agent_3 prompt-first autonomous experiment system."""
+"""Agent_4 prompt-first autonomous experiment system."""

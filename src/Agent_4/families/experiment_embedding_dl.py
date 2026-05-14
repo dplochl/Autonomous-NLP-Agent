@@ -1,4 +1,4 @@
-"""Prompt-first learned/pretrained embedding deep-text family hook for Agent_3."""
+"""Prompt-first learned/pretrained embedding deep-text family hook for Agent_4."""
 
 from __future__ import annotations
 
@@ -100,7 +100,7 @@ def fallback_code(spec: dict[str, object]) -> str:
 
     return textwrap.dedent(
         f"""\
-        # AGENT3_FALLBACK
+        # AGENT4_FALLBACK
         import os
         import random
         import re
@@ -460,7 +460,7 @@ def preflight_issues(code: str, spec: dict[str, object]) -> list[str]:
 
 
 def apply_light_autofixes(code: str, spec: dict[str, object]) -> str:
-    if "AGENT3_FALLBACK" in code:
+    if "AGENT4_FALLBACK" in code:
         return code
     lowered = code.lower()
     has_embedding_switch = "embedding_source" in lowered and "embedding_source ==" in lowered

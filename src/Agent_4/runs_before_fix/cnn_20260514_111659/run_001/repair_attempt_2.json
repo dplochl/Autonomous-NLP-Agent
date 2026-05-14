@@ -1,0 +1,12 @@
+```json
+{
+  "diagnosis": "IndexError due to incorrect input shape for embedding layer",
+  "edits": [
+    {
+      "action": "replace",
+      "target": "sequences = sequences.to(DEVICE), labels = labels.to(DEVICE)",
+      "content": "sequences, labels = sequences.to(DEVICE), labels.to(DEVICE)"
+    }
+  ]
+}
+```

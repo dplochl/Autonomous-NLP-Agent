@@ -1,0 +1,10 @@
+success: True
+timed_out: False
+repair_attempts: 0
+
+[STDOUT]
+METRICS: {"f1": 0.6522, "accuracy": 0.6, "best_threshold": 0.34}
+[AGENT_SUBMIT] wrote 3263 rows to /Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/apa-disaster-tweets-agent-Nicc-copy/submissions/best_overall_submission.csv (threshold=0.3400, pos=2377, neg=886)
+
+
+[STDERR]

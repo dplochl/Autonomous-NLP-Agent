@@ -1,0 +1,202 @@
+```python
+import os
+import pandas as pd
+import numpy as np
+import torch
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import f1_score, accuracy_score
+from torch.utils.data import Dataset, DataLoader
+
+# Configuration
+spec = {
+    "architecture": "EmbeddingDL",
+    "embedding_source": "learned",
+    "glove_path": "",
+    "max_vocab": 25000,
+    "max_len": 72,
+    "embedding_dim": 100,
+    "hidden_dim": 128,
+    "dropout": 0.35,
+    "batch_size": 64,
+    "epochs": 4,
+    "learning_rate": 0.001,
+    "val_size": 0.2,
+    "threshold_min": 0.3,
+    "threshold_max": 0.7,
+    "threshold_steps": 41,
+    "dry_run_head": 200,
+    "experiment_name": "embedding_dl_20260514_145010_run_01",
+    "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/apa-disaster-tweets-agent-Nicc-copy/src/Agent_4/runs/embedding_dl_20260514_145010/run_001/submission.csv"
+}
+
+# Environment variables
+DRY_RUN = os.environ.get("AGENT_DRY_RUN") == "1"
+WRITE_SUBMISSION = os.environ.get("AGENT_WRITE_SUBMISSION") == "1"
+FINAL_SUBMISSION = os.environ.get("AGENT_FINAL_SUBMISSION") == "1"
+TRAIN_FRACTION = float(os.environ.get("AGENT_TRAIN_FRACTION", "1.0"))
+SAMPLE_SEED = int(os.environ.get("AGENT_SAMPLE_SEED", "42"))
+
+# Data directory
+DATA_DIR = os.environ.get("DISASTER_AGENT_DATA_DIR", "data")
+
+# Load data
+train_df = pd.read_csv(os.path.join(DATA_DIR, "train.csv")).fillna("")
+test_df = pd.read_csv(os.path.join(DATA_DIR, "test.csv")).fillna("")
+
+# Build text field
+train_df['text'] = train_df.apply(lambda row: f"{row['keyword']} [SEP] {row['text']}" if pd.notna(row['keyword']) else row['text'], axis=1)
+test_df['text'] = test_df.apply(lambda row: f"{row['keyword']} [SEP] {row['text']}" if pd.notna(row['keyword']) else row['text'], axis=1)
+
+# DRY_RUN
+if DRY_RUN:
+    train_df = train_df.head(spec["dry_run_head"])
+
+# Sample training data
+if TRAIN_FRACTION < 1.0:
+    train_df = train_df.sample(frac=TRAIN_FRACTION, random_state=SAMPLE_SEED).reset_index(drop=True)
+
+# Train-test split
+stratify_labels = train_df['target'] if len(train_df['target'].unique()) == 2 else None
+train_texts, val_texts, y_train, y_val = train_test_split(
+    train_df['text'], train_df['target'], test_size=spec["val_size"], random_state=42, stratify=stratify_labels
+)
+
+# Tokenizer and vocabulary
+def build_vocab(texts, max_vocab):
+    word_freq = {}
+    for text in texts:
+        words = text.split()
+        for word in words:
+            if word not in word_freq:
+                word_freq[word] = 0
+            word_freq[word] += 1
+    sorted_words = sorted(word_freq.items(), key=lambda x: x[1], reverse=True)
+    vocab = {word: idx + 2 for idx, (word, _) in enumerate(sorted_words[:max_vocab - 2])}
+    vocab['<PAD>'] = 0
+    vocab['<UNK>'] = 1
+    return vocab
+
+vocab = build_vocab(train_texts, spec["max_vocab"])
+
+# Text to sequence conversion
+def text_to_sequence(text, vocab, max_len):
+    words = text.split()
+    seq = [vocab.get(word, vocab['<UNK>']) for word in words]
+    if len(seq) > max_len:
+        seq = seq[:max_len]
+    return seq + [vocab['<PAD>']] * (max_len - len(seq))
+
+train_sequences = np.array([text_to_sequence(text, vocab, spec["max_len"]) for text in train_texts])
+val_sequences = np.array([text_to_sequence(text, vocab, spec["max_len"]) for text in val_texts])
+
+# Dataset and DataLoader
+class TextDataset(Dataset):
+    def __init__(self, sequences, labels=None):
+        self.sequences = sequences
+        self.labels = labels
+
+    def __len__(self):
+        return len(self.sequences)
+
+    def __getitem__(self, idx):
+        if self.labels is not None:
+            return torch.tensor(self.sequences[idx], dtype=torch.long), torch.tensor(self.labels[idx], dtype=torch.float32)
+        else:
+            return torch.tensor(self.sequences[idx], dtype=torch.long)
+
+train_dataset = TextDataset(train_sequences, y_train)
+val_dataset = TextDataset(val_sequences, y_val)
+
+train_loader = DataLoader(train_dataset, batch_size=spec["batch_size"], shuffle=True, pin_memory=False)
+val_loader = DataLoader(val_dataset, batch_size=spec["batch_size"], shuffle=False, pin_memory=False)
+
+# Model
+class EmbeddingDL(torch.nn.Module):
+    def __init__(self, vocab_size, embedding_dim, hidden_dim, dropout):
+        super(EmbeddingDL, self).__init__()
+        self.embedding = torch.nn.Embedding(vocab_size, embedding_dim)
+        self.gru = torch.nn.GRU(embedding_dim, hidden_dim, bidirectional=True, batch_first=True, dropout=dropout)
+        self.fc = torch.nn.Linear(hidden_dim * 2, 1)
+
+    def forward(self, x):
+        embedded = self.embedding(x)
+        _, hidden = self.gru(embedded)
+        hidden = torch.cat((hidden[-2], hidden[-1]), dim=1)
+        output = self.fc(hidden)
+        return torch.sigmoid(output.squeeze())
+
+# Training
+device = torch.device("cpu")
+model = EmbeddingDL(len(vocab), spec["embedding_dim"], spec["hidden_dim"], spec["dropout"]).to(device)
+optimizer = torch.optim.Adam(model.parameters(), lr=spec["learning_rate"])
+criterion = torch.nn.BCELoss()
+
+def train_model(model, train_loader, optimizer, criterion, epochs):
+    model.train()
+    for epoch in range(epochs):
+        for batch_texts, batch_labels in train_loader:
+            batch_texts, batch_labels = batch_texts.to(device), batch_labels.to(device)
+            optimizer.zero_grad()
+            outputs = model(batch_texts)
+            loss = criterion(outputs, batch_labels)
+            loss.backward()
+            optimizer.step()
+
+if not DRY_RUN:
+    train_model(model, train_loader, optimizer, criterion, spec["epochs"])
+
+# Validation
+model.eval()
+val_preds = []
+with torch.no_grad():
+    for batch_texts in val_loader:
+        batch_texts = batch_texts.to(device)
+        outputs = model(batch_texts)
+        val_preds.extend(outputs.cpu().numpy())
+
+val_preds = np.array(val_preds)
+best_threshold = 0.5
+best_f1 = 0
+
+for threshold in np.linspace(spec["threshold_min"], spec["threshold_max"], spec["threshold_steps"]):
+    y_pred = (val_preds > threshold).astype(int)
+    f1 = f1_score(y_val, y_pred)
+    if f1 > best_f1:
+        best_f1 = f1
+        best_threshold = threshold
+
+# Final submission training
+if FINAL_SUBMISSION:
+    final_model = EmbeddingDL(len(vocab), spec["embedding_dim"], spec["hidden_dim"], spec["dropout"]).to(device)
+    optimizer = torch.optim.Adam(final_model.parameters(), lr=spec["learning_rate"])
+    criterion = torch.nn.BCELoss()
+    train_model(final_model, DataLoader(TextDataset(train_sequences, y_train), batch_size=spec["batch_size"], shuffle=True, pin_memory=False), optimizer, criterion, spec["epochs"])
+
+# Test prediction
+test_sequences = np.array([text_to_sequence(text, vocab, spec["max_len"]) for text in test_df['text']])
+test_dataset = TextDataset(test_sequences)
+test_loader = DataLoader(test_dataset, batch_size=spec["batch_size"], shuffle=False, pin_memory=False)
+
+final_model.eval()
+test_preds = []
+with torch.no_grad():
+    for batch_texts in test_loader:
+        batch_texts = batch_texts.to(device)
+        outputs = final_model(batch_texts)
+        test_preds.extend(outputs.cpu().numpy())
+
+# Write submission
+if WRITE_SUBMISSION:
+    os.makedirs(os.path.dirname(spec["submission_path"]), exist_ok=True)
+    submission_df = pd.DataFrame({
+        "id": test_df['id'],
+        "target": (np.array(test_preds) > best_threshold).astype(int)
+    })
+    submission_df.to_csv(spec["submission_path"], index=False)
+
+# Metrics
+y_pred_val = (val_preds > best_threshold).astype(int)
+f1 = f1_score(y_val, y_pred_val)
+acc = accuracy_score(y_val, y_pred_val)
+print('METRICS: {"f1": ' + str(round(f1, 4)) + ', "accuracy": ' + str(round(acc, 4)) + '}')
+```

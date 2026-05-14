@@ -1,0 +1,12 @@
+```json
+{
+  "diagnosis": "np is not defined",
+  "edits": [
+    {
+      "action": "insert_before",
+      "target": "for threshold in np.linspace(0.3, 0.7, 41):",
+      "content": "import numpy as np"
+    }
+  ]
+}
+```

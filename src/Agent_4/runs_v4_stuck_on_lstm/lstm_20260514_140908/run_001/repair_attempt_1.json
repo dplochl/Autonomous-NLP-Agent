@@ -1,0 +1,12 @@
+```json
+{
+  "diagnosis": "The LSTM model's forward pass output is a single value per sequence, causing an error when trying to extend the list with CPU numpy array.",
+  "edits": [
+    {
+      "action": "replace",
+      "target": "all_preds.extend(preds.cpu().numpy())",
+      "content": "all_preds.extend(preds.squeeze().cpu().numpy())"
+    }
+  ]
+}
+```

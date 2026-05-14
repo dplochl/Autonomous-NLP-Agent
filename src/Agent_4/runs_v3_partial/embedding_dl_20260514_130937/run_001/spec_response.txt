@@ -1,0 +1,22 @@
+```json
+{
+  "architecture": "EmbeddingDL",
+  "embedding_source": "learned",
+  "glove_path": "",
+  "max_vocab": 25000,
+  "max_len": 72,
+  "embedding_dim": 100,
+  "hidden_dim": 128,
+  "dropout": 0.35,
+  "batch_size": 64,
+  "epochs": 4,
+  "learning_rate": 0.001,
+  "val_size": 0.2,
+  "threshold_min": 0.3,
+  "threshold_max": 0.7,
+  "threshold_steps": 41,
+  "dry_run_head": 200,
+  "experiment_name": "embedding_dl_20260514_130937_run_01",
+  "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/apa-disaster-tweets-agent-Nicc-copy/src/Agent_4/runs/embedding_dl_20260514_130937/run_001/submission.csv"
+}
+```

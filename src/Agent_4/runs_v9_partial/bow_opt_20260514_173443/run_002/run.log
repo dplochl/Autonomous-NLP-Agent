@@ -1,0 +1,13 @@
+success: True
+timed_out: False
+dry_run_failed: False
+
+[STDOUT]
+METRICS: {"f1": 0.7101, "accuracy": 0.755, "best_threshold": 0.43}
+
+
+[STDERR]
+
+
+[ANALYSIS]
+The experiment `bow_opt_20260514_173443_run_02` using a Bag of Words (BoW) architecture achieved a reasonable performance with an F1 score of 0.7101 and accuracy of 0.755, indicating that the model effectively captured the underlying patterns in the data for classification tasks related to disaster tweets. The use of TF-IDF vectorization and a logistic regression classifier with a regularization parameter `C` set to 0.9025 contributed positively to the model's performance. However, the experiment did not explore a wide range of hyperparameters, such as different values for `max_features`, `min_df`, or `ngram_max`, which could potentially lead to further improvements in accuracy and F1 score. For the next run, it would be beneficial to conduct a more comprehensive hyperparameter tuning using techniques like grid search or random search to identify the optimal settings that maximize model performance. Additionally, incorporating more sophisticated models such as neural networks might also enhance the classification capabilities beyond what is achievable with logistic regression alone.

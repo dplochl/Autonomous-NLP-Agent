@@ -1,0 +1,12 @@
+```json
+{
+  "diagnosis": "Mismatching dimensions along axis 0 in sparse matrix stacking",
+  "edits": [
+    {
+      "action": "replace",
+      "target": "X_train_word = word_vectorizer.fit_transform(train_df['text'])\nX_val_word = word_vectorizer.transform(X_val)\nX_test_word = word_vectorizer.transform(test_df['text'])",
+      "content": "X_train_word = word_vectorizer.fit_transform(X_train)\nX_val_word = word_vectorizer.transform(X_val)\nX_test_word = word_vectorizer.transform(test_df['text'])"
+    }
+  ]
+}
+```

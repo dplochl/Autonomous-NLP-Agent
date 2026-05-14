@@ -1,0 +1,39 @@
+success: True
+timed_out: False
+dry_run_failed: False
+
+[STDOUT]
+{'train_runtime': '282.8', 'train_samples_per_second': '16.98', 'train_steps_per_second': '1.135', 'train_loss': '0.3732', 'epoch': '3'}
+METRICS: {"f1": 0.7674, "accuracy": 0.8075, "best_threshold": 0.41}
+
+
+[STDERR]
+
+Loading weights:   0%|          | 0/197 [00:00<?, ?it/s]
+Loading weights: 100%|██████████| 197/197 [00:00<00:00, 18288.58it/s]
+[1mRobertaForSequenceClassification LOAD REPORT[0m from: roberta-base
+Key                             | Status     | 
+--------------------------------+------------+-
+lm_head.dense.bias              | UNEXPECTED | 
+lm_head.layer_norm.bias         | UNEXPECTED | 
+roberta.embeddings.position_ids | UNEXPECTED | 
+lm_head.dense.weight            | UNEXPECTED | 
+lm_head.bias                    | UNEXPECTED | 
+lm_head.layer_norm.weight       | UNEXPECTED | 
+classifier.out_proj.bias        | MISSING    | 
+classifier.out_proj.weight      | MISSING    | 
+classifier.dense.weight         | MISSING    | 
+classifier.dense.bias           | MISSING    | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+- MISSING:	those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.
+`logging_dir` is deprecated and will be removed in v5.2. Please set `TENSORBOARD_LOGGING_DIR` instead.
+/var/folders/rp/_q6137ys147f688vnf1knc4w0000gn/T/agent4_97uhf_ya.py:86: DeprecationWarning: __array__ implementation doesn't accept a copy keyword, so passing copy=False failed. __array__ must implement 'dtype' and 'copy' keyword arguments. To learn more, see the migration guide https://numpy.org/devdocs/numpy_2_0_migration_guide.html#adapting-to-changes-in-the-copy-keyword
+  'input_ids': np.array(input_ids, dtype=np.int64),
+/var/folders/rp/_q6137ys147f688vnf1knc4w0000gn/T/agent4_97uhf_ya.py:87: DeprecationWarning: __array__ implementation doesn't accept a copy keyword, so passing copy=False failed. __array__ must implement 'dtype' and 'copy' keyword arguments. To learn more, see the migration guide https://numpy.org/devdocs/numpy_2_0_migration_guide.html#adapting-to-changes-in-the-copy-keyword
+  'attention_mask': np.array(attention_mask, dtype=np.int64),
+
+
+[ANALYSIS]
+The experiment with the RoBERTa model achieved a successful status, demonstrating an F1 score of 0.7674 and accuracy of 0.8075. The training process was efficient, with a runtime of approximately 283 seconds per epoch. However, there were unexpected issues with certain parameters (`lm_head.dense.bias`, `lm_head.layer_norm.bias`, etc.) that are not critical for the current task but should be addressed if identical architecture is expected in future runs. Additionally, several parameters (`classifier.out_proj.bias`, `classifier.out_proj.weight`, etc.) were missing and newly initialized, suggesting a need to fine-tune the model further on the downstream task. For the next run, consider addressing the deprecation warnings related to logging and array handling to ensure compatibility with future versions of the libraries.

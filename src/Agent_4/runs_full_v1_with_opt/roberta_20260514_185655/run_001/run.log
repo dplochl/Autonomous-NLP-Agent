@@ -1,0 +1,40 @@
+success: True
+timed_out: False
+dry_run_failed: False
+
+[STDOUT]
+{'train_runtime': '274.5', 'train_samples_per_second': '17.49', 'train_steps_per_second': '1.093', 'train_loss': '0.39', 'epoch': '3'}
+METRICS: {"f1": 0.7844, "accuracy": 0.82, "best_threshold": 0.48}
+
+
+[STDERR]
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+
+Loading weights:   0%|          | 0/197 [00:00<?, ?it/s]
+Loading weights: 100%|██████████| 197/197 [00:00<00:00, 17773.62it/s]
+[1mRobertaForSequenceClassification LOAD REPORT[0m from: roberta-base
+Key                             | Status     | 
+--------------------------------+------------+-
+lm_head.bias                    | UNEXPECTED | 
+lm_head.dense.weight            | UNEXPECTED | 
+lm_head.layer_norm.bias         | UNEXPECTED | 
+roberta.embeddings.position_ids | UNEXPECTED | 
+lm_head.dense.bias              | UNEXPECTED | 
+lm_head.layer_norm.weight       | UNEXPECTED | 
+classifier.out_proj.bias        | MISSING    | 
+classifier.out_proj.weight      | MISSING    | 
+classifier.dense.weight         | MISSING    | 
+classifier.dense.bias           | MISSING    | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+- MISSING:	those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.
+`logging_dir` is deprecated and will be removed in v5.2. Please set `TENSORBOARD_LOGGING_DIR` instead.
+/var/folders/rp/_q6137ys147f688vnf1knc4w0000gn/T/agent4_mv6qfqvc.py:86: DeprecationWarning: __array__ implementation doesn't accept a copy keyword, so passing copy=False failed. __array__ must implement 'dtype' and 'copy' keyword arguments. To learn more, see the migration guide https://numpy.org/devdocs/numpy_2_0_migration_guide.html#adapting-to-changes-in-the-copy-keyword
+  'input_ids': np.array(input_ids, dtype=np.int64),
+/var/folders/rp/_q6137ys147f688vnf1knc4w0000gn/T/agent4_mv6qfqvc.py:87: DeprecationWarning: __array__ implementation doesn't accept a copy keyword, so passing copy=False failed. __array__ must implement 'dtype' and 'copy' keyword arguments. To learn more, see the migration guide https://numpy.org/devdocs/numpy_2_0_migration_guide.html#adapting-to-changes-in-the-copy-keyword
+  'attention_mask': np.array(attention_mask, dtype=np.int64),
+
+
+[ANALYSIS]
+The experiment using RoBERTa achieved a success status with an F1 score of 0.7844 and accuracy of 0.82. The training runtime was 274.5 minutes, indicating efficient processing. However, there were unexpected parameters in the model that could be ignored if loading from different tasks or architectures, but should be addressed for identical architecture expectations. Additionally, several classifier parameters were missing, suggesting they were newly initialized and need further training on the downstream task to improve performance. For the next run, consider addressing the deprecated logging directory setting and resolving the deprecation warnings related to numpy array implementations to ensure compatibility with future versions.

@@ -1,4 +1,4 @@
-"""Optional Kaggle submission helpers for Agent_3."""
+"""Optional Kaggle submission helpers for Agent_4."""
 
 from __future__ import annotations
 
@@ -24,15 +24,15 @@ def _env_flag(name: str, default: bool = False) -> bool:
 
 
 def auto_submit_enabled() -> bool:
-    return _env_flag("AGENT3_AUTO_SUBMIT_KAGGLE", default=False)
+    return _env_flag("AGENT4_AUTO_SUBMIT_KAGGLE", default=False)
 
 
 def competition_name() -> str:
-    return os.environ.get("AGENT3_KAGGLE_COMPETITION", DEFAULT_COMPETITION).strip() or DEFAULT_COMPETITION
+    return os.environ.get("AGENT4_KAGGLE_COMPETITION", DEFAULT_COMPETITION).strip() or DEFAULT_COMPETITION
 
 
 def poll_seconds() -> int:
-    raw = os.environ.get("AGENT3_KAGGLE_POLL_SECONDS", str(DEFAULT_POLL_SECONDS))
+    raw = os.environ.get("AGENT4_KAGGLE_POLL_SECONDS", str(DEFAULT_POLL_SECONDS))
     try:
         return max(5, int(raw))
     except ValueError:
@@ -40,7 +40,7 @@ def poll_seconds() -> int:
 
 
 def timeout_seconds() -> int:
-    raw = os.environ.get("AGENT3_KAGGLE_TIMEOUT_SECONDS", str(DEFAULT_TIMEOUT_SECONDS))
+    raw = os.environ.get("AGENT4_KAGGLE_TIMEOUT_SECONDS", str(DEFAULT_TIMEOUT_SECONDS))
     try:
         return max(30, int(raw))
     except ValueError:
@@ -48,7 +48,7 @@ def timeout_seconds() -> int:
 
 
 def submission_message(default_message: str) -> str:
-    message = os.environ.get("AGENT3_KAGGLE_MESSAGE", "").strip()
+    message = os.environ.get("AGENT4_KAGGLE_MESSAGE", "").strip()
     return message or default_message
 
 

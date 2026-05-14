@@ -1,0 +1,8 @@
+```json
+{
+  "chosen_family_key": "lstm",
+  "strategy": "local_exploitation",
+  "reasoning": "The 'lstm' model achieved the highest F1 score (0.666) in the provided data, making it the best candidate for local exploitation. The next best performing models are 'cnn' (0.600) and 'tfidf' (0.555).",
+  "confidence": 0.9
+}
+```

@@ -1,0 +1,35 @@
+Plan one reliable BoW experiment spec for the Kaggle Disaster Tweets task.
+
+Return a reliable sparse-text baseline spec. Prefer conservative TF-IDF settings and a single validation split. Do not propose deep learning or ensembles.
+
+Return one JSON object only.
+Use these exact keys: architecture, vectorizer_type, max_features, ngram_max, min_df, logreg_c, val_size, threshold_min, threshold_max, threshold_steps, dry_run_head, experiment_name, submission_path
+
+Dataset context:
+DATASET CONTEXT:
+- train.csv: 7613 rows, columns: id, keyword, location, text, target
+- test.csv: 3263 rows, columns: id, keyword, location, text
+- Class balance: 4342 not-disaster (57.0%), 3271 disaster (43.0%)
+- Missing keyword: 0.8%
+- Missing location: 33.3%
+
+
+Recent history:
+No prior runs.
+
+Default if unsure:
+{
+  "architecture": "BoW",
+  "vectorizer_type": "tfidf_word",
+  "max_features": 20000,
+  "ngram_max": 2,
+  "min_df": 2,
+  "logreg_c": 3.0,
+  "val_size": 0.2,
+  "threshold_min": 0.3,
+  "threshold_max": 0.7,
+  "threshold_steps": 41,
+  "dry_run_head": 200,
+  "experiment_name": "bow_20260514_170712_run_01",
+  "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/apa-disaster-tweets-agent-Nicc-copy/src/Agent_4/runs/bow_20260514_170712/run_001/submission.csv"
+}

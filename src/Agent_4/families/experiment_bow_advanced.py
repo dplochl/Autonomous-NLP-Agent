@@ -1,4 +1,4 @@
-"""Prompt-first advanced sparse-text family hook for Agent_3."""
+"""Prompt-first advanced sparse-text family hook for Agent_4."""
 
 from __future__ import annotations
 

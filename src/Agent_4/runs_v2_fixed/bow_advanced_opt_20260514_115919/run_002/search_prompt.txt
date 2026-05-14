@@ -1,0 +1,127 @@
+Propose the next BoW_advanced experiment spec.
+
+Search around the best successful sparse combination by adjusting word/char feature capacity and regularization. If a run improves, make a nearby variation instead of a drastic jump.
+
+Rules:
+- keep the architecture family fixed
+- keep the same overall prompt contract and pipeline shape
+- vary only these tunable keys: word_max_features, char_max_features, word_ngram_max, char_ngram_min, char_ngram_max, min_df, logreg_c, threshold_min, threshold_max, threshold_steps
+- optimize against the best successful session trial, not the last run
+- keep the best successful spec as the default anchor and mutate it only slightly
+- this is the top-architecture optimization phase, so stay near this architecture's current best spec
+- usually change 2 to 4 tunable keys because the sweep used the smaller labeled sample
+- prefer coordinated local changes such as learning_rate, dropout, batch_size, epochs, weight_decay, sequence length, and threshold settings
+- validation size is controlled by the runner and should remain at 0.2
+- avoid large capacity jumps unless the history strongly suggests they help
+- do not repeat an exact spec already tried in this session
+- if a run timed out, reduce cost
+- if a run crashed, simplify the risky parameter region
+- if repeated runs get the same F1, switch to different tunable keys instead of repeating weak ones
+- return one JSON object only
+
+Dataset context:
+DATASET CONTEXT:
+- train.csv: 7613 rows, columns: id, keyword, location, text, target
+- test.csv: 3263 rows, columns: id, keyword, location, text
+- Class balance: 4342 not-disaster (57.0%), 3271 disaster (43.0%)
+- Missing keyword: 0.8%
+- Missing location: 33.3%
+
+
+Family history:
+- [3] bow_advanced_20260514_115128_run_01 run 1 | F1=0.7246 | OK | The experiment `bow_advanced_20260514_115128_run_01` successfully executed with an F1 score of 0.724
+
+Session trials so far:
+- run 0: status=OK, f1=0.7246, spec={"architecture": "BoW_advanced", "char_max_features": 20000, "char_ngram_max": 5, "char_ngram_min": 3, "dry_run_head": 200, "experiment_name": "bow_advanced_20260514_115128_run_01", "logreg_c": 4.0, "min_df": 2, "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/apa-disaster-tweets-agent-Nicc-copy/src/Agent_4/runs/bow_advanced_20260514_115128/run_001/submission.csv", "threshold_max": 0.7, "threshold_min": 0.3, "threshold_steps": 41, "val_size": 0.2, "word_max_features": 30000, "word_ngram_max": 2}
+- run 1: status=OK, f1=0.7289, spec={"architecture": "BoW_advanced", "char_max_features": 20000, "char_ngram_max": 4, "char_ngram_min": 3, "dry_run_head": 200, "experiment_name": "bow_advanced_opt_20260514_115919_run_01", "logreg_c": 4.2, "min_df": 1, "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/apa-disaster-tweets-agent-Nicc-copy/src/Agent_4/runs/bow_advanced_opt_20260514_115919/run_001/submission.csv", "threshold_max": 0.7, "threshold_min": 0.3, "threshold_steps": 41, "val_size": 0.2, "word_max_features": 30000, "word_ngram_max": 2}
+
+Best session trial so far:
+{
+  "run_index": 1,
+  "spec": {
+    "architecture": "BoW_advanced",
+    "word_max_features": 30000,
+    "char_max_features": 20000,
+    "word_ngram_max": 2,
+    "char_ngram_min": 3,
+    "char_ngram_max": 4,
+    "min_df": 1,
+    "logreg_c": 4.2,
+    "val_size": 0.2,
+    "threshold_min": 0.3,
+    "threshold_max": 0.7,
+    "threshold_steps": 41,
+    "dry_run_head": 200,
+    "experiment_name": "bow_advanced_opt_20260514_115919_run_01",
+    "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/apa-disaster-tweets-agent-Nicc-copy/src/Agent_4/runs/bow_advanced_opt_20260514_115919/run_001/submission.csv"
+  },
+  "success": true,
+  "metrics": {
+    "f1": 0.7289,
+    "accuracy": 0.775
+  },
+  "analysis": "The experiment `bow_advanced_opt_20260514_115919_run_01` successfully executed with an F1 score of 0.7289 and accuracy of 0.775, indicating that the advanced Bag of Words (BoW) model with specified parameters performed reasonably well on the dataset. The use of character-level n-grams (min=3, max=4) and word-level n-grams up to bigrams might have contributed positively to capturing more nuanced patterns in the text data. However, the relatively low F1 score suggests that there is room for improvement in terms of class balance or model complexity. For the next run, consider experimenting with different values for `char_max_features` and `word_max_features`, as well as adjusting the logistic regression parameter `logreg_c` to potentially enhance model performance further. Additionally, exploring other feature extraction techniques or incorporating more sophisticated models could lead to better results.",
+  "run_dir": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/apa-disaster-tweets-agent-Nicc-copy/src/Agent_4/runs/bow_advanced_opt_20260514_115919/run_001",
+  "outcome": "success",
+  "wall_seconds": 49.2,
+  "error_summary": "",
+  "repair_attempts": 0
+}
+
+Stagnant keys from equal-F1 or same-prediction runs: none
+Preferred keys for the next move: min_df, char_ngram_max, logreg_c, word_max_features, char_max_features, word_ngram_max, char_ngram_min, threshold_min, threshold_max, threshold_steps
+Latest equal-F1 matched prior run: none
+Latest equal-F1 changed keys to avoid repeating: none
+Repeated best F1 detected: no
+
+Optimization planner guidance:
+{
+  "planner_model": "gemma4:e4b",
+  "chosen_family_key": "bow_advanced",
+  "chosen_family": "BoW_advanced",
+  "strategy": "local_exploit",
+  "parameter_focus": [
+    {
+      "key": "min_df",
+      "direction": "down_small",
+      "reason": "Slightly lowering min_df can incorporate more rare features, potentially improving recall without drastically increasing noise."
+    },
+    {
+      "key": "char_ngram_max",
+      "direction": "down_small",
+      "reason": "Testing slightly shorter character n-grams might reduce feature dimensionality and noise, leading to better generalization."
+    },
+    {
+      "key": "logreg_c",
+      "direction": "up_small",
+      "reason": "Increasing regularization slightly (higher C) can help prevent overfitting, especially when using a large number of features."
+    }
+  ],
+  "reason": "The BoW_advanced family achieved the highest F1 score (0.7246). Since this is a sparse family, I am focusing on key parameters that control feature space size and regularization: min_df, char_ngram_max, and logreg_c. I recommend small, local moves (down_small/up_small) to safely explore the immediate neighborhood of the best parameters, aiming to squeeze out marginal gains without risking catastrophic performance drops.",
+  "confidence": 0.8,
+  "used_fallback": false,
+  "raw_response": "```json\n{\n  \"chosen_family_key\": \"bow_advanced\",\n  \"strategy\": \"local_exploit\",\n  \"parameter_focus\": [\n    {\n      \"key\": \"min_df\",\n      \"direction\": \"down_small\",\n      \"reason\": \"Slightly lowering min_df can incorporate more rare features, potentially improving recall without drastically increasing noise.\"\n    },\n    {\n      \"key\": \"char_ngram_max\",\n      \"direction\": \"down_small\",\n      \"reason\": \"Testing slightly shorter character n-grams might reduce feature dimensionality and noise, leading to better generalization.\"\n    },\n    {\n      \"key\": \"logreg_c\",\n      \"direction\": \"up_small\",\n      \"reason\": \"Increasing regularization slightly (higher C) can help prevent overfitting, especially when using a large number of features.\"\n    }\n  ],\n  \"reason\": \"The BoW_advanced family achieved the highest F1 score (0.7246). Since this is a sparse family, I am focusing on key parameters that control feature space size and regularization: min_df, char_ngram_max, and logreg_c. I recommend small, local moves (down_small/up_small) to safely explore the immediate neighborhood of the best parameters, aiming to squeeze out marginal gains without risking catastrophic performance drops.\",\n  \"confidence\": 0.8\n}\n```",
+  "prompt": "You are planning the optimization stage after a family sweep for Kaggle Disaster Tweets.\n\nRules:\n- choose the optimization family from the highest best_f1 sweep family only\n- do not invent a new family\n- output one JSON object only\n- focus on safe local optimization around the chosen family's current best spec\n- choose 2 or 3 parameter keys to focus during opt\n- for each key, provide a direction from: keep, up_small, down_small, up_medium, down_medium\n- use only tunable keys valid for the chosen family\n\nChosen highest-F1 family:\n{\n  \"best_metrics\": {\n    \"accuracy\": 0.7625,\n    \"f1\": 0.7246\n  },\n  \"best_spec\": {\n    \"architecture\": \"BoW_advanced\",\n    \"char_max_features\": 20000,\n    \"char_ngram_max\": 5,\n    \"char_ngram_min\": 3,\n    \"dry_run_head\": 200,\n    \"experiment_name\": \"bow_advanced_20260514_115128_run_01\",\n    \"logreg_c\": 4.0,\n    \"min_df\": 2,\n    \"submission_path\": \"/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/apa-disaster-tweets-agent-Nicc-copy/src/Agent_4/runs/bow_advanced_20260514_115128/run_001/submission.csv\",\n    \"threshold_max\": 0.7,\n    \"threshold_min\": 0.3,\n    \"threshold_steps\": 41,\n    \"val_size\": 0.2,\n    \"word_max_features\": 30000,\n    \"word_ngram_max\": 2\n  },\n  \"family\": \"BoW_advanced\",\n  \"family_key\": \"bow_advanced\",\n  \"tunable_keys\": [\n    \"word_max_features\",\n    \"char_max_features\",\n    \"word_ngram_max\",\n    \"char_ngram_min\",\n    \"char_ngram_max\",\n    \"min_df\",\n    \"logreg_c\",\n    \"threshold_min\",\n    \"threshold_max\",\n    \"threshold_steps\"\n  ]\n}\n\nSweep family table:\n{\n  \"families\": [\n    {\n      \"best_accuracy\": 0.7625,\n      \"best_f1\": 0.7246,\n      \"best_run_index\": 1,\n      \"best_spec\": {\n        \"architecture\": \"BoW_advanced\",\n        \"char_max_features\": 20000,\n        \"char_ngram_max\": 5,\n        \"char_ngram_min\": 3,\n        \"dry_run_head\": 200,\n        \"experiment_name\": \"bow_advanced_20260514_115128_run_01\",\n        \"logreg_c\": 4.0,\n        \"min_df\": 2,\n        \"submission_path\": \"/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/apa-disaster-tweets-agent-Nicc-copy/src/Agent_4/runs/bow_advanced_20260514_115128/run_001/submission.csv\",\n        \"threshold_max\": 0.7,\n        \"threshold_min\": 0.3,\n        \"threshold_steps\": 41,\n        \"val_size\": 0.2,\n        \"word_max_features\": 30000,\n        \"word_ngram_max\": 2\n      },\n      \"failed_runs\": 0,\n      \"family\": \"BoW_advanced\",\n      \"family_key\": \"bow_advanced\",\n      \"successful_runs\": 1,\n      \"tunable_keys\": [\n        \"word_max_features\",\n        \"char_max_features\",\n        \"word_ngram_max\",\n        \"char_ngram_min\",\n        \"char_ngram_max\",\n        \"min_df\",\n        \"logreg_c\",\n        \"threshold_min\",\n        \"threshold_max\",\n        \"threshold_steps\"\n      ]\n    },\n    {\n      \"best_accuracy\": 0.775,\n      \"best_f1\": 0.7188,\n      \"best_run_index\": 1,\n      \"best_spec\": {\n        \"architecture\": \"BoW\",\n        \"dry_run_head\": 100,\n        \"experiment_name\": \"bow_20260514_114742_run_01\",\n        \"logreg_c\": 1.0,\n        \"max_features\": 10000,\n        \"min_df\": 5,\n        \"ngram_max\": 1,\n        \"submission_path\": \"/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/apa-disaster-tweets-agent-Nicc-copy/src/Agent_4/runs/bow_20260514_114742/run_001/submission.csv\",\n        \"threshold_max\": 0.6,\n        \"threshold_min\": 0.4,\n        \"threshold_steps\": 21,\n        \"val_size\": 0.2,\n        \"vectorizer_type\": \"tfidf_word\"\n      },\n      \"failed_runs\": 0,\n      \"family\": \"BoW\",\n      \"family_key\": \"bow\",\n      \"successful_runs\": 1,\n      \"tunable_keys\": [\n        \"max_features\",\n        \"ngram_max\",\n        \"min_df\",\n        \"logreg_c\",\n        \"val_size\",\n        \"threshold_min\",\n        \"threshold_max\",\n        \"threshold_steps\"\n      ]\n    },\n    {\n      \"best_accuracy\": 0.775,\n      \"best_f1\": 0.7188,\n      \"best_run_index\": 0,\n      \"best_spec\": {\n        \"architecture\": \"BoW\",\n        \"dry_run_head\": 100,\n        \"experiment_name\": \"bow_20260514_114742_run_01\",\n        \"logreg_c\": 1.0,\n        \"max_features\": 10000,\n        \"min_df\": 5,\n        \"ngram_max\": 1,\n        \"submission_path\": \"/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/apa-disaster-tweets-agent-Nicc-copy/src/Agent_4/runs/bow_20260514_114742/run_001/submission.csv\",\n        \"threshold_max\": 0.6,\n        \"threshold_min\": 0.4,\n        \"threshold_steps\": 21,\n        \"val_size\": 0.2,\n        \"vectorizer_type\": \"tfidf_word\"\n      },\n      \"failed_runs\": 1,\n      \"family\": \"BoW\",\n      \"family_key\": \"bow\",\n      \"successful_runs\": 1,\n      \"tunable_keys\": [\n        \"max_features\",\n        \"ngram_max\",\n        \"min_df\",\n        \"logreg_c\",\n        \"val_size\",\n        \"threshold_min\",\n        \"threshold_max\",\n        \"threshold_steps\"\n      ]\n    },\n    {\n      \"best_accuracy\": 0.6275,\n      \"best_f1\": 0.2359,\n      \"best_run_index\": 1,\n      \"best_spec\": {\n        \"architecture\": \"CNN\",\n        \"batch_size\": 64,\n        \"channels\": 128,\n        \"dropout\": 0.3,\n        \"dry_run_head\": 200,\n        \"embedding_dim\": 128,\n        \"epochs\": 3,\n        \"experiment_name\": \"cnn_20260514_114908_run_01\",\n        \"kernel_sizes\": [\n          3,\n          4,\n          5\n        ],\n        \"learning_rate\": 0.001,\n        \"max_len\": 48,\n        \"max_vocab\": 20000,\n        \"submission_path\": \"/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/apa-disaster-tweets-agent-Nicc-copy/src/Agent_4/runs/cnn_20260514_114908/run_001/submission.csv\",\n        \"threshold_max\": 0.7,\n        \"threshold_min\": 0.3,\n        \"threshold_steps\": 41,\n        \"val_size\": 0.2\n      },\n      \"failed_runs\": 0,\n      \"family\": \"CNN\",\n      \"family_key\": \"cnn\",\n      \"successful_runs\": 1,\n      \"tunable_keys\": [\n        \"max_vocab\",\n        \"max_len\",\n        \"embedding_dim\",\n        \"channels\",\n        \"dropout\",\n        \"batch_size\",\n        \"epochs\",\n        \"learning_rate\"\n      ]\n    }\n  ]\n}\n\nReturn this schema exactly:\n{\n  \"chosen_family_key\": \"family key from highest-F1 row\",\n  \"strategy\": \"local_exploit|cautious_exploit\",\n  \"parameter_focus\": [\n    {\"key\": \"learning_rate\", \"direction\": \"down_small\", \"reason\": \"short reason\"}\n  ],\n  \"reason\": \"short paragraph\",\n  \"confidence\": 0.0\n}\n"
+}
+
+Follow the planner's chosen parameter focus and movement directions unless doing so would repeat an exact prior spec.
+Prioritize these keys first: min_df, char_ngram_max, logreg_c
+
+Default if unsure:
+{
+  "architecture": "BoW_advanced",
+  "word_max_features": 30000,
+  "char_max_features": 20000,
+  "word_ngram_max": 2,
+  "char_ngram_min": 3,
+  "char_ngram_max": 4,
+  "min_df": 1,
+  "logreg_c": 4.2,
+  "val_size": 0.2,
+  "threshold_min": 0.3,
+  "threshold_max": 0.7,
+  "threshold_steps": 41,
+  "dry_run_head": 200,
+  "experiment_name": "bow_advanced_opt_20260514_115919_run_02",
+  "submission_path": "/Users/niccogermani/Desktop/gitrepo/apa-disaster-tweets-agent/apa-disaster-tweets-agent-Nicc-copy/src/Agent_4/runs/bow_advanced_opt_20260514_115919/run_002/submission.csv"
+}

@@ -14,7 +14,7 @@ Required pipeline:
 - FINAL_SUBMISSION = os.environ.get("AGENT_FINAL_SUBMISSION") == "1"
 - TRAIN_FRACTION = float(os.environ.get("AGENT_TRAIN_FRACTION", "1.0"))
 - SAMPLE_SEED = int(os.environ.get("AGENT_SAMPLE_SEED", "42"))
-- fillna keyword, location, text with ""
+- fillna keyword, location, text with "" by REASSIGNMENT: `df["col"] = df["col"].fillna("")`. DO NOT use `inplace=True` — pandas 3.0+ raises ChainedAssignmentError on that pattern
 - build one text field from keyword + " [SEP] " + text, else text
 - create X as raw text array and y as target array
 - if DRY_RUN, use head(dry_run_head)
@@ -24,12 +24,13 @@ Required pipeline:
 - use sklearn TfidfVectorizer with spec values
 - use LogisticRegression with C from spec
 - predict validation probabilities always
-- if FINAL_SUBMISSION is true, after choosing the best cutoff, refit the vectorizer/model on every labeled row currently loaded in train_df before test prediction
-- predict test probabilities and write submission_path only if WRITE_SUBMISSION is true
-- choose best cutoff by looping over np.linspace(threshold_min, threshold_max, threshold_steps)
+- ALWAYS tune the decision threshold (NOT gated on FINAL_SUBMISSION). Loop over `np.linspace(spec["threshold_min"], spec["threshold_max"], spec["threshold_steps"])`. Track `best_threshold` and `best_f1` as the candidate maximising val F1. Compute `acc = accuracy_score(y_val, (val_probs >= best_threshold).astype(int))`. The threshold sweep MUST run on every invocation so the chosen threshold is deterministic given the spec.
+- The METRICS line MUST report `f1 = best_f1` (not F1 at threshold 0.5).
+- if FINAL_SUBMISSION is true, you MAY refit BOTH the vectorizer AND the classifier on the full `train_df` before test prediction — do NOT reuse the 80%-fit vectorizer with a refit classifier (the feature space would mismatch). If you skip the refit, simply use the already-trained vectorizer+classifier for test prediction.
+- predict test probabilities and write submission_path only if WRITE_SUBMISSION is true, applying `best_threshold` (NOT 0.5)
 - when WRITE_SUBMISSION is true, save columns id,target to submission_path
 - last line exactly:
-  print('METRICS: {"f1": ' + str(round(f1, 4)) + ', "accuracy": ' + str(round(acc, 4)) + '}')
+  print('METRICS: {"f1": ' + str(round(best_f1, 4)) + ', "accuracy": ' + str(round(acc, 4)) + ', "best_threshold": ' + str(round(best_threshold, 4)) + '}')
 
 Do not use:
 - torch

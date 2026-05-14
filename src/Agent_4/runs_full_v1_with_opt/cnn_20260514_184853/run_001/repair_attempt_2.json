@@ -1,0 +1,12 @@
+```json
+{
+  "diagnosis": "Validation loader returns (inputs, labels) tuples; unpack it or strip labels before model(...).",
+  "edits": [
+    {
+      "action": "replace",
+      "target": "sequences, _ = sequences.to(device), labels.to(device)",
+      "content": "sequences = sequences.to(device)"
+    }
+  ]
+}
+```

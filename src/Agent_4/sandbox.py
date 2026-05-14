@@ -1,4 +1,4 @@
-"""Sandboxed execution for Agent_3 generated experiments."""
+"""Sandboxed execution for Agent_4 generated experiments."""
 
 from __future__ import annotations
 
@@ -63,7 +63,7 @@ def _write_temp_script(
             )
             + code
         )
-    fd, path = tempfile.mkstemp(suffix=".py", prefix="agent3_")
+    fd, path = tempfile.mkstemp(suffix=".py", prefix="agent4_")
     with os.fdopen(fd, "w", encoding="utf-8") as f:
         f.write(code)
     return path
@@ -104,7 +104,7 @@ def _sampled_data_dir(
     if not needs_train_sample and test_rows is None:
         return None
 
-    sampled_dir = tempfile.mkdtemp(prefix="agent3_sampled_data_")
+    sampled_dir = tempfile.mkdtemp(prefix="agent4_sampled_data_")
     if requested_rows is not None:
         train = train.sample(n=min(requested_rows, len(train)), random_state=seed).reset_index(drop=True)
     elif train_fraction < 1.0:

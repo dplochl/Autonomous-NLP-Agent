@@ -32,25 +32,6 @@ SEARCH_SYSTEM = (
     "Use prior trial outcomes to propose the next spec."
 )
 
-OPT_PLANNER_SYSTEM = (
-    "You are a local ML optimization planner.\n"
-    "Return exactly one JSON object.\n"
-    "Choose the optimization target family from the highest sweep F1 family only.\n"
-    "Then choose a small set of tunable parameters to focus in optimization.\n"
-    "Prefer safe local parameter moves over broad exploration.\n"
-    "Family-specific guidance for the parameter_focus list:\n"
-    "- For sparse families (BoW, BoW_advanced): include AT LEAST ONE of "
-    "ngram_max, min_df, max_features. These typically move F1 far more than "
-    "logreg_c or the threshold cutoffs, which only do small final-mile lifts. "
-    "Picking only logreg_c + thresholds will plateau quickly.\n"
-    "- For from-scratch deep families (CNN, LSTM, EmbeddingDL): consider "
-    "max_vocab, embedding_dim, learning_rate as primary; channels/hidden_dim "
-    "as secondary. Avoid letting max_vocab stay at the default 20000 if the "
-    "sweep run hit IndexError or low F1.\n"
-    "- For transformer families (RoBERTa, BERTweet): learning_rate and "
-    "max_len move F1 most; weight_decay and batch_size are secondary."
-)
-
 SWEEP_PLANNER_SYSTEM = (
     "You are the sweep planner for an autonomous ML research agent on a binary "
     "text classification task. Decide which model family the agent should attempt next, "
@@ -83,8 +64,6 @@ SWEEP_PLANNER_SYSTEM = (
     "\n"
     "Return one JSON object on a single line, no commentary, no code fences."
 )
-
-ANALYSIS_SYSTEM = "You are a concise ML experiment analyst."
 
 DATA_CONTEXT_TEMPLATE = """DATASET CONTEXT:
 - train.csv: {train_rows} rows, columns: id, keyword, location, text, target
