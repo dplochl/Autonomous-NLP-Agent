@@ -1,0 +1,43 @@
+Plan one reliable BoW experiment spec for the Kaggle Disaster Tweets task.
+
+Return a reliable sparse-text baseline spec. Prefer conservative TF-IDF settings and a single validation split. Do not propose deep learning or ensembles.
+
+Return one JSON object only — see the system prompt for the exact three-field schema (hypothesis + changed_keys + spec keys). The hypothesis must reference concrete prior evidence when available (a past F1, a spec choice that worked or didn't). DO NOT just say 'establish a baseline' if prior-launch evidence below shows what already worked.
+
+Tunable keys you may put in 'changed_keys': max_features, ngram_max, min_df, logreg_c, val_size, threshold_min, threshold_max, threshold_steps
+
+PRIOR-LAUNCH EVIDENCE for BoW (newest+highest-F1 first):
+  - F1=0.7255  spec: architecture=BoW, logreg_c=1, max_features=5000, min_df=5, ngram_max=2, threshold_max=0.7, threshold_min=0.3, threshold_steps=41, val_size=0.2, vectorizer_type=tfidf_word
+      prior hypothesis: [orchestrator-generated] LLM proposed a spec already refuted in prior launches; mutated `max_features`=5000 (was 8000), `min_df`=5 (was 7) to explore a different region of the parameter space (prior BoW best F1=0.7255). | Original LLM hypothesis: Decrease max_features to 8000 and increase min_df to 7 to test if a simpler model can achieve similar or better performance compared to the previous best F1=0.7255.
+      prior verdict   : The hypothesis was refuted. Despite mutating `max_features` to 5000 and `min_df` to 5, which were intended to explore a simpler model, the resulting F1 score remained at 0.7255, matching the prior best performance without any improvement.
+
+Use this evidence: write a hypothesis that proposes a SPECIFIC move vs. the prior best (e.g. 'try lr=5e-6 to test if the 0.7976 best can be pushed via slower training') rather than a generic baseline statement. Pay attention to the prior verdicts — if a hypothesis was already refuted, do not re-test the same direction; pivot to a different parameter or value.
+
+Dataset context:
+DATASET CONTEXT:
+- train.csv: 7613 rows, columns: id, keyword, location, text, target
+- test.csv: 3263 rows, columns: id, keyword, location, text
+- Class balance: 4342 not-disaster (57.0%), 3271 disaster (43.0%)
+- Missing keyword: 0.8%
+- Missing location: 33.3%
+
+
+Recent in-launch history:
+No prior runs.
+
+Family default spec (this is the anchor — your 'changed_keys' lists what you intend to change FROM this). You MUST list at LEAST 3 tunable keys in 'changed_keys' and the spec values you return for those keys must differ from the default. Any spec key you change but DO NOT name in changed_keys will be silently reset to the default — this enforces hypothesis-as-source-of-truth.
+{
+  "architecture": "BoW",
+  "vectorizer_type": "tfidf_word",
+  "max_features": 20000,
+  "ngram_max": 2,
+  "min_df": 2,
+  "logreg_c": 3.0,
+  "val_size": 0.2,
+  "threshold_min": 0.3,
+  "threshold_max": 0.7,
+  "threshold_steps": 41,
+  "dry_run_head": 200,
+  "experiment_name": "bow_20260515_132415_run_01",
+  "submission_path": "/Users/niccogermani/Library/Containers/com.apple.iMovieApp/Data/Documents/Catolica/apa-disaster-tweets-clean/src/Agent_4/runs/bow_20260515_132415/run_001/submission.csv"
+}

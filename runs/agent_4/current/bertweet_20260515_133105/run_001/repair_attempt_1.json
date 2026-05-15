@@ -1,0 +1,12 @@
+```json
+{
+  "diagnosis": "The variable `y` is a numpy array, which does not have the `nunique` method. We need to convert it back to a pandas Series for this operation.",
+  "edits": [
+    {
+      "action": "replace",
+      "target": "stratify_labels = y if y.nunique() > 1 and y.value_counts().min() >= 2 else None",
+      "content": "stratify_labels = pd.Series(y) if len(np.unique(y)) > 1 and np.min(np.bincount(y)) >= 2 else None"
+    }
+  ]
+}
+```

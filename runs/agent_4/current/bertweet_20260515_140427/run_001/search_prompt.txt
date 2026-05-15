@@ -1,0 +1,105 @@
+Propose the next BERTweet experiment spec.
+
+Search locally around the best BERTweet settings. Prefer nearby changes in sequence length, batch size, learning rate, weight decay, or epochs instead of drastic jumps.
+
+PRIOR-LAUNCH EVIDENCE for BERTweet (newest+highest-F1 first):
+  - F1=0.7720  spec: architecture=BERTweet, eval_batch_size=16, learning_rate=1.00e-05, max_len=144, model_name=vinai/bertweet-base, num_epochs=3, threshold_max=0.7, threshold_min=0.3, threshold_steps=41, train_batch_size=13, val_size=0.2, weight_decay=0.01
+      prior hypothesis: Reduce learning rate from 1.5e-05 to 1.0e-05 and increase max_len from 128 to 144 to test if a slower training rate with slightly longer sequences can improve F1 score beyond the previous best of 0.7742. [orchestrator-added: train_batch_size=13]
+      prior verdict   : The hypothesis was refuted. The experiment aimed to improve the F1 score by reducing the learning rate and increasing the maximum sequence length, but the resulting F1 score of 0.772 did not exceed the previous best of 0.7742.
+
+Use this evidence: write a hypothesis that proposes a SPECIFIC move vs. the prior best (e.g. 'try lr=5e-6 to test if the 0.7976 best can be pushed via slower training') rather than a generic baseline statement. Pay attention to the prior verdicts — if a hypothesis was already refuted, do not re-test the same direction; pivot to a different parameter or value.
+
+Rules:
+- keep the architecture family fixed
+- keep the same overall prompt contract and pipeline shape
+- vary only these tunable keys: max_len, train_batch_size, eval_batch_size, learning_rate, weight_decay, num_epochs
+- optimize against the best successful session trial, not the last run
+- keep the best successful spec as the default anchor and mutate it only slightly
+- this is the family sweep phase, so explore different regions of the parameter space
+- the runner uses a 2k labeled sample split 80/20 for training/validation
+- usually change 2 to 4 tunable keys in one coordinated move
+- with a 5-run budget, cover both model-capacity keys and optimization keys instead of nudging only one key repeatedly
+- prefer combinations such as sequence/model size + regularization + optimization, for example max_len/channels with learning_rate/dropout/batch_size/epochs
+- do not repeat an exact spec already tried in this session
+- if a run timed out, reduce cost
+- if a run crashed, simplify the risky parameter region
+- if repeated runs get the same F1, switch to different tunable keys instead of repeating weak ones
+- return one JSON object only — see the system prompt for the exact three-field schema (hypothesis + changed_keys + spec keys). The 'changed_keys' list MUST contain every tunable key you intend to modify vs. the prior best anchor below; any silent change will be reset to the anchor value.
+
+Dataset context:
+DATASET CONTEXT:
+- train.csv: 7613 rows, columns: id, keyword, location, text, target
+- test.csv: 3263 rows, columns: id, keyword, location, text
+- Class balance: 4342 not-disaster (57.0%), 3271 disaster (43.0%)
+- Missing keyword: 0.8%
+- Missing location: 33.3%
+
+
+Family history:
+- [1] bertweet_20260515_133105_run_01 run 1 | F1=0.7812 | OK | **CONCLUSION:** The hypothesis was confirmed. Reducing the learning rate from 1.5e-05 to 1.0e-05 and
+
+Session trials so far:
+- run -1: status=OK, f1=0.7812, spec={"architecture": "BERTweet", "dry_run_head": 16, "eval_batch_size": 16, "experiment_name": "bertweet_20260515_133105_run_01", "learning_rate": 1e-05, "max_len": 144, "model_name": "vinai/bertweet-base", "num_epochs": 3, "submission_path": "/Users/niccogermani/Library/Containers/com.apple.iMovieApp/Data/Documents/Catolica/apa-disaster-tweets-clean/src/Agent_4/runs/bertweet_20260515_133105/run_001/submission.csv", "threshold_max": 0.7, "threshold_min": 0.3, "threshold_steps": 41, "train_batch_size": 16, "val_size": 0.2, "weight_decay": 0.01}
+
+Best session trial so far:
+{
+  "run_index": -1,
+  "spec": {
+    "architecture": "BERTweet",
+    "model_name": "vinai/bertweet-base",
+    "max_len": 144,
+    "train_batch_size": 16,
+    "eval_batch_size": 16,
+    "learning_rate": 1e-05,
+    "weight_decay": 0.01,
+    "num_epochs": 3,
+    "val_size": 0.2,
+    "threshold_min": 0.3,
+    "threshold_max": 0.7,
+    "threshold_steps": 41,
+    "dry_run_head": 16,
+    "experiment_name": "bertweet_20260515_133105_run_01",
+    "submission_path": "/Users/niccogermani/Library/Containers/com.apple.iMovieApp/Data/Documents/Catolica/apa-disaster-tweets-clean/src/Agent_4/runs/bertweet_20260515_133105/run_001/submission.csv"
+  },
+  "hypothesis": "Reducing the learning rate from 1.5e-05 to 1.0e-05 and increasing the maximum sequence length from 128 to 144 to test if a slower training rate with slightly longer sequences can improve F1 score beyond the previous best of 0.7742.",
+  "success": true,
+  "metrics": {
+    "f1": 0.7812,
+    "accuracy": 0.825,
+    "best_threshold": 0.7
+  },
+  "analysis": "**CONCLUSION:** The hypothesis was confirmed. Reducing the learning rate from 1.5e-05 to 1.0e-05 and increasing the maximum sequence length from 128 to 144 resulted in an improved F1 score of 0.7812, surpassing the previous best of 0.7742.\n\n**WHAT WORKED:** The key concrete signal was the improvement in the F1 score, which increased by approximately 0.5% compared to the previous run, indicating that the combination of a slower learning rate and longer sequences had a positive impact on model performance.\n\n**WHAT FAILED:** There were no significant failures in this run. However, there were some unexpected parameters during loading from the checkpoint, which could potentially affect performance if not addressed properly in future runs.\n\n**NEXT MOVE:** The next trial should focus on further optimizing the learning rate schedule and exploring additional hyperparameters such as batch size or weight decay to fine-tune the model's performance even further. Additionally, addressing the missing parameters reported during loading might help stabilize the training process.",
+  "run_dir": "/Users/niccogermani/Library/Containers/com.apple.iMovieApp/Data/Documents/Catolica/apa-disaster-tweets-clean/src/Agent_4/runs/bertweet_20260515_133105/run_001",
+  "outcome": "success",
+  "wall_seconds": 450.8,
+  "error_summary": "",
+  "repair_attempts": 1,
+  "seeded": true
+}
+
+Stagnant keys from equal-F1 or same-prediction runs: none
+Preferred keys for the next move: max_len, train_batch_size, eval_batch_size, learning_rate, weight_decay, num_epochs
+Latest equal-F1 matched prior run: none
+Latest equal-F1 changed keys to avoid repeating: none
+Repeated best F1 detected: no
+Aggressive exploration mode: no
+Wild card injection: no
+
+Prior-best anchor spec (your 'changed_keys' lists what you intend to change FROM this; this is the prior best successful trial, NOT the family default):
+{
+  "architecture": "BERTweet",
+  "model_name": "vinai/bertweet-base",
+  "max_len": 144,
+  "train_batch_size": 16,
+  "eval_batch_size": 16,
+  "learning_rate": 1e-05,
+  "weight_decay": 0.01,
+  "num_epochs": 3,
+  "val_size": 0.2,
+  "threshold_min": 0.3,
+  "threshold_max": 0.7,
+  "threshold_steps": 41,
+  "dry_run_head": 16,
+  "experiment_name": "bertweet_20260515_140427_run_01",
+  "submission_path": "/Users/niccogermani/Library/Containers/com.apple.iMovieApp/Data/Documents/Catolica/apa-disaster-tweets-clean/src/Agent_4/runs/bertweet_20260515_140427/run_001/submission.csv"
+}

@@ -1,0 +1,17 @@
+```json
+{
+  "diagnosis": "Variable names mismatch",
+  "edits": [
+    {
+      "action": "replace",
+      "target": "train_dataset = TweetDataset(train_texts, y_train, tokenizer=tokenizer, max_len=144)",
+      "content": "train_dataset = TweetDataset(X_train, y_train, tokenizer=tokenizer, max_len=144)"
+    },
+    {
+      "action": "replace",
+      "target": "val_dataset = TweetDataset(val_texts, val_labels, tokenizer=tokenizer, max_len=144)",
+      "content": "val_dataset = TweetDataset(X_val, y_val, tokenizer=tokenizer, max_len=144)"
+    }
+  ]
+}
+```

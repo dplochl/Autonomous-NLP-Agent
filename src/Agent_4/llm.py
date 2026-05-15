@@ -36,20 +36,20 @@ class OllamaClient:
             print("[LLM] ERROR: Cannot connect to Ollama at localhost:11434")
             raise
 
-    def _call(self, system: str, user: str) -> str:
+    def _call(self, system: str, user: str, temperature: float = 0.2) -> str:
         payload = {
             "model": self.model,
             "messages": [
                 {"role": "system", "content": system},
                 {"role": "user", "content": user},
             ],
-            "temperature": 0.2,
+            "temperature": temperature,
             "stream": False,
         }
         try:
             preview = user.strip().splitlines()[0][:100] if user.strip() else "(empty prompt)"
             started = time.perf_counter()
-            print(f"[LLM] Request started | model={self.model} | timeout={TIMEOUT}s | prompt='{preview}'")
+            print(f"[LLM] Request started | model={self.model} | temp={temperature} | timeout={TIMEOUT}s | prompt='{preview}'")
             response = requests.post(OLLAMA_URL, json=payload, timeout=TIMEOUT)
             response.raise_for_status()
             elapsed = time.perf_counter() - started
@@ -60,15 +60,15 @@ class OllamaClient:
         except Exception as exc:  # noqa: BLE001
             return f"[LLM ERROR] {exc}"
 
-    def propose(self, system: str, user: str) -> tuple[str, str]:
-        response = self._call(system, user)
+    def propose(self, system: str, user: str, temperature: float = 0.2) -> tuple[str, str]:
+        response = self._call(system, user, temperature=temperature)
         if response.startswith("[LLM ERROR]"):
             print(f"[LLM] Error: {response}")
             return "", ""
         return response, extract_code_block(response)
 
-    def respond(self, system: str, user: str) -> str:
-        response = self._call(system, user)
+    def respond(self, system: str, user: str, temperature: float = 0.2) -> str:
+        response = self._call(system, user, temperature=temperature)
         if response.startswith("[LLM ERROR]"):
             print(f"[LLM] Error: {response}")
             return ""

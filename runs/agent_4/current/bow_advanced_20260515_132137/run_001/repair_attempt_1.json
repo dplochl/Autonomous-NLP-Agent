@@ -1,0 +1,12 @@
+```json
+{
+  "diagnosis": "Missing import for numpy",
+  "edits": [
+    {
+      "action": "insert_before",
+      "target": "import os",
+      "content": "import numpy as np"
+    }
+  ]
+}
+```

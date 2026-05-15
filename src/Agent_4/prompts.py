@@ -21,7 +21,35 @@ PATCH_REPAIR_SYSTEM = (
 SPEC_SYSTEM = (
     "You are a careful ML experiment planner.\n"
     "Return exactly one JSON object.\n"
-    "Do not return code fences, prose, or commentary."
+    "Do not return code fences, prose, or commentary.\n"
+    "The JSON object MUST include three top-level fields:\n"
+    "  1. 'hypothesis' — ONE short sentence (under 25 words) explaining "
+    "WHY this spec is worth trying. When prior-launch evidence for this "
+    "family exists in the user prompt, your hypothesis MUST reference a "
+    "concrete prior F1 or spec choice and propose a SPECIFIC move (not a "
+    "generic baseline statement). When no prior evidence is available, "
+    "state that explicitly.\n"
+    "  2. 'changed_keys' — a JSON array listing EVERY tunable key you are "
+    "changing vs. the default spec shown in the user prompt. The hypothesis "
+    "MUST describe these specific changes; any key you change but don't "
+    "list will be reset to its default value, and any key you list MUST be "
+    "actually changed in the spec object. This forces the hypothesis to be "
+    "an honest description of the experiment, not marketing prose.\n"
+    "  3. all the spec keys (architecture, learning_rate, etc.) at the top "
+    "level — copy the default values for the keys you are NOT changing, and "
+    "supply your chosen values for the keys named in 'changed_keys'.\n"
+    "Examples:\n"
+    "  hypothesis: 'Lowering lr=1e-5 (below the prior 1.5e-5 best) to test "
+    "if BERTweet was undertrained at F1=0.7778.'\n"
+    "  changed_keys: ['learning_rate']\n"
+    "\n"
+    "  hypothesis: 'Doubling dropout from 0.3 to 0.6 AND reducing max_len "
+    "from 128 to 96 to test whether the 1600-row slice is overfitting.'\n"
+    "  changed_keys: ['dropout', 'max_len']\n"
+    "\n"
+    "  hypothesis: 'No prior runs for this family; running the family "
+    "default spec to gather the first measurement.'\n"
+    "  changed_keys: []"
 )
 
 SEARCH_SYSTEM = (
@@ -29,7 +57,30 @@ SEARCH_SYSTEM = (
     "Return exactly one JSON object.\n"
     "Keep the architecture family fixed.\n"
     "Vary only safe experiment parameters.\n"
-    "Use prior trial outcomes to propose the next spec."
+    "Use prior trial outcomes to propose the next spec.\n"
+    "The JSON object MUST include three top-level fields:\n"
+    "  1. 'hypothesis' — ONE short sentence (under 25 words) stating WHAT "
+    "you are testing and WHY, given the prior trials' F1s. The hypothesis "
+    "MUST name a concrete parameter change vs. the prior best AND a "
+    "concrete prior F1 you are trying to improve on. If a prior verdict "
+    "shows a direction was already refuted, do NOT re-propose the same "
+    "direction — pivot to a different parameter.\n"
+    "  2. 'changed_keys' — a JSON array listing EVERY tunable key you are "
+    "changing vs. the prior best spec shown in the user prompt. The "
+    "hypothesis MUST describe these specific changes; any key you change "
+    "but don't list will be reset to the prior best value, and any key you "
+    "list MUST be actually changed in the spec.\n"
+    "  3. all the spec keys (architecture, learning_rate, etc.) at the top "
+    "level — copy the prior best values for the keys you are NOT changing, "
+    "and supply your chosen values for the keys named in 'changed_keys'.\n"
+    "Examples:\n"
+    "  hypothesis: 'Doubling dropout from 0.3 to 0.6 to test if the 0.72 "
+    "F1 ceiling is driven by overfitting.'\n"
+    "  changed_keys: ['dropout']\n"
+    "\n"
+    "  hypothesis: 'Trying char-ngrams 4-7 because Twitter text has heavy "
+    "abbreviation and word-only TF-IDF plateaued at F1=0.72.'\n"
+    "  changed_keys: ['char_ngram_min', 'char_ngram_max']"
 )
 
 SWEEP_PLANNER_SYSTEM = (
@@ -73,11 +124,15 @@ DATA_CONTEXT_TEMPLATE = """DATASET CONTEXT:
 - Missing location: {missing_loc:.1f}%
 """
 
-ANALYSIS_PROMPT_TEMPLATE = """Analyze this experiment briefly.
+ANALYSIS_PROMPT_TEMPLATE = """Evaluate this experiment as if it were a single research trial.
 
 EXPERIMENT: {name}
 FAMILY: {family}
 STATUS: {status}
+
+HYPOTHESIS (what the spec proposer wanted to test):
+{hypothesis}
+
 SPEC:
 {spec_json}
 
@@ -88,5 +143,9 @@ STDOUT TAIL:
 STDERR TAIL:
 {stderr_tail}
 
-Write 3-5 sentences on what worked, what failed, and what the next run should change.
+Write 3-5 sentences with these elements:
+1. CONCLUSION: did the hypothesis hold? Confirmed / refuted / inconclusive — and why.
+2. WHAT WORKED: one concrete signal from the run (or 'nothing' if it failed).
+3. WHAT FAILED: one concrete failure mode (or 'no failure' if successful).
+4. NEXT MOVE: one specific direction the next trial of this family should take.
 """

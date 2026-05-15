@@ -1,0 +1,3 @@
+```json
+{"action":"try_family","family_key":"lstm","reason":"It has not plateaued and a previous trial showed signal."}
+```

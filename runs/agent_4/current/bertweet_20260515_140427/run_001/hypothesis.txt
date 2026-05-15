@@ -1,0 +1,1 @@
+Decrease the learning rate from 1.0e-05 to 5e-06 and increase the batch size from 16 to 32 to test if a slower training rate with larger batches can improve F1 score beyond the previous best of 0.7812.

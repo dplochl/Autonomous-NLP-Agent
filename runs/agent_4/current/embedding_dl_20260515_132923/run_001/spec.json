@@ -1,0 +1,20 @@
+{
+  "architecture": "EmbeddingDL",
+  "embedding_source": "learned",
+  "glove_path": "data/glove.6B.100d.txt",
+  "max_vocab": 19375,
+  "max_len": 55,
+  "embedding_dim": 69,
+  "hidden_dim": 128,
+  "dropout": 0.35,
+  "batch_size": 64,
+  "epochs": 4,
+  "learning_rate": 0.0001,
+  "val_size": 0.2,
+  "threshold_min": 0.3,
+  "threshold_max": 0.7,
+  "threshold_steps": 41,
+  "dry_run_head": 200,
+  "experiment_name": "embedding_dl_20260515_132923_run_01",
+  "submission_path": "/Users/niccogermani/Library/Containers/com.apple.iMovieApp/Data/Documents/Catolica/apa-disaster-tweets-clean/src/Agent_4/runs/embedding_dl_20260515_132923/run_001/submission.csv"
+}

@@ -1,0 +1,1 @@
+Reducing `char_max_features` from 20,000 to 18,000 and decreasing `logreg_c` from 4.0 to 3.5 to test if a more conservative feature set with slightly stronger regularization can improve generalization.

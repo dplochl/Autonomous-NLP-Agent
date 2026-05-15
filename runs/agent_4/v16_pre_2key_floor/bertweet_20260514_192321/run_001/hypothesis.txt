@@ -1,0 +1,1 @@
+Doubling logreg_c to test if regularization was too strong.

@@ -1,0 +1,3 @@
+```json
+{"action":"try_family","family_key":"bow_advanced","reason":"It has a successful trial and is still eligible."}
+```

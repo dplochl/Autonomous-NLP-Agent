@@ -1,0 +1,105 @@
+Propose the next LSTM experiment spec.
+
+Search locally around the best successful LSTM settings. Adjust hidden size, max length, dropout, learning rate, and epochs with nearby changes.
+
+PRIOR-LAUNCH EVIDENCE for LSTM (newest+highest-F1 first):
+  - F1=0.5965  spec: architecture=LSTM, batch_size=64, dropout=0.3, embedding_dim=128, epochs=3, hidden_dim=128, learning_rate=1.00e-03, max_len=64, max_vocab=14375, num_layers=1, threshold_max=0.7, threshold_min=0.3, threshold_steps=41, val_size=0.2
+      prior hypothesis: [orchestrator-generated] LLM proposed a spec already refuted in prior launches; mutated `max_vocab`=14375 (was 20000) to explore a different region of the parameter space. | Original LLM hypothesis: Try a BiLSTM architecture to see if it improves performance over the previous LSTM baseline.
+      prior verdict   : The hypothesis that reducing `max_vocab` to 14,375 would explore a different region of the parameter space and potentially improve performance over previous launches was inconclusive. While the experiment did not fail, the metrics (F1 scor…
+
+Use this evidence: write a hypothesis that proposes a SPECIFIC move vs. the prior best (e.g. 'try lr=5e-6 to test if the 0.7976 best can be pushed via slower training') rather than a generic baseline statement. Pay attention to the prior verdicts — if a hypothesis was already refuted, do not re-test the same direction; pivot to a different parameter or value.
+
+Rules:
+- keep the architecture family fixed
+- keep the same overall prompt contract and pipeline shape
+- vary only these tunable keys: max_vocab, max_len, embedding_dim, hidden_dim, num_layers, dropout, batch_size, epochs, learning_rate
+- optimize against the best successful session trial, not the last run
+- keep the best successful spec as the default anchor and mutate it only slightly
+- this is the family sweep phase, so explore different regions of the parameter space
+- the runner uses a 2k labeled sample split 80/20 for training/validation
+- usually change 2 to 4 tunable keys in one coordinated move
+- with a 5-run budget, cover both model-capacity keys and optimization keys instead of nudging only one key repeatedly
+- prefer combinations such as sequence/model size + regularization + optimization, for example max_len/channels with learning_rate/dropout/batch_size/epochs
+- do not repeat an exact spec already tried in this session
+- if a run timed out, reduce cost
+- if a run crashed, simplify the risky parameter region
+- if repeated runs get the same F1, switch to different tunable keys instead of repeating weak ones
+- return one JSON object only — see the system prompt for the exact three-field schema (hypothesis + changed_keys + spec keys). The 'changed_keys' list MUST contain every tunable key you intend to modify vs. the prior best anchor below; any silent change will be reset to the anchor value.
+
+Dataset context:
+DATASET CONTEXT:
+- train.csv: 7613 rows, columns: id, keyword, location, text, target
+- test.csv: 3263 rows, columns: id, keyword, location, text
+- Class balance: 4342 not-disaster (57.0%), 3271 disaster (43.0%)
+- Missing keyword: 0.8%
+- Missing location: 33.3%
+
+
+Family history:
+- [6] lstm_20260515_135004_run_01 run 1 | F1=N/A | FAILED | **CONCLUSION:** The hypothesis that switching from LSTM to BiLSTM would improve performance was inco
+
+Session trials so far:
+- run -1: status=FAILED, f1=N/A, spec={"architecture": "LSTM", "batch_size": 64, "dropout": 0.3, "dry_run_head": 200, "embedding_dim": 128, "epochs": 3, "experiment_name": "lstm_20260515_135004_run_01", "hidden_dim": 128, "learning_rate": 0.001, "max_len": 64, "max_vocab": 14375, "num_layers": 2, "submission_path": "/Users/niccogermani/Library/Containers/com.apple.iMovieApp/Data/Documents/Catolica/apa-disaster-tweets-clean/src/Agent_4/runs/lstm_20260515_135004/run_001/submission.csv", "threshold_max": 0.7, "threshold_min": 0.3, "threshold_steps": 41, "val_size": 0.2}
+
+Best session trial so far:
+{
+  "run_index": -1,
+  "spec": {
+    "architecture": "LSTM",
+    "max_vocab": 14375,
+    "max_len": 64,
+    "embedding_dim": 128,
+    "hidden_dim": 128,
+    "num_layers": 2,
+    "dropout": 0.3,
+    "batch_size": 64,
+    "epochs": 3,
+    "learning_rate": 0.001,
+    "val_size": 0.2,
+    "threshold_min": 0.3,
+    "threshold_max": 0.7,
+    "threshold_steps": 41,
+    "dry_run_head": 200,
+    "experiment_name": "lstm_20260515_135004_run_01",
+    "submission_path": "/Users/niccogermani/Library/Containers/com.apple.iMovieApp/Data/Documents/Catolica/apa-disaster-tweets-clean/src/Agent_4/runs/lstm_20260515_135004/run_001/submission.csv"
+  },
+  "hypothesis": "Switching from LSTM to BiLSTM (prior F1=0.5965) to test if bidirectional processing improves performance. [orchestrator-added: max_vocab=14375]",
+  "success": false,
+  "metrics": {},
+  "analysis": "**CONCLUSION:** The hypothesis that switching from LSTM to BiLSTM would improve performance was inconclusive due to a crash during execution. The experiment did not reach completion, and thus no F1 score or other metrics could be evaluated.\n\n**WHAT WORKED:** The specification parameters such as `batch_size`, `dropout`, and `embedding_dim` were correctly set up for the LSTM architecture.\n\n**WHAT FAILED:** The run crashed due to a syntax error in the code at line 64, indicating an unexpected assignment operator. This suggests that there was a coding issue that prevented the model from training.\n\n**NEXT MOVE:** For the next trial of this family, the focus should be on debugging and resolving the syntax error identified in the crash report. Once the code is corrected, the experiment can be rerun to test whether switching from LSTM to BiLSTM indeed improves performance. Additionally, incorporating a validation set with metrics tracking could provide more insights into model performance.",
+  "run_dir": "/Users/niccogermani/Library/Containers/com.apple.iMovieApp/Data/Documents/Catolica/apa-disaster-tweets-clean/src/Agent_4/runs/lstm_20260515_135004/run_001",
+  "outcome": "code_gen_failed",
+  "wall_seconds": 169.0,
+  "error_summary": "Edit 1 target not found for replace.",
+  "repair_attempts": 1,
+  "seeded": true
+}
+
+Stagnant keys from equal-F1 or same-prediction runs: none
+Preferred keys for the next move: max_vocab, max_len, embedding_dim, hidden_dim, num_layers, dropout, batch_size, epochs, learning_rate
+Latest equal-F1 matched prior run: none
+Latest equal-F1 changed keys to avoid repeating: none
+Repeated best F1 detected: no
+Aggressive exploration mode: no
+Wild card injection: no
+
+Prior-best anchor spec (your 'changed_keys' lists what you intend to change FROM this; this is the prior best successful trial, NOT the family default):
+{
+  "architecture": "LSTM",
+  "max_vocab": 20000,
+  "max_len": 64,
+  "embedding_dim": 128,
+  "hidden_dim": 128,
+  "num_layers": 1,
+  "dropout": 0.3,
+  "batch_size": 64,
+  "epochs": 3,
+  "learning_rate": 0.001,
+  "val_size": 0.2,
+  "threshold_min": 0.3,
+  "threshold_max": 0.7,
+  "threshold_steps": 41,
+  "dry_run_head": 200,
+  "experiment_name": "lstm_20260515_140009_run_01",
+  "submission_path": "/Users/niccogermani/Library/Containers/com.apple.iMovieApp/Data/Documents/Catolica/apa-disaster-tweets-clean/src/Agent_4/runs/lstm_20260515_140009/run_001/submission.csv"
+}

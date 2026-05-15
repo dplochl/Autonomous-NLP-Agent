@@ -1,0 +1,1 @@
+Decrease the learning rate from 0.001 to 5e-6 and reduce max_len from 48 to 35 to test if slower training with a shorter sequence length can improve upon the prior best F1 of 0.5965. [orchestrator-added: max_vocab=14375]

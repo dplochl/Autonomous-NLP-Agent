@@ -23,3 +23,7 @@ venv/
 
 # Live agent working dir (snapshots are committed under runs/agent_4/current/)
 src/Agent_4/runs/
+
+# In-launch write-only audit log — overwritten every launch by memory.py,
+# same data also lives in runs/agent_4/current/*/summary.json
+agent4_log.json

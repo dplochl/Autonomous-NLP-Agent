@@ -1,17 +1,17 @@
-# APA Disaster Tweets Agent — Agent_4
+# APA Disaster Tweets — Agent_4
 
 Autonomous research agent for the Kaggle competition `nlp-getting-started`:
 https://www.kaggle.com/competitions/nlp-getting-started
 
-The active and only implementation in this branch is `src/Agent_4/`. It uses two
-roles of a local Ollama-hosted LLM to:
+The active and only implementation in this branch is `src/Agent_4/`. The agent uses five distinct roles of a local Ollama-hosted LLM:
 
-- pick the next model family to try (sweep planner)
-- generate runnable training code for that family + spec
-- dry-run and execute the generated script in a CPU sandbox
-- repair failing code with surgical JSON edit-plans
-- log every planner decision and trial outcome
-- retrain the best overall script on a larger sample and write a Kaggle-ready submission
+- **Sweep planner** — picks the next model family to try, family by family
+- **Spec proposer** — writes a hypothesis + the exact keys to change for the next experiment
+- **Code generator** — produces a full Python training script from the validated spec
+- **Repair** — patches the script with surgical JSON edit-plans if it breaks
+- **Analyst** — writes a structured conclusion after every successful trial
+
+Around those five LLM roles sit **nine deterministic guard rails**: cross-launch memory, hypothesis-as-source-of-truth via `changed_keys`, a 2-key minimum diversity floor, `[orchestrator-added]` honesty annotations, cross-launch signature veto, per-call temperature split, plateau detection, spec validator, and a hardcoded final-submission tail. Full technical detail in [`src/Agent_4/README.md`](src/Agent_4/README.md).
 
 ## Repository layout
 
@@ -19,39 +19,27 @@ roles of a local Ollama-hosted LLM to:
 .
 ├── README.md
 ├── requirements.txt
+├── run.sh                        # bootstrap script: venv + Ollama check + launch
 ├── data/
 │   ├── train.csv
 │   └── test.csv
 ├── src/
-│   └── Agent_4/                ← all agent source
+│   └── Agent_4/                  ← all agent source (see src/Agent_4/README.md)
 ├── runs/
-│   ├── agent_3/                ← experiment logs from the earlier Agent_3 baseline (analysis only)
+│   ├── agent_3/                  ← historical sessions from the earlier Agent_3 baseline (analysis only)
 │   └── agent_4/
-│       ├── current/            ← latest live run snapshot
-│       ├── before_fix/         ← archived sessions, one folder per code version
+│       ├── current/              ← latest committed snapshot of a live run
+│       ├── before_fix/           ← archived sessions from earlier code versions
 │       ├── full_v1_with_opt/
-│       ├── v2_fixed/
-│       ├── v3_partial/
-│       ├── v4_stuck_on_lstm/
-│       ├── v5_qwen_planner/
-│       ├── v6_broken_submission/
-│       ├── v7_pandas_bug/
-│       ├── v8_nested_writebranch/
-│       ├── v9_partial/
-│       ├── v10_old_code/
-│       ├── v11_test_truncated/
-│       ├── v12_old_repair/
-│       ├── v13_missing_classifier/
-│       ├── v14_old_2k/
-│       └── v15_bow_validation/
+│       └── v2_fixed/ … v16_pre_2key_floor/
 ├── logs/
-│   ├── agent3_log.json         ← write-only in-launch log from Agent_3 days
-│   └── agent4_log.json         ← write-only in-launch log from Agent_4 launches
-└── submissions/                ← final Kaggle CSVs (filled by the agent)
+│   ├── agent3_log.json           ← write-only in-launch log from Agent_3 days
+│   ├── agent4_log.json           ← write-only in-launch log from Agent_4 launches (gitignored)
+│   └── agent4_short_term_memory.json  ← 20-trial rolling cross-launch memory
+└── submissions/                  ← final Kaggle CSVs (filled by the agent)
 ```
 
-The earlier Agent_3 source code is intentionally absent on this branch. Only its
-runs/ history is retained so the experiment log is still available for analysis.
+Earlier Agent_3 source code is intentionally absent on this branch. Only its runs history is retained so the experiment log is still available for analysis.
 
 ## Quick start — one command
 
@@ -61,10 +49,7 @@ After cloning, from the repo root:
 ./run.sh
 ```
 
-That script creates the virtualenv on first run, installs the dependencies,
-checks Ollama is up, makes sure `qwen2.5-coder:14b` is pulled, verifies the
-dataset is in place, and then launches the agent for the default 60-minute
-budget. Re-running it skips work already done and goes straight to the agent.
+That script creates the virtualenv on first run, installs dependencies, checks Ollama is up, makes sure `qwen2.5-coder:14b` is pulled, verifies the dataset is in place, and launches the agent for the default 60-minute budget.
 
 Useful variants:
 
@@ -76,85 +61,44 @@ Useful variants:
 
 ## Prerequisites
 
-The script handles steps 1, 3 and the dependency install for you. You only need
-to install these once on the machine:
+The script handles the dependency install for you. You only need:
 
 1. **Python 3.11+** (`brew install python@3.11` on macOS)
 2. **Ollama** running locally on `http://localhost:11434`
-   (`brew install ollama` then `ollama serve` in another terminal, or install
-   from <https://ollama.com/download>)
-3. **Kaggle Disaster Tweets data** at `data/train.csv` and `data/test.csv`
-   (already included in this branch — overwrite with your own copy if needed).
+   (`brew install ollama` then `ollama serve` in another terminal, or install from <https://ollama.com/download>)
+3. **Kaggle Disaster Tweets data** at `data/train.csv` and `data/test.csv` (included on this branch).
 
-If you prefer the manual flow without the bootstrap script:
+Manual flow without the bootstrap script:
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-ollama serve &                                  # in another terminal, or already running
+ollama serve &                                  # another terminal
 ollama pull qwen2.5-coder:14b                   # one-time, ~9 GB
 python3 src/Agent_4/agent.py                    # default 60-minute budget
 ```
 
-## Running the agent
-
-The bootstrap script above (`./run.sh`) is the easiest way. If you want to call
-the Python entrypoint directly, the equivalent commands are:
-
-```bash
-source .venv/bin/activate
-python3 src/Agent_4/agent.py                # full LLM-driven 60-minute run
-```
-
-Force one trial of a specific family (bypasses the sweep planner):
-
-```bash
-python3 src/Agent_4/agent.py --family bertweet
-```
-
-Override the sweep planner LLM:
-
-```bash
-python3 src/Agent_4/agent.py --sweep-planner-model gemma4:e4b
-```
-
-Shorter run for a smoke test:
-
-```bash
-python3 src/Agent_4/agent.py --time-budget-minutes 10
-```
-
-Disable persistence of the in-launch log:
-
-```bash
-python3 src/Agent_4/agent.py --fresh
-```
-
 ## Architecture in one screen
 
-1. The **sweep planner LLM** picks the next family to try (or stops the sweep)
-2. The orchestrator filters out families that fail eligibility (recurring
-   code-gen failures, recurring degenerate F1, can't fit in remaining time)
-3. The **code-generation LLM** writes a full training script for the chosen
-   family and spec
-4. The script is dry-run in a CPU sandbox (60 s timeout), then run to
-   completion (1000 s timeout)
-5. On failure the LLM is asked for a small JSON edit-plan (one of `replace`,
-   `insert_before`, `insert_after`); up to 4 repair attempts per trial
-6. The trial outcome is recorded (`success`, `degenerate_success`,
-   `code_gen_failed`, `training_crash`, `timeout`, `no_metrics`)
-7. Per-trial artifacts (spec, code, metrics, log, prompts, repair attempts) are
-   written to `src/Agent_4/runs/<family>_<ts>/run_NNN/`
+1. **Sweep planner LLM** picks the next family to try (or stops the sweep).
+2. Orchestrator filters out families that fail eligibility (recurring code-gen failures, recurring degenerate F1, plateaued, can't fit in remaining time).
+3. **Spec proposer LLM** writes a JSON object: `hypothesis` + `changed_keys` + spec values. Temperature 0.5.
+4. Orchestrator constrains the final spec to **only the keys the LLM declared in `changed_keys`** (silent changes reverted) and enforces a **2-key minimum** floor.
+5. Cross-launch veto fires if the final spec signature matches any prior-launch trial.
+6. **Code-generator LLM** writes a full training script for the chosen family and spec. Temperature 0.2.
+7. Script is dry-run in a CPU sandbox (60 s timeout), then full-run (1000 s timeout, 2 000-row sample for the sweep phase).
+8. On failure the **repair LLM** is asked for a small JSON edit-plan; up to 4 repair attempts.
+9. **Analyst LLM** writes a structured conclusion. The trial outcome (`success`, `degenerate_success`, `code_gen_failed`, `training_crash`, `timeout`, `no_metrics`) is recorded.
+10. Per-trial artifacts are written to `src/Agent_4/runs/<family>_<ts>/run_NNN/`.
+11. The trial is saved to the cross-launch 20-trial rolling memory so the next launch can read it.
 
 After the sweep window ends:
 
-1. The orchestrator loads the best-overall trial's frozen `best_train.py`
-2. A **hardcoded** submission tail is appended (orchestrator owns the inference
-   step — no LLM, no repairs)
-3. The script is rerun on a 5 000-row training sample and predicts the full
-   test set
-4. `submissions/best_overall_submission.csv` is written
+1. Orchestrator picks the best-overall trial's frozen `best_train.py`.
+2. A **hardcoded** submission tail is appended (orchestrator owns the inference step — no LLM, no repairs).
+3. Script reruns on a 5 000-row training sample and predicts the full test set.
+4. `submissions/best_overall_submission.csv` is written.
 
 ## Configuration
 
@@ -169,6 +113,7 @@ After the sweep window ends:
 | `AGENT4_SWEEP_PLANNER_MODEL` | `qwen2.5-coder:14b` | LLM for next-family decisions |
 | `DISASTER_AGENT_DATA_DIR` | `data` | Where `train.csv` and `test.csv` live |
 | `DISASTER_AGENT_MAX_REPAIRS` | `4` | Repair budget per trial (zero at final-submission time) |
+| `AGENT4_AUTO_SUBMIT_KAGGLE` | unset | If `1`, upload `submissions/best_overall_submission.csv` to Kaggle |
 
 ## Optional Kaggle auto-submit
 
@@ -181,14 +126,9 @@ Requires `~/.kaggle/kaggle.json` (or `KAGGLE_USERNAME` + `KAGGLE_KEY`).
 
 ## Notes on the run logs included on this branch
 
-- `runs/agent_3/` contains 148 historical sessions from the earlier baseline
-  implementation. The corresponding source code is not in this branch.
-- `runs/agent_4/before_fix/`, `runs/agent_4/full_v1_with_opt/` and the
-  `v2_fixed/` … `v15_bow_validation/` folders are snapshots of Agent_4 runs at
-  earlier code versions. Useful for tracking how the agent's behaviour changed
-  across iterations.
-- `runs/agent_4/current/` is the latest live run captured at branch-push time.
-  May continue to grow if the live agent is still going when this snapshot was
-  taken.
-- `logs/agent3_log.json` and `logs/agent4_log.json` are the write-only
-  in-launch logs.
+- `runs/agent_3/` — 148 historical sessions from the earlier baseline implementation. Corresponding source code is not in this branch.
+- `runs/agent_4/before_fix/`, `runs/agent_4/full_v1_with_opt/` and the `v2_fixed/` … `v16_pre_2key_floor/` folders are snapshots of Agent_4 at earlier code versions. Useful for tracking how the agent's behaviour changed across iterations.
+- `runs/agent_4/current/` — latest live run committed at branch-push time.
+- `logs/agent3_log.json` — write-only in-launch log from Agent_3 days.
+- `logs/agent4_log.json` — write-only in-launch log from Agent_4 launches (gitignored — same data also in each session's `summary.json`).
+- `logs/agent4_short_term_memory.json` — the 20-trial rolling cross-launch memory that the agent reads at every startup.

@@ -1,0 +1,23 @@
+```json
+{
+  "hypothesis": "Decrease the learning rate from 0.001 to 5e-6 to test if slower training can improve upon the prior best F1 of 0.5745.",
+  "changed_keys": ["learning_rate"],
+  "architecture": "CNN",
+  "max_vocab": 20000,
+  "max_len": 48,
+  "embedding_dim": 128,
+  "channels": 128,
+  "kernel_sizes": [3, 4, 5],
+  "dropout": 0.3,
+  "batch_size": 64,
+  "epochs": 3,
+  "learning_rate": 5e-6,
+  "val_size": 0.2,
+  "threshold_min": 0.3,
+  "threshold_max": 0.7,
+  "threshold_steps": 41,
+  "dry_run_head": 200,
+  "experiment_name": "cnn_20260515_132606_run_01",
+  "submission_path": "/Users/niccogermani/Library/Containers/com.apple.iMovieApp/Data/Documents/Catolica/apa-disaster-tweets-clean/src/Agent_4/runs/cnn_20260515_132606/run_001/submission.csv"
+}
+```

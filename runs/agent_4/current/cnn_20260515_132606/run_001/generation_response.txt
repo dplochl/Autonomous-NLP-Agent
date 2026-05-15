@@ -1,0 +1,192 @@
+```python
+import os
+import pandas as pd
+import numpy as np
+import torch
+from torch.utils.data import Dataset, DataLoader
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, f1_score
+
+# Load environment variables
+DRY_RUN = os.environ.get("AGENT_DRY_RUN") == "1"
+WRITE_SUBMISSION = os.environ.get("AGENT_WRITE_SUBMISSION") == "1"
+FINAL_SUBMISSION = os.environ.get("AGENT_FINAL_SUBMISSION") == "1"
+TRAIN_FRACTION = float(os.environ.get("AGENT_TRAIN_FRACTION", "1.0"))
+SAMPLE_SEED = int(os.environ.get("AGENT_SAMPLE_SEED", "42"))
+
+# Define constants
+DATA_DIR = os.environ.get("DISASTER_AGENT_DATA_DIR", "data")
+device = torch.device("cpu")
+
+# Load data
+train_df = pd.read_csv(os.path.join(DATA_DIR, "train.csv"))
+test_df = pd.read_csv(os.path.join(DATA_DIR, "test.csv"))
+
+# Fill missing values
+train_df["keyword"] = train_df["keyword"].fillna("")
+train_df["location"] = train_df["location"].fillna("")
+train_df["text"] = train_df["text"].fillna("")
+
+test_df["keyword"] = test_df["keyword"].fillna("")
+test_df["location"] = test_df["location"].fillna("")
+test_df["text"] = test_df["text"].fillna("")
+
+# Build text field
+train_df["text"] = train_df.apply(lambda row: f"{row['keyword']} [SEP] {row['text']}" if pd.notna(row['keyword']) else row['text'], axis=1)
+test_df["text"] = test_df.apply(lambda row: f"{row['keyword']} [SEP] {row['text']}" if pd.notna(row['keyword']) else row['text'], axis=1)
+
+# DRY_RUN
+if DRY_RUN:
+    train_df = train_df.head(200)
+
+# Sample train data
+if TRAIN_FRACTION < 1.0:
+    train_df = train_df.sample(frac=TRAIN_FRACTION, random_state=SAMPLE_SEED).reset_index(drop=True)
+
+# Train-test split
+y = train_df["target"].values
+stratify_labels = y if len(np.unique(y)) > 1 else None
+train_texts, val_texts, train_labels, val_labels = train_test_split(train_df["text"], y, test_size=0.2, random_state=42, stratify=stratify_labels)
+
+# Tokenizer and vocabulary
+def build_vocab(texts, max_vocab):
+    word_freq = {}
+    for text in texts:
+        words = text.split()
+        for word in words:
+            if word not in word_freq:
+                word_freq[word] = 0
+            word_freq[word] += 1
+    sorted_words = sorted(word_freq.items(), key=lambda item: item[1], reverse=True)
+    vocab = {word: idx + 1 for idx, (word, _) in enumerate(sorted_words[:max_vocab - 1])}
+    vocab["<PAD>"] = 0
+    return vocab
+
+vocab = build_vocab(train_texts, max_vocab=14375)
+
+def text_to_sequence(text, vocab, max_len):
+    sequence = [vocab.get(word, 0) for word in text.split()]
+    if len(sequence) > max_len:
+        sequence = sequence[:max_len]
+    return sequence + [0] * (max_len - len(sequence))
+
+# Dataset and DataLoader
+class TextDataset(Dataset):
+    def __init__(self, texts, labels=None, vocab=vocab, max_len=35):
+        self.texts = texts
+        self.labels = labels
+        self.vocab = vocab
+        self.max_len = max_len
+
+    def __len__(self):
+        return len(self.texts)
+
+    def __getitem__(self, idx):
+        text = self.texts.iloc[idx]
+        sequence = torch.tensor(text_to_sequence(text, self.vocab, self.max_len), dtype=torch.long)
+        if self.labels is not None:
+            label = torch.tensor(self.labels.iloc[idx], dtype=torch.float32)
+            return sequence, label
+        else:
+            return sequence
+
+train_dataset = TextDataset(train_texts, train_labels)
+val_dataset = TextDataset(val_texts, val_labels)
+
+train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True, pin_memory=False)
+val_loader = DataLoader(val_dataset, batch_size=64, shuffle=False, pin_memory=False)
+
+# Model
+class TextCNN(torch.nn.Module):
+    def __init__(self, vocab_size, embedding_dim, channels, kernel_sizes, dropout):
+        super(TextCNN, self).__init__()
+        self.embedding = torch.nn.Embedding(vocab_size, embedding_dim)
+        self.convs = torch.nn.ModuleList([torch.nn.Conv1d(embedding_dim, channels, kernel_size) for kernel_size in kernel_sizes])
+        self.pool = torch.nn.AdaptiveMaxPool1d(1)
+        self.dropout = torch.nn.Dropout(dropout)
+        self.fc = torch.nn.Linear(channels * len(kernel_sizes), 1)
+
+    def forward(self, x):
+        x = self.embedding(x).permute(0, 2, 1)  # (batch_size, embedding_dim, max_len)
+        conv_outputs = [torch.relu(conv(x)) for conv in self.convs]
+        pooled_outputs = [self.pool(conv_output).squeeze(-1) for conv_output in conv_outputs]
+        concatenated = torch.cat(pooled_outputs, dim=1)
+        x = self.dropout(concatenated)
+        logit = self.fc(x)
+        return logit
+
+model = TextCNN(vocab_size=len(vocab), embedding_dim=104, channels=104, kernel_sizes=[3, 4, 5], dropout=0.3).to(device)
+
+# Training
+optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+criterion = torch.nn.BCEWithLogitsLoss()
+
+def train_model(model, train_loader, optimizer, criterion, epochs):
+    model.train()
+    for epoch in range(epochs):
+        for batch_texts, batch_labels in train_loader:
+            batch_texts, batch_labels = batch_texts.to(device), batch_labels.to(device)
+            optimizer.zero_grad()
+            outputs = model(batch_texts).squeeze()
+            loss = criterion(outputs, batch_labels)
+            loss.backward()
+            optimizer.step()
+
+# Validation
+def validate_model(model, val_loader):
+    model.eval()
+    with torch.no_grad():
+        all_preds = []
+        all_labels = []
+        for batch_texts, batch_labels in val_loader:
+            batch_texts, batch_labels = batch_texts.to(device), batch_labels.to(device)
+            outputs = model(batch_texts).squeeze()
+            preds = torch.sigmoid(outputs)
+            all_preds.extend(preds.cpu().numpy())
+            all_labels.extend(batch_labels.cpu().numpy())
+    return np.array(all_preds), np.array(all_labels)
+
+# Tune threshold
+best_threshold = 0.5
+best_f1 = 0
+
+for threshold in np.linspace(0.3, 0.7, 41):
+    train_model(model, train_loader, optimizer, criterion, epochs=3 if not DRY_RUN else 1)
+    val_probs, val_labels = validate_model(model, val_loader)
+    preds = (val_probs >= threshold).astype(int)
+    f1 = f1_score(val_labels, preds)
+    if f1 > best_f1:
+        best_f1 = f1
+        best_threshold = threshold
+
+# Final submission
+if FINAL_SUBMISSION:
+    full_train_dataset = TextDataset(train_df["text"], train_df["target"])
+    full_train_loader = DataLoader(full_train_dataset, batch_size=64, shuffle=True, pin_memory=False)
+    final_model = TextCNN(vocab_size=len(vocab), embedding_dim=104, channels=104, kernel_sizes=[3, 4, 5], dropout=0.3).to(device)
+    optimizer = torch.optim.Adam(final_model.parameters(), lr=0.001)
+    criterion = torch.nn.BCEWithLogitsLoss()
+    train_model(final_model, full_train_loader, optimizer, criterion, epochs=3)
+
+    test_dataset = TextDataset(test_df["text"])
+    test_loader = DataLoader(test_dataset, batch_size=64, shuffle=False, pin_memory=False)
+    final_model.eval()
+    with torch.no_grad():
+        all_test_preds = []
+        for batch_texts in test_loader:
+            batch_texts = batch_texts.to(device)
+            outputs = final_model(batch_texts).squeeze()
+            preds = torch.sigmoid(outputs)
+            all_test_preds.extend(preds.cpu().numpy())
+
+    if WRITE_SUBMISSION:
+        submission_dir = os.path.dirname(spec["submission_path"])
+        if not os.path.exists(submission_dir):
+            os.makedirs(submission_dir)
+        submission_df = pd.DataFrame({"id": test_df["id"], "target": (np.array(all_test_preds) >= best_threshold).astype(int)})
+        submission_df.to_csv(spec["submission_path"], index=False)
+
+# Metrics
+acc = accuracy_score(val_labels, (val_probs >= best_threshold).astype(int))
+print('METRICS: {"f1": ' + str(round(best_f1, 4)) + ', "accuracy": ' + str(round(acc, 4)) + ', "best_threshold": ' + str(round(best_threshold, 4)) + '}')
+```

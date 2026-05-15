@@ -201,6 +201,8 @@ def _trials_from_summary_glob(summary_paths: list[str], fallback_version: str, s
                 "repair_attempts": trial.get("repair_attempts", 0),
                 "run_dir": run_dir_rel,
                 "timestamp": None,
+                "hypothesis": trial.get("hypothesis", ""),
+                "analysis": trial.get("analysis", ""),
             })
     return out
 
@@ -1118,6 +1120,10 @@ def trial_detail(session: str, run_name: str):
     train_py = load_text(os.path.join(run_dir, "train.py"), max_bytes=80_000)
     run_log = load_text(os.path.join(run_dir, "run.log"), max_bytes=40_000)
     metrics = load_json(os.path.join(run_dir, "metrics.json"))
+    # Hypothesis: what the spec proposer wanted to test before running.
+    # Falls back to the trial_info dict for older runs that may have it
+    # stored only in summary.json.
+    hypothesis = load_text(os.path.join(run_dir, "hypothesis.txt"))
 
     # Repair attempts (numbered repair_attempt_1.json, _2.json, ...)
     repair_paths = sorted(glob(os.path.join(run_dir, "repair_attempt_*.json")))
@@ -1157,6 +1163,14 @@ def trial_detail(session: str, run_name: str):
 
     if trial_info.get("error_summary"):
         body.append(f"<p><b>Error tail:</b> <code>{trial_info['error_summary']}</code></p>")
+
+    # 0. Hypothesis (what the spec proposer wanted to test BEFORE running)
+    hyp_text = (hypothesis or trial_info.get("hypothesis") or "").strip()
+    if hyp_text:
+        body.append("<div class='chart-card' style='margin:18px 0;border-left:3px solid #7c5cff'>")
+        body.append("<h3 style='margin-top:0'>🧪 Hypothesis</h3>")
+        body.append(f"<p style='margin:0;font-size:14px;color:#c8d3e6'>{hyp_text}</p>")
+        body.append("</div>")
 
     # 1. Spec prompt
     if spec_prompt:

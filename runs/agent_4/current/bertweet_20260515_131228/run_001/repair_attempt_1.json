@@ -1,0 +1,12 @@
+```json
+{
+  "diagnosis": "Missing train_test_split and stratify_labels fallback.",
+  "edits": [
+    {
+      "action": "insert_before",
+      "target": "tokenizer = AutoTokenizer.from_pretrained(spec[\"model_name\"], use_fast=False)",
+      "content": "train_texts, val_texts, y_train, val_labels = train_test_split(train_df['text'], train_df['target'], test_size=spec['val_size'], random_state=SAMPLE_SEED, stratify=train_df['target'])"
+    }
+  ]
+}
+```

@@ -1,0 +1,1 @@
+Decreasing `logreg_c` from 3.0 to 2.5 and increasing `word_max_features` from 18750 to 20000 to test if a slightly stronger regularization with more word features can improve performance without overfitting. [orchestrator-added: char_max_features=5625, word_ngram_max=2]

@@ -9,6 +9,7 @@ import os
 import random
 from typing import Any
 
+from generate_spec import _extract_hypothesis, _format_prior_launch_trials
 from json_utils import extract_json_object
 from prompts import SEARCH_SYSTEM
 from validate_spec import validate_spec
@@ -313,86 +314,6 @@ def _ordered_underexplored_keys(
     )
 
 
-def _optimization_focus_keys(module: object, preferred_keys: list[str]) -> list[str]:
-    tunable = module.get_tunable_keys()
-    ordered: list[str] = []
-    for key in preferred_keys:
-        if key in tunable and key not in ordered:
-            ordered.append(key)
-    focus_order = [
-        "learning_rate",
-        "dropout",
-        "batch_size",
-        "epochs",
-        "weight_decay",
-        "threshold_min",
-        "threshold_max",
-        "threshold_steps",
-        "max_len",
-        "embedding_dim",
-        "channels",
-        "hidden_dim",
-        "hidden_size",
-        "num_layers",
-        "max_vocab",
-    ]
-    for key in focus_order:
-        if key in tunable and key not in ordered:
-            ordered.append(key)
-    for key in tunable:
-        if key not in ordered:
-            ordered.append(key)
-    return ordered
-
-
-def _apply_planner_parameter_bias(
-    module: object,
-    anchor_spec: dict[str, Any],
-    proposed_spec: dict[str, Any],
-    planner_guidance: dict[str, Any] | None,
-) -> tuple[dict[str, Any], list[str]]:
-    if not planner_guidance:
-        return proposed_spec, []
-
-    candidate = dict(proposed_spec)
-    ranges = module.get_spec_ranges()
-    issues: list[str] = []
-    for item in planner_guidance.get("parameter_focus", []):
-        if not isinstance(item, dict):
-            continue
-        key = item.get("key")
-        direction = item.get("direction")
-        if not isinstance(key, str) or key not in ranges or key not in anchor_spec:
-            continue
-        if direction not in {"up_small", "down_small", "up_medium", "down_medium"}:
-            continue
-        low, high = ranges[key]
-        base_value = candidate.get(key, anchor_spec[key])
-        values = _candidate_values(base_value, low, high, local=True) + _candidate_values(anchor_spec[key], low, high, local=True)
-        if isinstance(base_value, int) and not isinstance(base_value, bool):
-            higher = sorted({int(v) for v in values if isinstance(v, int) and v > int(base_value)})
-            lower = sorted({int(v) for v in values if isinstance(v, int) and v < int(base_value)}, reverse=True)
-        else:
-            higher = sorted({float(v) for v in values if float(v) > float(base_value)})
-            lower = sorted({float(v) for v in values if float(v) < float(base_value)}, reverse=True)
-
-        chosen = None
-        if direction == "up_small" and higher:
-            chosen = higher[0]
-        elif direction == "up_medium" and higher:
-            chosen = higher[min(1, len(higher) - 1)]
-        elif direction == "down_small" and lower:
-            chosen = lower[0]
-        elif direction == "down_medium" and lower:
-            chosen = lower[min(1, len(lower) - 1)]
-
-        if chosen is not None and chosen != base_value:
-            candidate[key] = chosen
-            issues.append(f"Applied planner guidance: {key} -> {direction}.")
-
-    return candidate, issues
-
-
 def _ensure_phase_mutation(
     module: object,
     anchor_spec: dict[str, Any],
@@ -402,56 +323,33 @@ def _ensure_phase_mutation(
     submission_path: str,
     trials: list[dict[str, Any]],
     preferred_keys: list[str],
-    phase: str,
 ) -> tuple[dict[str, Any], list[str]]:
+    """Force the proposed spec to differ from the anchor on enough tunable
+    keys, and fall back to a fresh mutation if the LLM proposed a duplicate
+    signature. Sweep-only — opt-phase branches were removed.
+    """
     candidate = dict(proposed_spec)
     candidate["experiment_name"] = run_name
     candidate["submission_path"] = submission_path
     changed_keys = set(_changed_tunable_keys(module, anchor_spec, candidate))
     issues: list[str] = []
 
-    is_opt = phase == "opt"
-    is_language_model = getattr(module, "FAMILY", "") in {"RoBERTa", "BERTweet"}
-    if is_opt:
-        if len(trials) <= 4:
-            target_change_count = 2 if is_language_model else 3
-            max_change_count = 3 if is_language_model else 4
-        else:
-            target_change_count = 1
-            max_change_count = 2
-    elif is_language_model:
-        target_change_count = 3 if len(trials) <= 3 else 2
-        max_change_count = 4
-    else:
-        target_change_count = 4 if len(trials) <= 3 else 3
-        max_change_count = 5
+    # Minimum diversity floor: 2 tunable keys across all families. Above 2,
+    # the LLM decides. This was previously 3/4 for transformer/non-transformer
+    # which over-constrained the search: the LLM at temp=0.5 typically
+    # proposes 2 keys with a focused hypothesis, and the higher floor forced
+    # the orchestrator to inject unhypothesised mutations that hurt F1
+    # (see BoW_advanced 0.7193 → 0.7086 regression from random word_max_features
+    # and word_ngram_max additions). Now the orchestrator only intervenes
+    # when the LLM proposed fewer than 2 changes.
+    target_change_count = 2
     ranges = module.get_spec_ranges()
-    ordered_keys = (
-        _optimization_focus_keys(module, preferred_keys)
-        if is_opt
-        else _ordered_underexplored_keys(module, trials, preferred_keys, skip_keys=changed_keys)
-    )
-
-    if is_opt and len(changed_keys) > max_change_count:
-        keep_keys: list[str] = []
-        for key in ordered_keys:
-            if key in changed_keys and key not in keep_keys:
-                keep_keys.append(key)
-            if len(keep_keys) >= max_change_count:
-                break
-        for key in module.get_tunable_keys():
-            if key in changed_keys and key not in keep_keys:
-                candidate[key] = anchor_spec[key]
-        changed_keys = set(_changed_tunable_keys(module, anchor_spec, candidate))
-        issues.append(
-            f"Optimization phase narrowed a broad move to {len(changed_keys)} local tunable changes."
-        )
+    ordered_keys = _ordered_underexplored_keys(module, trials, preferred_keys, skip_keys=changed_keys)
 
     if len(changed_keys) >= target_change_count and _spec_signature(module, candidate) not in tried_signatures:
         return candidate, issues
 
-    if not is_opt:
-        ordered_keys = _ordered_underexplored_keys(module, trials, preferred_keys, skip_keys=changed_keys)
+    ordered_keys = _ordered_underexplored_keys(module, trials, preferred_keys, skip_keys=changed_keys)
     for key in ordered_keys:
         if len(changed_keys) >= target_change_count:
             break
@@ -459,8 +357,8 @@ def _ensure_phase_mutation(
             continue
         low, high = ranges[key]
         current_value = candidate.get(key, anchor_spec[key])
-        values = _candidate_values(current_value, low, high, local=is_opt) + _candidate_values(
-            anchor_spec[key], low, high, local=is_opt
+        values = _candidate_values(current_value, low, high, local=False) + _candidate_values(
+            anchor_spec[key], low, high, local=False
         )
         for value in values:
             if value == current_value:
@@ -490,7 +388,7 @@ def _ensure_phase_mutation(
             run_name=run_name,
             submission_path=submission_path,
             preferred_keys=ordered_keys or preferred_keys,
-            local=is_opt,
+            local=False,
         )
         return fallback, issues + extra_issues
 
@@ -519,8 +417,7 @@ def propose_next_spec(
     data_context: str,
     history_summary: str,
     trials: list[dict[str, Any]],
-    phase: str = "sweep",
-    planner_guidance: dict[str, Any] | None = None,
+    prior_launch_trials: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     best_trial = _best_successful_trial(trials) or max(trials, key=_safe_f1)
     default_spec = dict(best_trial["spec"]) if best_trial.get("success") else module.get_default_spec(run_name, submission_path)
@@ -534,15 +431,6 @@ def propose_next_spec(
     active_tunable_keys = [key for key in active_tunable_keys if key != "val_size"] or [
         key for key in tunable_keys if key != "val_size"
     ]
-    planner_focus_keys: list[str] = []
-    planner_focus = planner_guidance.get("parameter_focus", []) if planner_guidance else []
-    for item in planner_focus:
-        if isinstance(item, dict):
-            key = item.get("key")
-            if isinstance(key, str) and key in tunable_keys and key != "val_size" and key not in planner_focus_keys:
-                planner_focus_keys.append(key)
-    if planner_focus_keys:
-        active_tunable_keys = planner_focus_keys + [key for key in active_tunable_keys if key not in planner_focus_keys]
     latest_success = next((trial for trial in reversed(trials) if trial.get("success")), None)
     repeated_match = _latest_repeated_f1_trial(trials)
     repeated_f1 = latest_success is not None and repeated_match is not None
@@ -550,27 +438,20 @@ def propose_next_spec(
     if latest_success is not None and repeated_match is not None:
         stale_changed_keys = _changed_tunable_keys(module, repeated_match["spec"], latest_success["spec"])
     phase_rules = (
-        "- this is the top-architecture optimization phase, so stay near this architecture's current best spec\n"
-        "- usually change 2 to 4 tunable keys because the sweep used the smaller labeled sample\n"
-        "- prefer coordinated local changes such as learning_rate, dropout, batch_size, epochs, weight_decay, sequence length, and threshold settings\n"
-        "- validation size is controlled by the runner and should remain at 0.2\n"
-        "- avoid large capacity jumps unless the history strongly suggests they help\n"
-    ) if phase == "opt" else (
         "- this is the family sweep phase, so explore different regions of the parameter space\n"
         "- the runner uses a 2k labeled sample split 80/20 for training/validation\n"
-        "- usually change 2 to 4 tunable keys in one coordinated move\n"
-        "- with a 5-run budget, cover both model-capacity keys and optimization keys instead of nudging only one key repeatedly\n"
-        "- prefer combinations such as sequence/model size + regularization + optimization, for example max_len/channels with learning_rate/dropout/batch_size/epochs\n"
+        "- change at least 2 tunable keys; pick more if your hypothesis "
+        "genuinely calls for it (no penalty for going to 3, 4, or more — "
+        "the only rule is that EVERY key you change must be named in "
+        "changed_keys and described in the hypothesis)\n"
+        "- across the limited per-family trial budget, cover model-capacity "
+        "keys and optimization keys when relevant instead of nudging only "
+        "one key repeatedly\n"
+        "- examples of coherent multi-knob moves when your hypothesis "
+        "calls for them: capacity + regularization (e.g. max_len + dropout), "
+        "capacity + optimization (e.g. max_len + learning_rate), or all three "
+        "when testing a joint effect — pick whatever size matches your theory\n"
     )
-    planner_notes = ""
-    if phase == "opt" and planner_guidance:
-        parameter_focus = planner_guidance.get("parameter_focus", [])
-        planner_notes = (
-            "Optimization planner guidance:\n"
-            f"{json.dumps(planner_guidance, indent=2)}\n\n"
-            "Follow the planner's chosen parameter focus and movement directions unless doing so would repeat an exact prior spec.\n"
-            f"Prioritize these keys first: {', '.join(planner_focus_keys) if planner_focus_keys else 'none'}\n\n"
-        )
     # Decide whether to engage AGGRESSIVE EXPLORATION mode. Triggers when
     # the most recent successful trials of this family clustered in a tight
     # F1 band — i.e. small parameter changes are no longer moving the score.
@@ -584,9 +465,11 @@ def propose_next_spec(
         if in_explore_mode else ""
     )
 
+    prior_block = _format_prior_launch_trials(prior_launch_trials, module.FAMILY)
     prompt = (
         f"Propose the next {module.FAMILY} experiment spec.\n\n"
         f"{module.get_search_prompt()}\n\n"
+        f"{prior_block}"
         f"{explore_block}"
         "Rules:\n"
         "- keep the architecture family fixed\n"
@@ -601,7 +484,11 @@ def propose_next_spec(
         "- if a run timed out, reduce cost\n"
         "- if a run crashed, simplify the risky parameter region\n"
         "- if repeated runs get the same F1, switch to different tunable keys instead of repeating weak ones\n"
-        "- return one JSON object only\n\n"
+        "- return one JSON object only — see the system prompt for the exact "
+        "three-field schema (hypothesis + changed_keys + spec keys). The "
+        "'changed_keys' list MUST contain every tunable key you intend to "
+        "modify vs. the prior best anchor below; any silent change will be "
+        "reset to the anchor value.\n\n"
         f"Dataset context:\n{data_context}\n\n"
         f"Family history:\n{history_summary}\n\n"
         f"Session trials so far:\n{trial_summary}\n\n"
@@ -613,12 +500,19 @@ def propose_next_spec(
         f"Repeated best F1 detected: {'yes' if repeated_f1 else 'no'}\n"
         f"Aggressive exploration mode: {'YES (tight F1 band detected)' if in_explore_mode else 'no'}\n"
         f"Wild card injection: {'YES (try an extreme region)' if fire_wild_card else 'no'}\n\n"
-        f"{planner_notes}"
-        "Default if unsure:\n"
+        "Prior-best anchor spec (your 'changed_keys' lists what you "
+        "intend to change FROM this; this is the prior best successful "
+        "trial, NOT the family default):\n"
         f"{json.dumps(default_spec, indent=2)}\n"
     )
 
-    raw_response = llm.respond(SEARCH_SYSTEM, prompt)
+    # Spec search uses a moderately higher temperature than the rest of the
+    # agent for the same reason as generate_initial_spec: the output is
+    # constrained JSON, the validator clamps numerics, and determinism was
+    # anchoring the LLM on the best-trial spec. temp=0.5 balances exploration
+    # against hypothesis-spec alignment (temp=0.7 made the LLM's spec change
+    # more keys than its hypothesis text claimed, confounding the record).
+    raw_response = llm.respond(SEARCH_SYSTEM, prompt, temperature=0.5)
     raw_spec = extract_json_object(raw_response)
     spec, issues = validate_spec(
         raw_spec=raw_spec,
@@ -626,16 +520,32 @@ def propose_next_spec(
         ranges=module.get_spec_ranges(),
         fixed_keys=module.get_fixed_spec_keys(),
     )
-    planner_issues: list[str] = []
-    if phase == "opt" and planner_guidance:
-        spec, planner_issues = _apply_planner_parameter_bias(
-            module=module,
-            anchor_spec=best_trial["spec"],
-            proposed_spec=spec,
-            planner_guidance=planner_guidance,
-        )
     if "val_size" in spec:
         spec["val_size"] = default_spec.get("val_size", spec["val_size"])
+    # Hypothesis-as-source-of-truth: constrain the spec to only the keys the
+    # LLM named in `changed_keys`. Every other tunable key is reset to the
+    # PRIOR-BEST anchor (not the family default) since this is search/opt
+    # phase, not initial. The remaining diversity machinery (phase mutation,
+    # repeated-F1 fallback, signature veto) still runs after this constraint
+    # so we can't get stuck on a 0-key proposal.
+    claimed_keys: list[str] = []
+    if isinstance(raw_spec, dict):
+        raw_claim = raw_spec.get("changed_keys")
+        if isinstance(raw_claim, list):
+            claimed_keys = [k for k in raw_claim if isinstance(k, str) and k in tunable_keys]
+    if claimed_keys:
+        anchor = best_trial["spec"] if best_trial.get("success") else default_spec
+        constrained = dict(anchor)
+        for k in claimed_keys:
+            if k in spec:
+                constrained[k] = spec[k]
+        constrained["experiment_name"] = run_name
+        constrained["submission_path"] = submission_path
+        spec = constrained
+        issues.append(
+            f"Search spec constrained to LLM's declared changed_keys: {claimed_keys}"
+        )
+    before_changed = set(_changed_tunable_keys(module, best_trial["spec"], spec))
     spec, diversity_issues = _ensure_phase_mutation(
         module=module,
         anchor_spec=best_trial["spec"],
@@ -645,9 +555,9 @@ def propose_next_spec(
         submission_path=submission_path,
         trials=trials,
         preferred_keys=active_tunable_keys,
-        phase=phase,
     )
-    issues.extend(planner_issues)
+    after_changed = set(_changed_tunable_keys(module, best_trial["spec"], spec))
+    orchestrator_added: list[str] = sorted(after_changed - before_changed)
     issues.extend(diversity_issues)
     changed_after_validation = _changed_tunable_keys(module, best_trial["spec"], spec)
     only_stagnant_changes = bool(changed_after_validation) and all(key in stagnant_keys for key in changed_after_validation)
@@ -659,7 +569,7 @@ def propose_next_spec(
             run_name=run_name,
             submission_path=submission_path,
             preferred_keys=active_tunable_keys,
-            local=(phase == "opt"),
+            local=False,
         )
         issues.extend(["Repeated F1 triggered a forced move to different tunable keys."])
         issues.extend(extra_issues)
@@ -672,7 +582,6 @@ def propose_next_spec(
             submission_path=submission_path,
             trials=trials,
             preferred_keys=active_tunable_keys,
-            phase=phase,
         )
         issues.extend(diversity_issues)
     if _spec_signature(module, spec) in tried_signatures:
@@ -683,14 +592,38 @@ def propose_next_spec(
             run_name=run_name,
             submission_path=submission_path,
             preferred_keys=active_tunable_keys,
-            local=(phase == "opt"),
+            local=False,
         )
         issues.extend(extra_issues)
+    # Extract the LLM's stated hypothesis for this revisit. Falls back to an
+    # auto-generated string tagged "[fallback]" so it can be distinguished
+    # from a real LLM hypothesis in logs and dashboards. The fallback still
+    # names which keys changed from the best prior spec, so it's informative
+    # even when the LLM omitted the field.
+    diff_keys = sorted(_changed_tunable_keys(module, best_trial["spec"], spec))[:3]
+    if diff_keys:
+        fallback_h = (
+            f"[fallback] LLM omitted hypothesis. Revisiting {module.FAMILY} "
+            f"with changes to {', '.join(diff_keys)} vs the prior best."
+        )
+    else:
+        fallback_h = (
+            f"[fallback] LLM omitted hypothesis. Revisiting {module.FAMILY} "
+            f"with no meaningful spec changes (validator drift)."
+        )
+    hypothesis = _extract_hypothesis(raw_spec, fallback=fallback_h)
+    # Append any orchestrator-added keys to the hypothesis so the research
+    # record stays honest (same logic as generate_initial_spec).
+    if orchestrator_added:
+        add_str = ", ".join(f"{k}={spec.get(k)}" for k in orchestrator_added[:4])
+        hypothesis = f"{hypothesis} [orchestrator-added: {add_str}]"
     return {
         "prompt": prompt,
         "raw_response": raw_response,
         "raw_spec": raw_spec,
         "spec": spec,
+        "hypothesis": hypothesis,
+        "claimed_keys": claimed_keys,
         "issues": issues,
         "used_default": raw_spec is None,
     }

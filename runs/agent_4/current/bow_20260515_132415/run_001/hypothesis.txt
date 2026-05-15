@@ -1,0 +1,1 @@
+Decreasing max_features from 20000 to 10000 and increasing min_df from 2 to 3 to test if a less complex model can achieve better performance compared to the prior best F1=0.7255. [orchestrator-added: logreg_c=2.4, ngram_max=1]

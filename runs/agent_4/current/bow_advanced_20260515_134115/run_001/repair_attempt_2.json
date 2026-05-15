@@ -1,0 +1,12 @@
+```json
+{
+  "diagnosis": "The test data is being transformed using only the character vectorizer, while the training data used a combination of word and character vectorizers. This mismatch causes a dimensionality error.",
+  "edits": [
+    {
+      "action": "replace",
+      "target": "test_probs = logreg.predict_proba(char_vectorizer.transform(test_df[\"text_combined\"]))[:, 1]",
+      "content": "test_probs = logreg.predict_proba(hstack([word_vectorizer.transform(test_df[\"text_combined\"]), char_vectorizer.transform(test_df[\"text_combined\"])]))[:, 1]"
+    }
+  ]
+}
+```

@@ -1,0 +1,66 @@
+Plan one reliable BoW_advanced experiment spec for the Kaggle Disaster Tweets task.
+
+Return a reliable dual-vectorizer sparse-text spec with one validation split and conservative values.
+
+Return one JSON object only — see the system prompt for the exact three-field schema (hypothesis + changed_keys + spec keys). The hypothesis must reference concrete prior evidence when available (a past F1, a spec choice that worked or didn't). DO NOT just say 'establish a baseline' if prior-launch evidence below shows what already worked.
+
+Tunable keys you may put in 'changed_keys': word_max_features, char_max_features, word_ngram_max, char_ngram_min, char_ngram_max, min_df, logreg_c, threshold_min, threshold_max, threshold_steps
+
+PRIOR-LAUNCH EVIDENCE for BoW_advanced (newest+highest-F1 first):
+  - F1=0.7273  spec: architecture=BoW_advanced, char_max_features=10000, char_ngram_max=5, char_ngram_min=3, logreg_c=4, min_df=2, threshold_max=0.6, threshold_min=0.4, threshold_steps=21, val_size=0.2, word_max_features=12000, word_ngram_max=2
+      prior hypothesis: Decreasing `char_max_features` from 13,000 to 10,000 and reducing `word_ngram_max` from 4 to 2 to test if a simpler feature set improves generalization.
+      prior verdict   : The hypothesis that decreasing `char_max_features` from 13,000 to 10,000 and reducing `word_ngram_max` from 4 to 2 would improve generalization was **inconclusive**. While the model achieved a moderate F1 score of 0.7273 and accuracy of 0.…
+  - F1=0.7193  spec: architecture=BoW_advanced, char_max_features=13000, char_ngram_max=5, char_ngram_min=3, logreg_c=4, min_df=2, threshold_max=0.6, threshold_min=0.4, threshold_steps=21, val_size=0.2, word_max_features=12000, word_ngram_max=3
+      prior hypothesis: Adjusting `word_max_features` to 12,000 and `char_max_features` to 13,000 while increasing `word_ngram_max` to 4, decreasing `char_ngram_min` to 3, and increasing `char_ngram_max` to 5 to explore a more comprehensive feature set and potent…
+      prior verdict   : The hypothesis was confirmed. Adjusting `word_max_features` to 12,000 and `char_max_features` to 13,000 while increasing `word_ngram_max` to 4, decreasing `char_ngram_min` to 3, and increasing `char_ngram_max` to 5 resulted in a significan…
+  - F1=0.7183  spec: architecture=BoW_advanced, char_max_features=15000, char_ngram_max=4, char_ngram_min=4, logreg_c=5, min_df=3, threshold_max=0.6, threshold_min=0.4, threshold_steps=21, val_size=0.2, word_max_features=10000, word_ngram_max=3
+      prior hypothesis: [orchestrator-generated] LLM proposed a spec already refuted in prior launches; mutated `word_max_features`=10000 (was 20000), `char_ngram_max`=4 (was 5) to explore a different region of the parameter space (prior BoW_advanced best F1=0.7183). | Original LLM hypothesis: Decrease `char_ngram_max` from 4 to 3 to further reduce overfitting and improve generalization, based on prior successful experiments.
+      prior verdict   : The hypothesis was refuted. Despite mutating `word_max_features` to 10,000 and keeping `char_ngram_max` at 4 (instead of decreasing it from 4 to 3 as originally proposed), the F1 score remained at 0.7183, which is identical to the prior be…
+  - F1=0.7183  spec: architecture=BoW_advanced, char_max_features=15000, char_ngram_max=4, char_ngram_min=4, logreg_c=5, min_df=3, threshold_max=0.6, threshold_min=0.4, threshold_steps=21, val_size=0.2, word_max_features=20000, word_ngram_max=3
+      prior hypothesis: Decrease `char_ngram_max` from 5 to 4 to further reduce overfitting and improve generalization, based on prior successful experiments.
+      prior verdict   : The hypothesis was confirmed. Reducing `char_ngram_max` from 5 to 4 led to a slight improvement in F1 score and accuracy, suggesting that further reducing character n-grams can help mitigate overfitting and enhance generalization.
+  - F1=0.7139  spec: architecture=BoW_advanced, char_max_features=15000, char_ngram_max=5, char_ngram_min=4, logreg_c=5, min_df=3, threshold_max=0.6, threshold_min=0.4, threshold_steps=21, val_size=0.2, word_max_features=20000, word_ngram_max=3
+      prior hypothesis: Decrease char_ngram_max from 6 to 5 to further reduce overfitting and improve generalization.
+      prior verdict   : The hypothesis that decreasing `char_ngram_max` from 6 to 5 would further reduce overfitting and improve generalization was **confirmed**. This is evidenced by a slight improvement in F1 score from previous runs (not shown here) to 0.7139,…
+  - F1=0.7086  spec: architecture=BoW_advanced, char_max_features=15000, char_ngram_max=5, char_ngram_min=3, logreg_c=6, min_df=2, threshold_max=0.7, threshold_min=0.3, threshold_steps=41, val_size=0.2, word_max_features=18750, word_ngram_max=1
+      prior hypothesis: Reducing `char_max_features` from 20,000 to 15,000 and increasing `logreg_c` from 4.0 to 6.0 to test if a more conservative feature set with stronger regularization improves generalization. [orchestrator-added: word_max_features=18750, word_ngram_max=1]
+      prior verdict   : The hypothesis that reducing `char_max_features` from 20,000 to 15,000 and increasing `logreg_c` from 4.0 to 6.0 would improve generalization is **inconclusive**. While the F1 score slightly improved to 0.7086, which could suggest a minor…
+  - F1=0.6970  spec: architecture=BoW_advanced, char_max_features=10625, char_ngram_max=5, char_ngram_min=2, logreg_c=4, min_df=2, threshold_max=0.7, threshold_min=0.3, threshold_steps=41, val_size=0.2, word_max_features=18750, word_ngram_max=1
+      prior hypothesis: Adjusting `char_ngram_min` from 3 to 4 and increasing `logreg_c` from 4.0 to 6.0 to explore a more balanced feature set and potentially better regularization.
+      prior verdict   : The hypothesis was inconclusive. Adjusting `char_ngram_min` from 3 to 4 and increasing `logreg_c` from 4.0 to 6.0 did not lead to a significant improvement in performance metrics, as evidenced by the F1 score of 0.697 and accuracy of 0.75.
+  - (code_gen_failed)  spec: architecture=BoW_advanced, char_max_features=20000, char_ngram_max=5, char_ngram_min=3, logreg_c=4, min_df=2, threshold_max=0.7, threshold_min=0.3, threshold_steps=41, val_size=0.2, word_max_features=30000, word_ngram_max=2
+      prior hypothesis: Decrease the minimum document frequency (`min_df`) from 3 to 2 to capture more rare words and potentially improve model performance.
+      prior verdict   : The hypothesis that decreasing the minimum document frequency (`min_df`) from 3 to 2 would capture more rare words and potentially improve model performance was **inconclusive** due to a crash during execution. The experiment did not compl…
+
+Use this evidence: write a hypothesis that proposes a SPECIFIC move vs. the prior best (e.g. 'try lr=5e-6 to test if the 0.7976 best can be pushed via slower training') rather than a generic baseline statement. Pay attention to the prior verdicts — if a hypothesis was already refuted, do not re-test the same direction; pivot to a different parameter or value.
+
+Dataset context:
+DATASET CONTEXT:
+- train.csv: 7613 rows, columns: id, keyword, location, text, target
+- test.csv: 3263 rows, columns: id, keyword, location, text
+- Class balance: 4342 not-disaster (57.0%), 3271 disaster (43.0%)
+- Missing keyword: 0.8%
+- Missing location: 33.3%
+
+
+Recent in-launch history:
+No prior runs.
+
+Family default spec (this is the anchor — your 'changed_keys' lists what you intend to change FROM this). You MUST list at LEAST 3 tunable keys in 'changed_keys' and the spec values you return for those keys must differ from the default. Any spec key you change but DO NOT name in changed_keys will be silently reset to the default — this enforces hypothesis-as-source-of-truth.
+{
+  "architecture": "BoW_advanced",
+  "word_max_features": 30000,
+  "char_max_features": 20000,
+  "word_ngram_max": 2,
+  "char_ngram_min": 3,
+  "char_ngram_max": 5,
+  "min_df": 2,
+  "logreg_c": 4.0,
+  "val_size": 0.2,
+  "threshold_min": 0.3,
+  "threshold_max": 0.7,
+  "threshold_steps": 41,
+  "dry_run_head": 200,
+  "experiment_name": "bow_advanced_20260515_130701_run_01",
+  "submission_path": "/Users/niccogermani/Library/Containers/com.apple.iMovieApp/Data/Documents/Catolica/apa-disaster-tweets-clean/src/Agent_4/runs/bow_advanced_20260515_130701/run_001/submission.csv"
+}

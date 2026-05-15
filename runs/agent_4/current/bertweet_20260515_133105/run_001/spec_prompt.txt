@@ -1,0 +1,48 @@
+Plan one reliable BERTweet experiment spec for the Kaggle Disaster Tweets task.
+
+Return a reliable vinai/bertweet-base spec with one validation split and conservative training values. Use the slow tokenizer with use_fast=False and threshold tuning over a practical mid-range to maximize F1.
+
+Return one JSON object only — see the system prompt for the exact three-field schema (hypothesis + changed_keys + spec keys). The hypothesis must reference concrete prior evidence when available (a past F1, a spec choice that worked or didn't). DO NOT just say 'establish a baseline' if prior-launch evidence below shows what already worked.
+
+Tunable keys you may put in 'changed_keys': max_len, train_batch_size, eval_batch_size, learning_rate, weight_decay, num_epochs
+
+PRIOR-LAUNCH EVIDENCE for BERTweet (newest+highest-F1 first):
+  - F1=0.7720  spec: architecture=BERTweet, eval_batch_size=16, learning_rate=1.00e-05, max_len=144, model_name=vinai/bertweet-base, num_epochs=3, threshold_max=0.7, threshold_min=0.3, threshold_steps=41, train_batch_size=13, val_size=0.2, weight_decay=0.01
+      prior hypothesis: Reduce learning rate from 1.5e-05 to 1.0e-05 and increase max_len from 128 to 144 to test if a slower training rate with slightly longer sequences can improve F1 score beyond the previous best of 0.7742. [orchestrator-added: train_batch_size=13]
+      prior verdict   : The hypothesis was refuted. The experiment aimed to improve the F1 score by reducing the learning rate and increasing the maximum sequence length, but the resulting F1 score of 0.772 did not exceed the previous best of 0.7742.
+  - (code_gen_failed)  spec: architecture=BERTweet, eval_batch_size=16, learning_rate=1.50e-05, max_len=104, model_name=vinai/bertweet-base, num_epochs=3, threshold_max=0.7, threshold_min=0.3, threshold_steps=41, train_batch_size=16, val_size=0.2, weight_decay=0.01
+      prior hypothesis: [orchestrator-generated] LLM proposed a spec already refuted in prior launches; mutated `max_len`=104 (was 128), `learning_rate`=1.5e-05 (was 1e-05) to explore a different region of the parameter space (prior BERTweet best F1=0.7778). | Original LLM hypothesis: Trying lr=1e-5 (below the prior 1.5e-5 best) to test if BERTweet was undertrained at F1=0.7778.
+      prior verdict   : The hypothesis was inconclusive due to a crash during execution, preventing any evaluation of whether the changes in `max_len` and `learning_rate` would yield better performance than the prior best F1 score of 0.7778.
+
+Use this evidence: write a hypothesis that proposes a SPECIFIC move vs. the prior best (e.g. 'try lr=5e-6 to test if the 0.7976 best can be pushed via slower training') rather than a generic baseline statement. Pay attention to the prior verdicts — if a hypothesis was already refuted, do not re-test the same direction; pivot to a different parameter or value.
+
+Dataset context:
+DATASET CONTEXT:
+- train.csv: 7613 rows, columns: id, keyword, location, text, target
+- test.csv: 3263 rows, columns: id, keyword, location, text
+- Class balance: 4342 not-disaster (57.0%), 3271 disaster (43.0%)
+- Missing keyword: 0.8%
+- Missing location: 33.3%
+
+
+Recent in-launch history:
+No prior runs.
+
+Family default spec (this is the anchor — your 'changed_keys' lists what you intend to change FROM this). You MUST list at LEAST 2 tunable keys in 'changed_keys' and the spec values you return for those keys must differ from the default. Any spec key you change but DO NOT name in changed_keys will be silently reset to the default — this enforces hypothesis-as-source-of-truth.
+{
+  "architecture": "BERTweet",
+  "model_name": "vinai/bertweet-base",
+  "max_len": 128,
+  "train_batch_size": 16,
+  "eval_batch_size": 16,
+  "learning_rate": 1.5e-05,
+  "weight_decay": 0.01,
+  "num_epochs": 3,
+  "val_size": 0.2,
+  "threshold_min": 0.3,
+  "threshold_max": 0.7,
+  "threshold_steps": 41,
+  "dry_run_head": 16,
+  "experiment_name": "bertweet_20260515_133105_run_01",
+  "submission_path": "/Users/niccogermani/Library/Containers/com.apple.iMovieApp/Data/Documents/Catolica/apa-disaster-tweets-clean/src/Agent_4/runs/bertweet_20260515_133105/run_001/submission.csv"
+}

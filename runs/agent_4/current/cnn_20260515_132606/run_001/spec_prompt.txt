@@ -1,0 +1,54 @@
+Plan one reliable CNN experiment spec for the Kaggle Disaster Tweets task.
+
+Return a reliable text CNN spec with a single validation split and conservative sequence settings. Prefer simple settings that are likely to run on the first try. Validation loaders with labels must unpack batches as (inputs, labels), while test loaders must pass only inputs to the model.
+
+Return one JSON object only — see the system prompt for the exact three-field schema (hypothesis + changed_keys + spec keys). The hypothesis must reference concrete prior evidence when available (a past F1, a spec choice that worked or didn't). DO NOT just say 'establish a baseline' if prior-launch evidence below shows what already worked.
+
+Tunable keys you may put in 'changed_keys': max_vocab, max_len, embedding_dim, channels, dropout, batch_size, epochs, learning_rate
+
+PRIOR-LAUNCH EVIDENCE for CNN (newest+highest-F1 first):
+  - (code_gen_failed)  spec: architecture=CNN, batch_size=64, channels=128, dropout=0.3, embedding_dim=128, epochs=3, kernel_sizes=[3,4,5], learning_rate=1.00e-03, max_len=48, max_vocab=14375, threshold_max=0.7, threshold_min=0.3, threshold_steps=41, val_size=0.2
+      prior hypothesis: [orchestrator-generated] LLM proposed a spec already refuted in prior launches; mutated `max_vocab`=14375 (was 20000) to explore a different region of the parameter space. | Original LLM hypothesis: Decrease the learning rate to 5e-6 to test if it can improve upon the prior best F1 of 0.5745.
+      prior verdict   : The hypothesis was inconclusive due to a critical error in the code execution, preventing any meaningful evaluation of the proposed changes.
+  - (code_gen_failed)  spec: architecture=CNN, batch_size=64, channels=128, dropout=0.3, embedding_dim=128, epochs=3, kernel_sizes=[3,4,5], learning_rate=1.00e-03, max_len=48, max_vocab=20000, threshold_max=0.7, threshold_min=0.3, threshold_steps=41, val_size=0.2
+      prior hypothesis: Decrease the learning rate to 5e-6 to test if it can improve upon the prior best F1 of 0.5745.
+      prior verdict   : The hypothesis was inconclusive due to a runtime error that caused the experiment to crash. The learning rate adjustment could not be tested because the code execution failed.
+
+Use this evidence: write a hypothesis that proposes a SPECIFIC move vs. the prior best (e.g. 'try lr=5e-6 to test if the 0.7976 best can be pushed via slower training') rather than a generic baseline statement. Pay attention to the prior verdicts — if a hypothesis was already refuted, do not re-test the same direction; pivot to a different parameter or value.
+
+Dataset context:
+DATASET CONTEXT:
+- train.csv: 7613 rows, columns: id, keyword, location, text, target
+- test.csv: 3263 rows, columns: id, keyword, location, text
+- Class balance: 4342 not-disaster (57.0%), 3271 disaster (43.0%)
+- Missing keyword: 0.8%
+- Missing location: 33.3%
+
+
+Recent in-launch history:
+No prior runs.
+
+Family default spec (this is the anchor — your 'changed_keys' lists what you intend to change FROM this). You MUST list at LEAST 3 tunable keys in 'changed_keys' and the spec values you return for those keys must differ from the default. Any spec key you change but DO NOT name in changed_keys will be silently reset to the default — this enforces hypothesis-as-source-of-truth.
+{
+  "architecture": "CNN",
+  "max_vocab": 20000,
+  "max_len": 48,
+  "embedding_dim": 128,
+  "channels": 128,
+  "kernel_sizes": [
+    3,
+    4,
+    5
+  ],
+  "dropout": 0.3,
+  "batch_size": 64,
+  "epochs": 3,
+  "learning_rate": 0.001,
+  "val_size": 0.2,
+  "threshold_min": 0.3,
+  "threshold_max": 0.7,
+  "threshold_steps": 41,
+  "dry_run_head": 200,
+  "experiment_name": "cnn_20260515_132606_run_01",
+  "submission_path": "/Users/niccogermani/Library/Containers/com.apple.iMovieApp/Data/Documents/Catolica/apa-disaster-tweets-clean/src/Agent_4/runs/cnn_20260515_132606/run_001/submission.csv"
+}

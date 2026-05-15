@@ -1,0 +1,12 @@
+```json
+{
+  "diagnosis": "Variable 'y_val' is not defined.",
+  "edits": [
+    {
+      "action": "insert_before",
+      "target": "val_labels = np.array(y_val)",
+      "content": "y_val = val_dataset.labels"
+    }
+  ]
+}
+```

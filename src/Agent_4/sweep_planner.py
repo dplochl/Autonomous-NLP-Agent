@@ -288,6 +288,7 @@ def build_planner_prompt(
     eligible: list[str],
     time_remaining_seconds: float,
     success_recorded: bool,
+    prior_launch_memory: str = "",
 ) -> str:
     """User message handed to the planner LLM."""
     table = _format_state_table(family_state, cost_estimates, eligible)
@@ -316,7 +317,16 @@ def build_planner_prompt(
         f"UNTRIED families currently eligible (zero prior trials): {untried_str}",
         f"TRIED families currently eligible (have at least one observation): {tried_str}",
         "",
-        "Per-family state:",
+    ]
+    if prior_launch_memory:
+        lines.extend([
+            prior_launch_memory,
+            "(This is context only — use it to bias choices, not to skip families. "
+            "Every family still needs at least one trial in THIS launch.)",
+            "",
+        ])
+    lines += [
+        "Per-family state (this launch):",
         table,
         "",
         "How to think about each choice:",
@@ -411,12 +421,17 @@ def select_next_sweep_action(
     time_remaining_seconds: float,
     start_buffer_seconds: int,
     planner_system_prompt: str,
+    prior_launch_memory: str = "",
 ) -> SweepDecision:
     """Ask the planner LLM for the next sweep decision.
 
     `llm` only needs a `.respond(system, user)` method that returns a string
     (the OllamaClient interface). We do not import OllamaClient here so this
     module stays trivial to unit-test with a stub.
+
+    `prior_launch_memory` is an optional pre-formatted block (from
+    ShortTermMemory.planner_summary()) that gets injected into the prompt so
+    the planner sees aggregate F1s from past launches.
     """
     eligible = eligible_families(
         family_state, cost_estimates, time_remaining_seconds, start_buffer_seconds
@@ -428,6 +443,7 @@ def select_next_sweep_action(
         eligible=eligible,
         time_remaining_seconds=time_remaining_seconds,
         success_recorded=success_recorded,
+        prior_launch_memory=prior_launch_memory,
     )
 
     raw_response = ""

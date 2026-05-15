@@ -1,0 +1,12 @@
+```json
+{
+  "diagnosis": "The `__getitem__` method in the `TextDataset` class is incorrectly accessing the labels using `.iloc`, which is not applicable to numpy arrays.",
+  "edits": [
+    {
+      "action": "replace",
+      "target": "label = torch.tensor(self.labels.iloc[idx], dtype=torch.float32)",
+      "content": "label = torch.tensor(self.labels[idx], dtype=torch.float32)"
+    }
+  ]
+}
+```

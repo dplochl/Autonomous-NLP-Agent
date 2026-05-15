@@ -7,7 +7,7 @@ Design highlights:
   failure, or declare a family permanently dead via skip_family_permanently.
 - Sweep runs for a fixed wall-clock window (default 45 min). The planner
   has the whole window to explore + revisit whichever families it finds
-  promising. There is no separate hyperparameter-tuning phase.
+  promising. 
 - Final submission retrains the sweep winner on a 5k-row sample so it
   always fits inside the 1-hour wall-clock budget on CPU.
 """
@@ -34,6 +34,7 @@ from json_utils import extract_json_object, pretty_json
 from kaggle_submit import auto_submit_enabled, submit_and_wait
 from llm import OllamaClient
 from memory import Agent4Memory
+from short_term_memory import ShortTermMemory
 from prompts import (
     ANALYSIS_PROMPT_TEMPLATE,
     DATA_CONTEXT_TEMPLATE,
@@ -43,7 +44,12 @@ from prompts import (
 from render_templates import render_family_prompt
 from repair import request_surgical_repair
 from sandbox import run_experiment, tail
-from search import propose_next_spec, summarize_trials
+from search import (
+    propose_next_spec,
+    summarize_trials,
+    _fallback_mutation,  # internal helper, intentionally reused for cross-launch duplicate veto
+    _spec_signature,      # ditto
+)
 from sweep_planner import (
     FamilyState,
     SweepDecision,
@@ -150,12 +156,14 @@ def analyze_run(
     run_label: str,
     spec: dict[str, Any],
     result: dict[str, Any],
+    hypothesis: str = "",
 ) -> str:
     status = "success" if result["success"] else ("timeout" if result["timed_out"] else "crash")
     prompt = ANALYSIS_PROMPT_TEMPLATE.format(
         name=run_label,
         family=family,
         status=status,
+        hypothesis=hypothesis or "(no hypothesis was recorded for this trial)",
         spec_json=pretty_json(spec),
         metrics=result.get("metrics") or "none",
         stdout_tail=tail(result.get("stdout", ""), 30),
@@ -443,7 +451,7 @@ def execute_family(
     seeded_code: str | None = None,
     phase_data_dir: str | None = None,
     phase_split_manifest: dict[str, Any] | None = None,
-    planner_guidance: dict[str, Any] | None = None,
+    prior_launch_trials: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     module = FAMILY_MODULES[family_key]
     family = module.FAMILY
@@ -539,6 +547,7 @@ def execute_family(
                 submission_path=submission_path,
                 data_context=data_context,
                 history_summary=family_history,
+                prior_launch_trials=prior_launch_trials,
             )
             spec_stage_name = "spec"
         else:
@@ -550,12 +559,129 @@ def execute_family(
                 data_context=data_context,
                 history_summary=family_history,
                 trials=trials,
-                phase=phase_label,
-                planner_guidance=planner_guidance,
+                prior_launch_trials=prior_launch_trials,
             )
             spec_stage_name = "search"
 
         spec = spec_bundle["spec"]
+        # The hypothesis explains WHY this spec is being tried. It comes from
+        # the LLM's spec-proposer JSON (or a sensible fallback). It is not a
+        # tunable key, so it lives outside the spec dict the family code
+        # sees — but it travels through trial_record, summary.json, memory,
+        # the analyst prompt and the dashboard so the discovery process is
+        # fully readable.
+        hypothesis = spec_bundle.get("hypothesis", "")
+        # ------------------------------------------------------------------
+        # CROSS-LAUNCH DUPLICATE VETO.
+        # The orchestrator's `_ensure_phase_mutation` already prevents
+        # repeating a within-launch spec. But it doesn't see cross-launch
+        # memory, so the LLM can (and sometimes does) re-propose a spec
+        # that was already tried — and refuted — in a prior launch.
+        # We catch that here: if the proposed spec signature matches any
+        # cross-launch trial of this family, we force a mutation using
+        # `_fallback_mutation`, which generates a new spec that differs
+        # from BOTH the within-launch and cross-launch tried sets.
+        cross_launch_sigs: set = set()
+        prior_best_spec: dict[str, Any] | None = None
+        if prior_launch_trials:
+            for pt in prior_launch_trials:
+                pt_spec = pt.get("spec") or {}
+                if pt_spec:
+                    try:
+                        cross_launch_sigs.add(_spec_signature(module, pt_spec))
+                    except Exception:
+                        pass
+            # Anchor for the fallback: the highest-F1 spec from cross-launch
+            # memory if available (so the mutation diverges from a known-good
+            # point), otherwise the LLM's own proposal.
+            try:
+                prior_best_spec = max(
+                    (pt for pt in prior_launch_trials
+                     if isinstance(pt.get("f1"), (int, float))),
+                    key=lambda pt: pt["f1"],
+                ).get("spec") or None
+            except (TypeError, ValueError):
+                prior_best_spec = None
+        within_sigs = {_spec_signature(module, t["spec"]) for t in trials if t.get("spec")}
+        all_tried_sigs = within_sigs | cross_launch_sigs
+        spec_sig = _spec_signature(module, spec)
+        if spec_sig in cross_launch_sigs:
+            print(
+                f"[Diversity] Cross-launch duplicate detected — the LLM's "
+                f"spec matches a prior-launch {family} trial. Forcing a "
+                f"mutation so we don't waste a trial on a known result."
+            )
+            original_llm_spec = dict(spec)        # snapshot for diffing
+            original_llm_hypothesis = hypothesis  # preserve for the audit trail
+            anchor = prior_best_spec or spec
+            mutated_spec, mutation_issues = _fallback_mutation(
+                module=module,
+                anchor_spec=anchor,
+                tried_signatures=all_tried_sigs,
+                run_name=run_name,
+                submission_path=submission_path,
+                preferred_keys=[k for k in module.get_tunable_keys() if k != "val_size"],
+                local=False,
+            )
+            for issue in mutation_issues:
+                print(f"  [Diversity] {issue}")
+            spec = mutated_spec
+            # Build a real, descriptive hypothesis from the mutation: which
+            # key was changed and from what to what. This gives the analyst
+            # something concrete to evaluate against the mutated spec (vs
+            # a generic "the orchestrator overrode" string).
+            diff = [
+                (k, original_llm_spec.get(k), mutated_spec.get(k))
+                for k in module.get_tunable_keys()
+                if k != "val_size"
+                and original_llm_spec.get(k) != mutated_spec.get(k)
+            ]
+            if diff:
+                # Most informative is usually the first one or two changed keys
+                diff_summary = ", ".join(
+                    f"`{k}`={n} (was {o})" for k, o, n in diff[:2]
+                )
+                # Use the cross-launch best F1 we have to give the analyst
+                # an anchor point — what the mutation is meant to beat.
+                anchor_f1 = None
+                if prior_launch_trials:
+                    try:
+                        anchor_f1 = max(
+                            (pt.get("f1") for pt in prior_launch_trials
+                             if isinstance(pt.get("f1"), (int, float))),
+                            default=None,
+                        )
+                    except (TypeError, ValueError):
+                        anchor_f1 = None
+                anchor_clause = (
+                    f" (prior {family} best F1={anchor_f1:.4f})"
+                    if isinstance(anchor_f1, (int, float)) else ""
+                )
+                hypothesis = (
+                    f"[orchestrator-generated] LLM proposed a spec already "
+                    f"refuted in prior launches; mutated {diff_summary} to "
+                    f"explore a different region of the parameter space"
+                    f"{anchor_clause}."
+                )
+            else:
+                # Unexpected: mutation should always produce a diff. Fall back
+                # to the old override text so the audit trail still tags it.
+                hypothesis = (
+                    f"[orchestrator-generated] LLM-proposed spec matched a "
+                    f"refuted prior trial; mutated to a new spec."
+                )
+            # Preserve the original LLM hypothesis at the end so the audit
+            # trail has both perspectives.
+            hypothesis = (
+                f"{hypothesis} | Original LLM hypothesis: "
+                f"{original_llm_hypothesis}"
+            )
+        # ------------------------------------------------------------------
+        if hypothesis:
+            # Surface the hypothesis live in the terminal so the "research
+            # cycle" (hypothesis → run → conclusion) is readable as it
+            # unfolds, not just after the fact in summary.json.
+            print(f"[Hypothesis] {hypothesis}")
         if hasattr(module, "normalize_spec"):
             spec = module.normalize_spec(spec)
         spec = constrain_phase_spec(spec)
@@ -568,6 +694,8 @@ def execute_family(
         )
 
         write_json(os.path.join(run_dir, "spec.json"), spec)
+        if hypothesis:
+            write_text(os.path.join(run_dir, "hypothesis.txt"), hypothesis)
         write_text(os.path.join(run_dir, f"{spec_stage_name}_prompt.txt"), spec_bundle["prompt"])
         write_text(os.path.join(run_dir, f"{spec_stage_name}_response.txt"), spec_bundle["raw_response"])
         write_text(os.path.join(run_dir, "prompt.txt"), prompt)
@@ -590,13 +718,14 @@ def execute_family(
                     "stdout": "",
                     "stderr": "LLM returned no code block.",
                 }
-                analysis = analyze_run(llm, family, run_name, spec, result)
+                analysis = analyze_run(llm, family, run_name, spec, result, hypothesis=hypothesis)
                 write_text(os.path.join(run_dir, "run.log"), result["stderr"])
                 write_json(os.path.join(run_dir, "metrics.json"), {"success": False, "metrics": {}})
                 memory.add_run(family, run_name, run_index, spec, prompt, "", result, analysis)
                 trials.append({
                     "run_index": run_index,
                     "spec": spec,
+                    "hypothesis": hypothesis,
                     "success": False,
                     "metrics": {},
                     "analysis": analysis,
@@ -741,7 +870,7 @@ def execute_family(
                 "stderr": "Execution failed without a result payload.",
             }
 
-        analysis = analyze_run(llm, family, run_name, spec, result)
+        analysis = analyze_run(llm, family, run_name, spec, result, hypothesis=hypothesis)
         write_text(os.path.join(run_dir, "train.py"), run_code)
         write_json(
             os.path.join(run_dir, "metrics.json"),
@@ -788,6 +917,7 @@ def execute_family(
         trial_record = {
             "run_index": run_index,
             "spec": spec,
+            "hypothesis": hypothesis,
             "success": result.get("success", False),
             "metrics": result.get("metrics", {}),
             "analysis": analysis,
@@ -809,6 +939,14 @@ def execute_family(
                     frozen_code = best_code
                     print(f"[Freeze] {family} baseline refreshed from current best successful run.")
         print(f"[Result] run {run_index}/{resolved_max_runs} | success={result.get('success', False)} | metrics={result.get('metrics', {})}")
+        # Surface the analyst's one-sentence CONCLUSION live so the
+        # hypothesis → run → conclusion chain reads as one block in the
+        # terminal, not buried in summary.json.
+        if analysis:
+            from generate_spec import _extract_conclusion
+            concl = _extract_conclusion(analysis)
+            if concl:
+                print(f"[Conclusion] {concl}")
         if phase_label == "sweep" and result.get("success"):
             print(f"[Sweep] {family} produced a successful run; moving to the next family.")
             break
@@ -855,6 +993,35 @@ def main(
             f"Details: {exc}"
         ) from exc
     memory = Agent4Memory(persist=persist)
+    # Short-term cross-launch memory: rolling window of the 20 most recent
+    # trials across all past launches. Surfaced to the planner so it can bias
+    # family choice on prior-launch evidence, and to the spec proposer so it
+    # sees prior-launch specs of a family on revisit. Saved on shutdown.
+    short_term = ShortTermMemory()
+    if short_term.records:
+        # Compact summary of what the LLM is about to start with — useful for
+        # eyeballing memory state before any trial fires.
+        from collections import Counter
+        by_fam = Counter(r.get("family", "?") for r in short_term.records)
+        fam_str = ", ".join(f"{f}:{n}" for f, n in by_fam.most_common())
+        # Best F1 in memory + family it came from, for quick orientation
+        best = max(
+            (r for r in short_term.records if isinstance(r.get("f1"), (int, float))),
+            key=lambda r: r["f1"],
+            default=None,
+        )
+        best_str = (
+            f"best so far {best['family']} F1={best['f1']:.4f}"
+            if best else "no successful F1 yet"
+        )
+        print(
+            f"[Memory] Loaded {len(short_term.records)} prior-launch trial(s) "
+            f"from {short_term.path}"
+        )
+        print(f"[Memory] By family: {fam_str}  |  {best_str}")
+    else:
+        print("[Memory] No prior-launch memory found — starting fresh.")
+    atexit.register(short_term.save)
     public_submissions_dir = reset_public_submissions_dir()
     phase_data_dirs: list[str] = []
     atexit.register(cleanup_phase_data_dirs, phase_data_dirs)
@@ -955,6 +1122,7 @@ def main(
                     time_remaining_seconds=remaining,
                     start_buffer_seconds=RUN_START_BUFFER_SECONDS,
                     planner_system_prompt=SWEEP_PLANNER_SYSTEM,
+                    prior_launch_memory=short_term.planner_summary(),
                 )
 
             # Append a compact line to the decision log + dump the full prompt+raw on the side.
@@ -997,6 +1165,10 @@ def main(
             # and reason about which knob actually moved F1.
             seeded_history = prior_trials_per_family.get(family_key) or None
 
+            # Cross-launch context for this family — passed all the way down to
+            # the spec proposer so its hypothesis can reference real prior F1s.
+            cross_launch_for_family = short_term.prior_trials_for_family(family_key)
+
             summary = execute_family(
                 llm,
                 memory,
@@ -1007,6 +1179,7 @@ def main(
                 seeded_trials=seeded_history,
                 phase_data_dir=sweep_data_dir,
                 phase_split_manifest=sweep_split_manifest,
+                prior_launch_trials=cross_launch_for_family,
             )
             family_summaries.append(summary)
 
@@ -1024,6 +1197,19 @@ def main(
                 # Append to per-family history. We keep ALL trials (success
                 # AND failure) so propose_next_spec can see what failed too.
                 prior_trials_per_family.setdefault(family_key, []).append(last)
+                # Also record into the cross-launch short-term memory so the
+                # NEXT launch's planner can see what worked / failed here.
+                short_term.add_trial(
+                    family=summary.get("family", family_key),
+                    family_key=family_key,
+                    spec=last.get("spec", {}),
+                    outcome=last.get("outcome", "training_crash"),
+                    metrics=last.get("metrics", {}),
+                    wall_seconds=last.get("wall_seconds"),
+                    hypothesis=last.get("hypothesis", ""),
+                    analysis=last.get("analysis", ""),
+                )
+                short_term.save()  # persist eagerly so a crash doesn't lose history
 
     successful = [summary for summary in family_summaries if summary.get("best_run_index") is not None]
     if not successful:

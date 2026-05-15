@@ -1,0 +1,83 @@
+Write one complete runnable Python script for Kaggle Disaster Tweets.
+
+Family:
+- LSTM
+- Use a PyTorch bidirectional LSTM text classifier with an embedding layer and a compact classifier head.
+
+Use this validated spec exactly:
+{
+  "architecture": "LSTM",
+  "max_vocab": 14375,
+  "max_len": 64,
+  "embedding_dim": 128,
+  "hidden_dim": 128,
+  "num_layers": 1,
+  "dropout": 0.2,
+  "batch_size": 64,
+  "epochs": 3,
+  "learning_rate": 0.001,
+  "val_size": 0.2,
+  "threshold_min": 0.3,
+  "threshold_max": 0.7,
+  "threshold_steps": 41,
+  "dry_run_head": 200,
+  "experiment_name": "lstm_20260515_140009_run_01",
+  "submission_path": "/Users/niccogermani/Library/Containers/com.apple.iMovieApp/Data/Documents/Catolica/apa-disaster-tweets-clean/src/Agent_4/runs/lstm_20260515_140009/run_001/submission.csv"
+}
+
+Required pipeline:
+- use Python + PyTorch only
+- run on CPU only; define `device = torch.device("cpu")` and never use CUDA or MPS
+- load only real train.csv and test.csv from DATA_DIR = os.environ.get("DISASTER_AGENT_DATA_DIR", "data")
+- DRY_RUN = os.environ.get("AGENT_DRY_RUN") == "1"
+- WRITE_SUBMISSION = os.environ.get("AGENT_WRITE_SUBMISSION") == "1"
+- FINAL_SUBMISSION = os.environ.get("AGENT_FINAL_SUBMISSION") == "1"
+- TRAIN_FRACTION = float(os.environ.get("AGENT_TRAIN_FRACTION", "1.0"))
+- SAMPLE_SEED = int(os.environ.get("AGENT_SAMPLE_SEED", "42"))
+- fillna keyword, location, text with "" by REASSIGNMENT: `df["col"] = df["col"].fillna("")`. DO NOT use `inplace=True` — pandas 3.0+ raises ChainedAssignmentError on that pattern
+- build one text field from keyword + " [SEP] " + text, else text
+- if DRY_RUN, use head(dry_run_head)
+- else if TRAIN_FRACTION < 1.0, randomly sample that fraction of train_df with random_state=SAMPLE_SEED and reset_index(drop=True)
+- define stratify_labels = y if class counts allow, else None
+- use one train_test_split with test_size=val_size, random_state=42, stratify=stratify_labels; val_size is fixed at 0.2 for the runner
+- build a simple tokenizer/vocabulary in code
+- convert texts to padded integer sequences using max_vocab and max_len from spec
+- define a torch Dataset and DataLoader
+- use `pin_memory=False` on DataLoaders if you set it explicitly
+- define a bidirectional LSTM classifier with torch.nn.Embedding and torch.nn.LSTM(bidirectional=True)
+- importing `torch.nn as nn` is allowed
+- the sequence builder must truncate to max_len before padding
+- labels used inside Dataset must be indexed positionally, not by pandas label
+- create the submissions directory before writing the CSV only if WRITE_SUBMISSION is true
+- train for epochs from spec, but if DRY_RUN skip or minimize training
+- compute validation probabilities with sigmoid
+- ALWAYS tune the decision threshold (NOT gated on FINAL_SUBMISSION). Loop over `np.linspace(spec["threshold_min"], spec["threshold_max"], spec["threshold_steps"])`. Track `best_threshold` and `best_f1` as the candidate maximising val F1. Compute `acc = accuracy_score(val_labels, (val_probs >= best_threshold).astype(int))`.
+- The METRICS line MUST report `f1 = best_f1` (not F1 at threshold 0.5).
+- if FINAL_SUBMISSION is true, you MAY train a fresh final model on the full `train_df`. If you do: build a NEW Dataset/DataLoader from the FULL train_df, instantiate a NEW model, train it, and use it for test prediction. NEVER reuse the original DataLoader (which holds only the 80% split). If you skip the optional retrain, use the already-trained model.
+- compute test probabilities with sigmoid only if WRITE_SUBMISSION is true, applying `best_threshold` (NOT 0.5)
+- when WRITE_SUBMISSION is true, save columns id,target to submission_path
+- last line exactly:
+  print('METRICS: {"f1": ' + str(round(best_f1, 4)) + ', "accuracy": ' + str(round(acc, 4)) + ', "best_threshold": ' + str(round(best_threshold, 4)) + '}')
+
+Do not use:
+- Hugging Face Trainer
+- tensorflow
+- keras
+- K-fold CV
+- mock/demo/sample data
+
+Dataset context:
+DATASET CONTEXT:
+- train.csv: 7613 rows, columns: id, keyword, location, text, target
+- test.csv: 3263 rows, columns: id, keyword, location, text
+- Class balance: 4342 not-disaster (57.0%), 3271 disaster (43.0%)
+- Missing keyword: 0.8%
+- Missing location: 33.3%
+
+Family history:
+- [6] lstm_20260515_135004_run_01 run 1 | F1=N/A | FAILED | **CONCLUSION:** The hypothesis that switching from LSTM to BiLSTM would improve performance was inco
+
+Session trial summary:
+- run -1: status=FAILED, f1=N/A, spec={"architecture": "LSTM", "batch_size": 64, "dropout": 0.3, "dry_run_head": 200, "embedding_dim": 128, "epochs": 3, "experiment_name": "lstm_20260515_135004_run_01", "hidden_dim": 128, "learning_rate": 0.001, "max_len": 64, "max_vocab": 14375, "num_layers": 2, "submission_path": "/Users/niccogermani/Library/Containers/com.apple.iMovieApp/Data/Documents/Catolica/apa-disaster-tweets-clean/src/Agent_4/runs/lstm_20260515_135004/run_001/submission.csv", "threshold_max": 0.7, "threshold_min": 0.3, "threshold_steps": 41, "val_size": 0.2}
+
+Return code only.

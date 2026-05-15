@@ -1,0 +1,47 @@
+Plan one reliable LSTM experiment spec for the Kaggle Disaster Tweets task.
+
+Return a reliable BiLSTM spec with one validation split and conservative sequence settings. Prefer simple settings that are likely to run on the first try.
+
+Return one JSON object only — see the system prompt for the exact three-field schema (hypothesis + changed_keys + spec keys). The hypothesis must reference concrete prior evidence when available (a past F1, a spec choice that worked or didn't). DO NOT just say 'establish a baseline' if prior-launch evidence below shows what already worked.
+
+Tunable keys you may put in 'changed_keys': max_vocab, max_len, embedding_dim, hidden_dim, num_layers, dropout, batch_size, epochs, learning_rate
+
+PRIOR-LAUNCH EVIDENCE for LSTM (newest+highest-F1 first):
+  - F1=0.5965  spec: architecture=LSTM, batch_size=64, dropout=0.3, embedding_dim=128, epochs=3, hidden_dim=128, learning_rate=1.00e-03, max_len=64, max_vocab=14375, num_layers=1, threshold_max=0.7, threshold_min=0.3, threshold_steps=41, val_size=0.2
+      prior hypothesis: [orchestrator-generated] LLM proposed a spec already refuted in prior launches; mutated `max_vocab`=14375 (was 20000) to explore a different region of the parameter space. | Original LLM hypothesis: Try a BiLSTM architecture to see if it improves performance over the previous LSTM baseline.
+      prior verdict   : The hypothesis that reducing `max_vocab` to 14,375 would explore a different region of the parameter space and potentially improve performance over previous launches was inconclusive. While the experiment did not fail, the metrics (F1 scor…
+
+Use this evidence: write a hypothesis that proposes a SPECIFIC move vs. the prior best (e.g. 'try lr=5e-6 to test if the 0.7976 best can be pushed via slower training') rather than a generic baseline statement. Pay attention to the prior verdicts — if a hypothesis was already refuted, do not re-test the same direction; pivot to a different parameter or value.
+
+Dataset context:
+DATASET CONTEXT:
+- train.csv: 7613 rows, columns: id, keyword, location, text, target
+- test.csv: 3263 rows, columns: id, keyword, location, text
+- Class balance: 4342 not-disaster (57.0%), 3271 disaster (43.0%)
+- Missing keyword: 0.8%
+- Missing location: 33.3%
+
+
+Recent in-launch history:
+No prior runs.
+
+Family default spec (this is the anchor — your 'changed_keys' lists what you intend to change FROM this). You MUST list at LEAST 2 tunable keys in 'changed_keys' and the spec values you return for those keys must differ from the default. Any spec key you change but DO NOT name in changed_keys will be silently reset to the default — this enforces hypothesis-as-source-of-truth.
+{
+  "architecture": "LSTM",
+  "max_vocab": 20000,
+  "max_len": 64,
+  "embedding_dim": 128,
+  "hidden_dim": 128,
+  "num_layers": 1,
+  "dropout": 0.3,
+  "batch_size": 64,
+  "epochs": 3,
+  "learning_rate": 0.001,
+  "val_size": 0.2,
+  "threshold_min": 0.3,
+  "threshold_max": 0.7,
+  "threshold_steps": 41,
+  "dry_run_head": 200,
+  "experiment_name": "lstm_20260515_135004_run_01",
+  "submission_path": "/Users/niccogermani/Library/Containers/com.apple.iMovieApp/Data/Documents/Catolica/apa-disaster-tweets-clean/src/Agent_4/runs/lstm_20260515_135004/run_001/submission.csv"
+}

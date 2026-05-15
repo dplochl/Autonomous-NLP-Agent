@@ -1,0 +1,3 @@
+```json
+{"action":"try_family","family_key":"bow_advanced","reason":"Untried family, need a new data point."}
+```
