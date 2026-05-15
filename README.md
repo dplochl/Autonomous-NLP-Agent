@@ -26,20 +26,16 @@ Around those five LLM roles sit **nine deterministic guard rails**: cross-launch
 ├── src/
 │   └── Agent_4/                  ← all agent source (see src/Agent_4/README.md)
 ├── runs/
-│   ├── agent_3/                  ← historical sessions from the earlier Agent_3 baseline (analysis only)
 │   └── agent_4/
 │       ├── current/              ← latest committed snapshot of a live run
 │       ├── before_fix/           ← archived sessions from earlier code versions
 │       ├── full_v1_with_opt/
 │       └── v2_fixed/ … v16_pre_2key_floor/
 ├── logs/
-│   ├── agent3_log.json           ← write-only in-launch log from Agent_3 days
 │   ├── agent4_log.json           ← write-only in-launch log from Agent_4 launches (gitignored)
 │   └── agent4_short_term_memory.json  ← 20-trial rolling cross-launch memory
 └── submissions/                  ← final Kaggle CSVs (filled by the agent)
 ```
-
-Earlier Agent_3 source code is intentionally absent on this branch. Only its runs history is retained so the experiment log is still available for analysis.
 
 ## Quick start — one command
 
@@ -126,9 +122,7 @@ Requires `~/.kaggle/kaggle.json` (or `KAGGLE_USERNAME` + `KAGGLE_KEY`).
 
 ## Notes on the run logs included on this branch
 
-- `runs/agent_3/` — 148 historical sessions from the earlier baseline implementation. Corresponding source code is not in this branch.
 - `runs/agent_4/before_fix/`, `runs/agent_4/full_v1_with_opt/` and the `v2_fixed/` … `v16_pre_2key_floor/` folders are snapshots of Agent_4 at earlier code versions. Useful for tracking how the agent's behaviour changed across iterations.
 - `runs/agent_4/current/` — latest live run committed at branch-push time.
-- `logs/agent3_log.json` — write-only in-launch log from Agent_3 days.
 - `logs/agent4_log.json` — write-only in-launch log from Agent_4 launches (gitignored — same data also in each session's `summary.json`).
 - `logs/agent4_short_term_memory.json` — the 20-trial rolling cross-launch memory that the agent reads at every startup.
