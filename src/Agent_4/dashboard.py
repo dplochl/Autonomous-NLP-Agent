@@ -693,7 +693,18 @@ def overview():
     body.append(f"<div class='card bad'><h3>Failed</h3><div class='value'>{len(failed)}</div></div>")
     body.append(f"<div class='card bad'><h3>Error rate</h3><div class='value'>{error_rate:.1f}%</div></div>")
     if best:
-        body.append(f"<div class='card good'><h3>Best F1</h3><div class='value'>{best['f1']:.4f}</div><div class='small'>{best['version']} · {best['family']} · {best['session']}</div></div>")
+        body.append(f"<div class='card good'><h3>Best local F1</h3><div class='value'>{best['f1']:.4f}</div><div class='small'>{best['version']} · {best['family']} · {best['session']}</div></div>")
+    # Best Kaggle public F1 across all submissions ever uploaded.
+    # Pulled from the hardcoded KAGGLE_SCORES table above so it reflects
+    # the actual leaderboard, not just local validation.
+    if KAGGLE_SCORES:
+        best_kaggle = max(KAGGLE_SCORES, key=lambda r: r[1])
+        k_version, k_score, k_fname, _k_days, k_match, _k_comment = best_kaggle
+        body.append(
+            f"<div class='card good'><h3>Best Kaggle F1</h3>"
+            f"<div class='value'>{k_score:.4f}</div>"
+            f"<div class='small'>{k_version} · {k_match} · {k_fname}</div></div>"
+        )
     body.append("</div>")
 
     # Per-version stat strip — left-bar coloured per version
@@ -1256,13 +1267,17 @@ def architectures():
         },
         {
             "id": "v4",
-            "title": "V4 — LLM-driven Sweep Planner",
+            "title": "V4 — LLM-driven Sweep Planner + Hypothesis-as-Source-of-Truth",
             "subtitle": "src/Agent_4/agent.py (this codebase)",
             "summary": (
-                "Sweep order is no longer a hardcoded list — an LLM planner reads the per-family state table "
-                "every step and chooses try_family / skip_family_permanently / stop. Sweep ends at a fixed "
-                "40-min wall-clock boundary. 2k-row fixed sample is shared across sweep/opt/final retrain. "
-                "New artifact: sweep_decisions.jsonl logs every planner decision with prompt + raw response."
+                "Five LLM roles (sweep planner / spec proposer / code generator / repair / analyst) "
+                "wrapped in nine deterministic guard rails: cross-launch 20-trial short-term memory, "
+                "hypothesis-as-source-of-truth via changed_keys (silent spec changes reverted), "
+                "2-key minimum diversity floor, [orchestrator-added: ...] honest annotation, "
+                "cross-launch signature veto, per-call temperature split (spec=0.5, everything else=0.2), "
+                "plateau detection, spec validator, and a hardcoded final-submission tail. "
+                "Sweep window 45 min; final retrain on a 5k-row sample. "
+                "Artifact: sweep_decisions.jsonl logs every planner decision."
             ),
         },
     ]
