@@ -1,16 +1,3 @@
-"""Agent_4 — autonomous experiment runner with LLM-driven sweep planner.
-
-Design highlights:
-- Sweep order is decided by an LLM planner each step, not a hardcoded list.
-- Each planner decision = one trial of one family (no per-family attempt cap).
-- A family is never auto-consumed: the planner can revisit a success, retry a
-  failure, or declare a family permanently dead via skip_family_permanently.
-- Sweep runs for a fixed wall-clock window (default 45 min). The planner
-  has the whole window to explore + revisit whichever families it finds
-  promising. 
-- Final submission retrains the sweep winner on a 5k-row sample so it
-  always fits inside the 1-hour wall-clock budget on CPU.
-"""
 
 from __future__ import annotations
 
@@ -55,6 +42,7 @@ from sweep_planner import (
     SweepDecision,
     classify_trial_outcome,
     decision_to_log_record,
+    eligible_families,
     select_next_sweep_action,
 )
 from submit_tails import append_submission_tail
@@ -1115,6 +1103,25 @@ def main(
                     f"{int(time.time() - started_at)}s elapsed. "
                     f"Goal switches from EXPLORE to MAXIMISE F1. ***"
                 )
+
+            # Fast-path: if the eligibility filter would return an empty list
+            # there is no point calling the planner — every pick gets rejected,
+            # the orchestrator's `stop` rejection loops forever (or until the
+            # wall-clock deadline), and each iteration wastes ~10s of LLM
+            # compute. Break out cleanly.
+            _eligible_now = eligible_families(
+                family_state=family_state,
+                cost_estimates=FAMILY_RUN_ESTIMATES,
+                time_remaining_seconds=remaining,
+                start_buffer_seconds=RUN_START_BUFFER_SECONDS,
+            )
+            if not _eligible_now:
+                cheapest = min(FAMILY_RUN_ESTIMATES.values()) if FAMILY_RUN_ESTIMATES else 0
+                print(
+                    f"[Sweep] No eligible family fits in remaining {int(remaining)}s "
+                    f"(cheapest cost = {cheapest}s); closing sweep early."
+                )
+                break
 
             # Build a planner caller that uses round-robin as fallback when the
             # planner LLM is unavailable.

@@ -19,7 +19,7 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "src", "Agent_4"))
 
-from agent import (  # noqa: E402
+from agent import (  # type: ignore[import-not-found]  # noqa: E402
     prepare_final_submission_payload,
     execute_final_submission,
 )

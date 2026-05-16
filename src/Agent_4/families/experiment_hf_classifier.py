@@ -260,6 +260,13 @@ def apply_light_autofixes(code: str, spec: dict[str, object]) -> str:
     # the modern kwarg so the tokenizer actually pads to max_length.
     fixed = re.sub(r"pad_to_max_length\s*=\s*True", 'padding="max_length"', fixed)
     fixed = re.sub(r"pad_to_max_length\s*=\s*False", "padding=False", fixed)
+    # Same shape as pad_to_max_length: transformers 5.x renamed
+    # `evaluation_strategy` to `eval_strategy`. The code-gen LLM still emits
+    # the deprecated kwarg name (its training data is full of the old form)
+    # and the repair LLM consistently misdiagnoses the TypeError — usually
+    # tries to change the VALUE ("epoch"→"steps") instead of renaming the
+    # KWARG. Rewrite deterministically before the script even runs.
+    fixed = re.sub(r"\bevaluation_strategy\s*=", "eval_strategy=", fixed)
     # The LLM sometimes wraps `stratify_labels` in a try/except where the
     # train_test_split line ends up OUTSIDE the try body (column 0), making
     # the except clause orphan and triggering "SyntaxError: expected 'except'
