@@ -69,7 +69,7 @@ DEGENERATE_F1_THRESHOLD = 0.4
 # That's three exploration attempts before giving up — enough room for the
 # wild card to actually fire and learn something, while still capping the
 # worst case so we don't grind forever on a family that can't move.
-PLATEAU_WINDOW = 5       # successful trials in tight band before we give up
+PLATEAU_WINDOW = 2       # successful trials in tight band before we give up
 PLATEAU_TOLERANCE = 0.005  # F1 swing tolerance for "no movement"
 
 
@@ -282,6 +282,43 @@ def _format_state_table(
     return "\n".join(rows)
 
 
+def _phase_header(current_phase: str, leader_family: str | None, leader_f1: float | None) -> list[str]:
+    """Strong goal-framing header at the top of the user prompt.
+
+    The sweep is split into two phases by a hard wall-clock gate in agent.py.
+    Each phase has ONE clear goal so the LLM doesn't have to weigh
+    explore-vs-exploit on its own (it consistently fails to pivot when left
+    to its own judgment). The eligible list and reasoning protocol are
+    unchanged — only the goal framing flips.
+    """
+    if current_phase == "A":
+        return [
+            "=== CURRENT PHASE: A (EXPLORE) ===",
+            "Your ONE goal right now is to COVER families and parameter "
+            "regions you have not yet measured this launch. Do NOT optimise "
+            "for F1 yet — that comes in Phase B. A trial that explores an "
+            "untried family right now is more valuable than a trial that "
+            "drills the current leader.",
+            "",
+        ]
+    leader_str = (
+        f"{leader_family} (F1={leader_f1:.4f})"
+        if leader_family and leader_f1 is not None
+        else "none yet"
+    )
+    return [
+        "=== CURRENT PHASE: B (MAXIMISE F1) ===",
+        "Exploration is OVER. Your ONE goal now is to push F1 ABOVE the "
+        f"current leader: {leader_str}. Do NOT pick an untried family for "
+        "'coverage' — pick whichever family is most likely to lift F1 "
+        "ABOVE that number. Usually this means drilling the current leader "
+        "with parameter tweaks; pick a different family only if it has "
+        "demonstrated F1 within striking distance and clear runway to "
+        "improve. Untried families are NOT preferred in this phase.",
+        "",
+    ]
+
+
 def build_planner_prompt(
     family_state: dict[str, FamilyState],
     cost_estimates: dict[str, int],
@@ -289,11 +326,11 @@ def build_planner_prompt(
     time_remaining_seconds: float,
     success_recorded: bool,
     prior_launch_memory: str = "",
+    current_phase: str = "A",
 ) -> str:
     """User message handed to the planner LLM."""
     table = _format_state_table(family_state, cost_estimates, eligible)
-    stop_allowed = "yes" if success_recorded else "no (no successful F1 yet)"
-    eligible_list = ", ".join(eligible) if eligible else "(none — only `stop` is legal)"
+    eligible_list = ", ".join(eligible) if eligible else "(none)"
 
     # Fix 1: pre-compute the answer to "is this family untried?" so the LLM
     # never has to count rows in the table to figure it out. This dramatically
@@ -307,44 +344,56 @@ def build_planner_prompt(
     untried_str = ", ".join(untried_eligible) if untried_eligible else "(none)"
     tried_str = ", ".join(tried_eligible) if tried_eligible else "(none)"
 
-    lines = [
-        "Decide the next sweep action.",
+    # Compact state summary — names the current leader and structures the
+    # info the planner needs to reason from evidence (rather than pattern-
+    # match a "phase" label).
+    best_family = None
+    best_f1 = -1.0
+    for fk, st in family_state.items():
+        if st.successes > 0 and st.best_f1 is not None and st.best_f1 > best_f1:
+            best_family = fk
+            best_f1 = st.best_f1
+    if best_family is None:
+        leader_line = "Current leader THIS launch: none yet (no successful trial)."
+    else:
+        leader_line = f"Current leader THIS launch: {best_family} (F1={best_f1:.4f})."
+    phase_hint = leader_line
+
+    # USER PROMPT — ORDER MATTERS. Spec proposer pattern: memory +
+    # "use this evidence" instruction sit IMMEDIATELY before the output
+    # schema, so the LLM's last-attended context is the evidence it must
+    # cite. The planner's previous layout had memory at the top and the
+    # JSON 60+ lines later, which led the model to ignore the evidence.
+    lines = ["Decide the next sweep action.", ""]
+    lines += _phase_header(current_phase, best_family, best_f1 if best_family else None)
+    lines += [
+        f"TIME REMAINING: {int(time_remaining_seconds)} seconds.",
         "",
-        f"Time remaining in sweep window: {int(time_remaining_seconds)} seconds.",
-        f"Stop allowed? {stop_allowed}.",
-        f"Eligible families this step: {eligible_list}.",
+        phase_hint,
         "",
-        f"UNTRIED families currently eligible (zero prior trials): {untried_str}",
-        f"TRIED families currently eligible (have at least one observation): {tried_str}",
+        f"ELIGIBLE LIST (pick from these only): {eligible_list}.",
+        f"  UNTRIED this launch: {untried_str}",
+        f"  TRIED this launch:   {tried_str}",
+        "",
+        "PER-FAMILY STATE (this launch):",
+        table,
         "",
     ]
     if prior_launch_memory:
         lines.extend([
+            "CROSS-LAUNCH MEMORY (evidence you MUST cite in your reason):",
             prior_launch_memory,
-            "(This is context only — use it to bias choices, not to skip families. "
-            "Every family still needs at least one trial in THIS launch.)",
+            "",
+            "Use this evidence: cite ONE concrete fact from the memory above "
+            "(an F1 number, a prior verdict, a spec choice that worked or "
+            "didn't) in your 'reason' field, then state what picking this "
+            "family next will test or learn. Generic phrases like 'untried "
+            "family' or 'good potential' do NOT count as evidence.",
             "",
         ])
     lines += [
-        "Per-family state (this launch):",
-        table,
-        "",
-        "How to think about each choice:",
-        "- Untried families: their F1 is unknown — trying one gives you a new data point. Prefer untried until none remain eligible.",
-        "- Revisits of a successful family: useful when the last trial was an improvement. After 2+ successive successes within 0.005 F1, the family is plateauing and revisits rarely add information.",
-        "- code_gen_failed once: retry is reasonable. Two consecutive with no success → the orchestrator drops the family automatically.",
-        "- degenerate_success: the model trained but collapsed to predicting one class (F1 < 0.4). A retry with a different spec (lower learning_rate, fewer parameters, different embedding_dim) may rescue it. Two consecutive → the orchestrator drops the family automatically.",
-        "- training_crash / timeout / no_metrics: usually fixable with a different spec; one retry is worth it.",
-        "- Cost matters only for eligibility. Within the eligible list, all families are equally valid choices — do NOT prefer cheap.",
-        "",
-        "Return ONE JSON object on a single line, no commentary:",
-        '{"action":"try_family","family_key":"<key>","reason":"<one short sentence>"}',
-        "or",
-        '{"action":"skip_family_permanently","family_key":"<key>","reason":"<one short sentence>"}',
-        "or",
-        '{"action":"stop","reason":"<one short sentence>"}',
-        "",
-        "Pick only family_keys from the eligible list above (or any non-skipped family for skip_family_permanently).",
+        "Return ONE JSON object on a single line:",
+        '{"action":"try_family","family_key":"<key>","reason":"<text>"}',
     ]
     return "\n".join(lines)
 
@@ -363,9 +412,23 @@ def _coerce_decision(
     eligible: list[str],
     family_state: dict[str, FamilyState],
     success_recorded: bool,
+    cost_estimates: dict[str, int] | None = None,
 ) -> tuple[DecisionAction, str | None, str]:
     """Validate the planner's JSON; fall back to safe defaults when it lies."""
-    fallback_family = eligible[0] if eligible else None
+    # Fallback now actually picks the CHEAPEST eligible family (matching the
+    # "using cheapest eligible" message), not eligible[0] which was just the
+    # first key in the FAMILY_MODULES dict (always 'bertweet') and silently
+    # made every fallback land on the same expensive family.
+    if eligible:
+        if cost_estimates:
+            fallback_family = min(
+                eligible,
+                key=lambda k: (cost_estimates.get(k, 10_000), k),
+            )
+        else:
+            fallback_family = eligible[0]
+    else:
+        fallback_family = None
     if parsed is None:
         return ("try_family", fallback_family, "fallback: malformed planner JSON") if fallback_family else (
             "stop",
@@ -376,7 +439,18 @@ def _coerce_decision(
     action = str(parsed.get("action", "")).strip()
     reason = str(parsed.get("reason", "")).strip() or "(no reason given)"
     family_key = parsed.get("family_key")
-    family_key = str(family_key).strip() if family_key else None
+    # Normalize the LLM's family_key to the canonical key. Handles BOTH:
+    #   - case mismatch ("BoW_advanced" → "bow_advanced")
+    #   - separator drop  ("EmbeddingDL" → "embedding_dl")
+    # Stripping underscores+lowercasing on both sides makes the lookup
+    # robust to whichever capitalization/separator style the LLM emits.
+    def _canon(s: str) -> str:
+        return str(s).strip().replace("_", "").lower()
+    if family_key:
+        lookup = {_canon(k): k for k in list(family_state.keys()) + list(eligible)}
+        family_key = lookup.get(_canon(family_key), str(family_key).strip())
+    else:
+        family_key = None
 
     if action == "stop":
         if success_recorded:
@@ -422,6 +496,7 @@ def select_next_sweep_action(
     start_buffer_seconds: int,
     planner_system_prompt: str,
     prior_launch_memory: str = "",
+    current_phase: str = "A",
 ) -> SweepDecision:
     """Ask the planner LLM for the next sweep decision.
 
@@ -444,12 +519,19 @@ def select_next_sweep_action(
         time_remaining_seconds=time_remaining_seconds,
         success_recorded=success_recorded,
         prior_launch_memory=prior_launch_memory,
+        current_phase=current_phase,
     )
 
     raw_response = ""
     parsed: dict[str, Any] | None = None
     try:
-        raw_response = llm.respond(planner_system_prompt, prompt) or ""
+        # temp=0.4 for the planner: the prompt asks for evidence-cited reasoning
+        # which is structured-but-creative output. At temp=0.2 the LLM produced
+        # tautological reasons ("untried family") despite the prompt asking for
+        # cited F1s. Slight bump to give it room to produce real reasoning while
+        # keeping JSON output stable. Spec proposers run at 0.5; code-gen and
+        # repair stay at 0.2.
+        raw_response = llm.respond(planner_system_prompt, prompt, temperature=0.4) or ""
         parsed = _parse_planner_response(raw_response)
     except Exception as exc:  # noqa: BLE001 - planner is best-effort
         raw_response = f"[planner-llm-error] {exc}"
@@ -459,6 +541,7 @@ def select_next_sweep_action(
         eligible=eligible,
         family_state=family_state,
         success_recorded=success_recorded,
+        cost_estimates=cost_estimates,
     )
 
     return SweepDecision(

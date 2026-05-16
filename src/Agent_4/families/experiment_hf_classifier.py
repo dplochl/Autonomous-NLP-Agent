@@ -252,6 +252,38 @@ def apply_light_autofixes(code: str, spec: dict[str, object]) -> str:
     fixed = re.sub(r"(['\"])ids\1\s*:", "'input_ids':", fixed)
     fixed = re.sub(r"(['\"])mask\1\s*:", "'attention_mask':", fixed)
     fixed = _flatten_tokenizer_tensors(fixed)
+    # The code-gen LLM frequently emits the deprecated `pad_to_max_length=True`
+    # kwarg (old transformers API). On modern transformers this is silently
+    # demoted to "pad to longest in batch", which means tokenized sequences
+    # come out at variable lengths and the default data collator crashes with
+    # "RuntimeError: stack expects each tensor to be equal size". Rewrite to
+    # the modern kwarg so the tokenizer actually pads to max_length.
+    fixed = re.sub(r"pad_to_max_length\s*=\s*True", 'padding="max_length"', fixed)
+    fixed = re.sub(r"pad_to_max_length\s*=\s*False", "padding=False", fixed)
+    # The LLM sometimes wraps `stratify_labels` in a try/except where the
+    # train_test_split line ends up OUTSIDE the try body (column 0), making
+    # the except clause orphan and triggering "SyntaxError: expected 'except'
+    # or 'finally' block". The repair LLM can't reliably unwind this. Rewrite
+    # the malformed block to the canonical safe if/else form so the script
+    # parses cleanly. Pattern observed: try:\n  stratify_labels = ...\n
+    # X_... = train_test_split(...stratify=stratify_labels)\n except ValueError:\n
+    # X_... = train_test_split(...)
+    _stratify_try_except = re.compile(
+        r"try:\s*\n"
+        r"[ \t]+stratify_labels\s*=\s*train_df\[['\"]target['\"]\]\s*\n"
+        r"(?P<split>X_train\s*,\s*X_val\s*,\s*y_train\s*,\s*y_val\s*=\s*train_test_split\([^)]*stratify\s*=\s*stratify_labels[^)]*\))\s*\n"
+        r"except\s+(?:ValueError|Exception)\s*:\s*\n"
+        r"[ \t]+X_train\s*,\s*X_val\s*,\s*y_train\s*,\s*y_val\s*=\s*train_test_split\([^)]*\)\s*\n",
+        re.MULTILINE,
+    )
+    fixed = _stratify_try_except.sub(
+        lambda m: (
+            "stratify_labels = train_df['target'] if train_df['target'].nunique() > 1 "
+            "and train_df['target'].value_counts().min() >= 2 else None\n"
+            f"{m.group('split')}\n"
+        ),
+        fixed,
+    )
     fixed = fixed.replace(".tolist().tolist()", ".tolist()")
     fixed = fixed.replace("train_texts.tolist()", "train_texts")
     fixed = fixed.replace("val_texts.tolist()", "val_texts")

@@ -1267,17 +1267,25 @@ def architectures():
         },
         {
             "id": "v4",
-            "title": "V4 — LLM-driven Sweep Planner + Hypothesis-as-Source-of-Truth",
+            "title": "V4 — LLM-driven Sweep Planner + Table-based Spec Proposer",
             "subtitle": "src/Agent_4/agent.py (this codebase)",
             "summary": (
                 "Five LLM roles (sweep planner / spec proposer / code generator / repair / analyst) "
-                "wrapped in nine deterministic guard rails: cross-launch 20-trial short-term memory, "
-                "hypothesis-as-source-of-truth via changed_keys (silent spec changes reverted), "
-                "2-key minimum diversity floor, [orchestrator-added: ...] honest annotation, "
-                "cross-launch signature veto, per-call temperature split (spec=0.5, everything else=0.2), "
-                "plateau detection, spec validator, and a hardcoded final-submission tail. "
-                "Sweep window 45 min; final retrain on a 5k-row sample. "
-                "Artifact: sweep_decisions.jsonl logs every planner decision."
+                "wrapped in deterministic guard rails. Sweep splits into Phase A (EXPLORE) and Phase B "
+                "(MAXIMISE F1) via a hard wall-clock gate at AGENT4_PHASE_B_FRACTION (default 55% → "
+                "≈24:48 of a 45-min sweep). Spec proposer uses one unified SPEC_PROPOSER_SYSTEM prompt; "
+                "the user prompt shows prior trials as a compact F1 + spec + outcome + plateau table "
+                "(no narrative copy-paste vector) and forces a two-halves 'why' field — cite a prior F1 "
+                "AND name the keys+values being changed in key=old→new arrow notation. Code-gen survives "
+                "two deterministic autofixes (pad_to_max_length and malformed stratify try/except) and a "
+                "quote-tolerant repair matcher. Hardcoded final-submission tail is multi-vectorizer aware "
+                "(BoW_advanced word+char hstack works). Plus: changed_keys hypothesis-as-source-of-truth, "
+                "2-key minimum floor with [orchestrator-added: ...] annotation, cross-launch signature "
+                "veto, case-insensitive family resolution, per-call temperature split (planner=0.4, "
+                "spec=0.5, everything else=0.2), plateau detection (window=2, tolerance=0.005), spec "
+                "validator. Sweep window 45 min; final retrain on a 5k-row sample, with an explicit "
+                "[Final Submission ✓/✗] status line at run end. "
+                "Artifacts: sweep_decisions.jsonl (every planner decision) and per-trial spec_prompt.txt."
             ),
         },
     ]

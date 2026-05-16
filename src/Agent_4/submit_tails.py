@@ -58,14 +58,20 @@ for _n in ("classifier", "model", "clf", "lr", "lr_model", "log_reg", "logreg", 
 if _clf is None:
     raise RuntimeError("[AGENT_SUBMIT] could not find a fitted classifier with .predict_proba")
 
-# Find the fitted vectorizer (tolerant to LLM naming variations).
-_vec = None
-for _n in ("vectorizer", "tfidf_vectorizer", "tfidf", "vec", "word_vectorizer", "tfidf_word"):
+# Find ALL fitted vectorizers. Single-vectorizer BoW uses just one;
+# BoW_advanced trains on hstack([word_vectorizer, char_vectorizer]) so the
+# classifier expects the COMBINED feature count. We collect every vectorizer
+# in scope, then pick the single one (or hstack subset) whose feature count
+# matches the classifier's n_features_in_.
+_vecs = []
+for _n in ("vectorizer", "tfidf_vectorizer", "tfidf", "vec",
+          "word_vectorizer", "tfidf_word",
+          "char_vectorizer", "tfidf_char"):
     _o = globals().get(_n)
-    if _o is not None and hasattr(_o, "transform") and not callable(getattr(_o, "fit_predict", None)):
-        _vec = _o
-        break
-if _vec is None:
+    if (_o is not None and hasattr(_o, "transform")
+            and hasattr(_o, "vocabulary_") and _o not in [v for _, v in _vecs]):
+        _vecs.append((_n, _o))
+if not _vecs:
     raise RuntimeError("[AGENT_SUBMIT] could not find a fitted vectorizer with .transform")
 
 # Build the same text field the training code used.
@@ -85,7 +91,33 @@ if _text_col is None:
         _text_col = "text"
 
 _test_X = test_df[_text_col].astype(str).tolist()
-_test_probs = _clf.predict_proba(_vec.transform(_test_X))[:, 1]
+_transforms = [(_n, _v.transform(_test_X)) for _n, _v in _vecs]
+_target_n = getattr(_clf, "n_features_in_", None)
+
+if _target_n is None:
+    # No way to check — use the first vectorizer.
+    _X_test = _transforms[0][1]
+    _used = [_transforms[0][0]]
+else:
+    # Single-vectorizer match wins first (simpler, common case).
+    _match = next(((n, t) for n, t in _transforms if t.shape[1] == _target_n), None)
+    if _match is not None:
+        _X_test = _match[1]
+        _used = [_match[0]]
+    elif sum(t.shape[1] for _, t in _transforms) == _target_n:
+        # All vectorizers concatenated match — hstack them in the order found.
+        from scipy.sparse import hstack as _hstack_sub
+        _X_test = _hstack_sub([t for _, t in _transforms]).tocsr()
+        _used = [n for n, _ in _transforms]
+    else:
+        raise RuntimeError(
+            f"[AGENT_SUBMIT] vectorizer feature count mismatch: "
+            f"classifier expects {_target_n} features, but the vectorizers in scope "
+            f"produce { {n: t.shape[1] for n, t in _transforms} } "
+            f"(neither a single match nor a clean hstack)."
+        )
+print(f"[AGENT_SUBMIT] vectorizer(s) used: {_used} -> {_X_test.shape[1]} features")
+_test_probs = _clf.predict_proba(_X_test)[:, 1]
 _test_preds = (_test_probs >= float(best_threshold)).astype(int)
 _sub_df = _pd_sub.DataFrame({"id": test_df["id"].astype(int), "target": _test_preds})
 

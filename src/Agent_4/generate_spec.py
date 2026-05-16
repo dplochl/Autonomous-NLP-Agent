@@ -6,8 +6,157 @@ import json
 from typing import Any
 
 from json_utils import extract_json_object
-from prompts import SPEC_SYSTEM
+from prompts import SPEC_PROPOSER_SYSTEM
 from validate_spec import validate_spec
+
+
+# ---------------------------------------------------------------------------
+# Shared helpers — table-based prompt construction
+# ---------------------------------------------------------------------------
+# The spec proposer (both first-attempt and revisit) gets the same compact
+# table of prior trials + anchor spec. The narrative-heavy "prior hypothesis"
+# and "prior verdict" text used to leak into the LLM's new hypothesis verbatim
+# (copy-paste contamination), so they're intentionally NOT in the table.
+
+def _compact_value(value: Any) -> str:
+    """Short string for a hyperparameter value (used in the trials table)."""
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, float):
+        if value == 0:
+            return "0"
+        if abs(value) < 0.001 or abs(value) >= 10_000:
+            return f"{value:.1e}".replace("e-0", "e-").replace("e+0", "e+")
+        return f"{value:g}"
+    if isinstance(value, int):
+        return str(value)
+    if isinstance(value, (list, tuple)):
+        return "[" + ",".join(_compact_value(x) for x in value) + "]"
+    if value is None:
+        return "-"
+    s = str(value)
+    return s if len(s) <= 24 else s[:22] + "…"
+
+
+def _spec_compact_str(spec: dict[str, Any], tunable_keys: list[str]) -> str:
+    """Render only the tunable keys of a spec as 'k=v, k=v, ...'."""
+    parts: list[str] = []
+    for k in tunable_keys:
+        if k in spec:
+            parts.append(f"{k}={_compact_value(spec[k])}")
+    return ", ".join(parts) if parts else "(no tunable keys set)"
+
+
+def _trial_table_row(trial: dict[str, Any], tunable_keys: list[str], source: str) -> str:
+    """One line of the prior-trials table."""
+    f1 = trial.get("f1")
+    if f1 is None:
+        f1 = (trial.get("metrics") or {}).get("f1")
+    if isinstance(f1, (int, float)):
+        f1_str = f"{f1:.4f}"
+    else:
+        f1_str = "fail  "
+    spec = trial.get("spec") or {}
+    spec_str = _spec_compact_str(spec, tunable_keys)
+    outcome = trial.get("outcome") or ("success" if trial.get("success") else "code_gen_failed")
+    return f"  {f1_str} | {spec_str:<60} | {source:<12} | {outcome}"
+
+
+def format_prior_trials_table(
+    session_trials: list[dict[str, Any]] | None,
+    cross_launch_trials: list[dict[str, Any]] | None,
+    family: str,
+    tunable_keys: list[str],
+    plateau_keys: list[str] | None = None,
+) -> str:
+    """Render all prior trials for a family as a single compact table.
+
+    Replaces the prior 60+ line narrative dump (with prior hypothesis + verdict
+    text the LLM was copy-pasting). Shows F1 + tunable-key values for every
+    trial this launch + cross-launch. Plateau flags from the orchestrator are
+    surfaced as a line below the table so the LLM doesn't have to detect
+    plateaus on its own.
+    """
+    rows: list[tuple[float, str]] = []
+    # session trials (most recent first)
+    for trial in reversed(session_trials or []):
+        f1_val = (trial.get("metrics") or {}).get("f1")
+        rows.append((
+            float(f1_val) if isinstance(f1_val, (int, float)) else -1.0,
+            _trial_table_row(
+                {"f1": f1_val, "spec": trial.get("spec") or {}, "outcome": trial.get("outcome"), "success": trial.get("success")},
+                tunable_keys, "this launch",
+            ),
+        ))
+    # cross-launch trials (filter to this family)
+    same_family = [t for t in (cross_launch_trials or []) if str(t.get("family", "")).lower() == family.lower()]
+    same_family.sort(key=lambda t: t.get("timestamp", ""), reverse=True)
+    for trial in same_family:
+        f1 = trial.get("f1")
+        rows.append((
+            float(f1) if isinstance(f1, (int, float)) else -1.0,
+            _trial_table_row(trial, tunable_keys, "prior launch"),
+        ))
+
+    if not rows:
+        return f"PRIOR TRIALS for {family}: none yet — this is the first attempt.\n"
+
+    header = f"  {'F1':<6} | {'tunable spec':<60} | {'source':<12} | outcome"
+    sep = "  " + "-" * (len(header) - 2)
+    lines = [f"PRIOR TRIALS for {family} (newest first):", header, sep]
+    lines.extend(row for _, row in rows)
+    if plateau_keys:
+        lines.append("")
+        lines.append(
+            f"PLATEAUED KEYS (last trials moved this key but F1 barely changed — "
+            f"change a DIFFERENT key): {', '.join(plateau_keys)}"
+        )
+    return "\n".join(lines) + "\n"
+
+
+def build_proposer_user_prompt(
+    family: str,
+    family_spec_prompt: str,
+    tunable_keys: list[str],
+    anchor_spec: dict[str, Any],
+    anchor_label: str,
+    session_trials: list[dict[str, Any]] | None,
+    cross_launch_trials: list[dict[str, Any]] | None,
+    data_context: str,
+    plateau_keys: list[str] | None = None,
+    extra_rules: list[str] | None = None,
+) -> str:
+    """Assemble the unified spec-proposer user prompt.
+
+    Used by BOTH generate_initial_spec (anchor_label='family default') and
+    propose_next_spec (anchor_label='current best'). Same shape, same system
+    prompt — the only thing that varies is which spec is the anchor.
+    """
+    table = format_prior_trials_table(
+        session_trials=session_trials,
+        cross_launch_trials=cross_launch_trials,
+        family=family,
+        tunable_keys=tunable_keys,
+        plateau_keys=plateau_keys,
+    )
+    lines = [
+        f"Propose the next {family} spec.",
+        "",
+        family_spec_prompt,
+        "",
+        table,
+        f"ANCHOR ({anchor_label}):",
+        json.dumps({k: anchor_spec[k] for k in anchor_spec if not k.startswith("_")}, indent=2),
+        "",
+        f"TUNABLE KEYS: {', '.join(tunable_keys)}",
+        "",
+        f"Dataset:\n{data_context}",
+    ]
+    if extra_rules:
+        lines.append("")
+        for rule in extra_rules:
+            lines.append(f"- {rule}")
+    return "\n".join(lines)
 
 
 def generate_initial_spec(
@@ -20,39 +169,22 @@ def generate_initial_spec(
     prior_launch_trials: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     default_spec = module.get_default_spec(run_name, submission_path)
-    prior_block = _format_prior_launch_trials(prior_launch_trials, module.FAMILY)
-    prompt = (
-        f"Plan one reliable {module.FAMILY} experiment spec for the Kaggle Disaster Tweets task.\n\n"
-        f"{module.get_spec_prompt()}\n\n"
-        "Return one JSON object only — see the system prompt for the exact "
-        "three-field schema (hypothesis + changed_keys + spec keys). The "
-        "hypothesis must reference concrete prior evidence when available "
-        "(a past F1, a spec choice that worked or didn't). DO NOT just say "
-        "'establish a baseline' if prior-launch evidence below shows what "
-        "already worked.\n\n"
-        f"Tunable keys you may put in 'changed_keys': {', '.join(module.get_tunable_keys())}\n\n"
-        f"{prior_block}"
-        f"Dataset context:\n{data_context}\n\n"
-        f"Recent in-launch history:\n{history_summary}\n\n"
-        "Family default spec (this is the anchor — your 'changed_keys' "
-        "lists what you intend to change FROM this). You MUST list at "
-        "LEAST 2 tunable keys in 'changed_keys' and the spec values you "
-        "return for those keys must differ from the default. Any spec key "
-        "you change but DO NOT name in changed_keys will be silently reset "
-        "to the default — this enforces hypothesis-as-source-of-truth.\n"
-        f"{json.dumps(default_spec, indent=2)}\n"
+    prompt = build_proposer_user_prompt(
+        family=module.FAMILY,
+        family_spec_prompt=module.get_spec_prompt(),
+        tunable_keys=list(module.get_tunable_keys()),
+        anchor_spec=default_spec,
+        anchor_label="family default",
+        session_trials=None,
+        cross_launch_trials=prior_launch_trials,
+        data_context=data_context,
+        plateau_keys=None,
     )
 
-    # Spec proposals use a moderately higher temperature than the rest of
-    # the agent. At temp=0.2 the LLM anchors on the default + prior-best
-    # specs and only tweaks one knob. At temp=0.7 it explores more keys but
-    # tends to under-claim in its hypothesis text (says "lower lr" but the
-    # spec also moves max_len + batch_size), which confounds the research
-    # record. temp=0.5 is the middle ground: enough randomness to break the
-    # anchoring bias, low enough that the hypothesis still accurately
-    # reflects what the spec actually changes. Code generation, repair,
-    # and analysis stay at temp=0.2 for correctness.
-    raw_response = llm.respond(SPEC_SYSTEM, prompt, temperature=0.5)
+    # Spec proposals use temp=0.5 — moderate exploration without the
+    # hypothesis/spec drift that temp=0.7 produces. Code-gen and repair
+    # stay at temp=0.2 for correctness.
+    raw_response = llm.respond(SPEC_PROPOSER_SYSTEM, prompt, temperature=0.5)
     raw_spec = extract_json_object(raw_response)
     spec, issues = validate_spec(
         raw_spec=raw_spec,
@@ -195,84 +327,19 @@ def _extract_conclusion(analysis: str, max_len: int = 240) -> str:
     return snippet
 
 
-def _format_prior_launch_trials(
-    prior_trials: list[dict[str, Any]] | None,
-    family: str,
-) -> str:
-    """Render cross-launch memory trials for THIS family as a prompt block.
-
-    Shows ALL records for the requested family — no per-family cap. The
-    short-term memory itself is bounded to 20 total trials across every
-    family, so the worst case here is 20 entries (still a tight prompt
-    block). Empty input returns an empty string (no header) so the prompt
-    stays clean for the first time a family is ever attempted.
-
-    Per trial we emit:
-      - F1 (or failure outcome)
-      - Full spec inline
-      - The hypothesis the LLM wrote when proposing that trial
-      - The analyst's one-sentence CONCLUSION verdict (confirmed / refuted)
-    """
-    if not prior_trials:
-        return ""
-    # Filter to this family. Sort by F1 descending so the most-promising
-    # specs surface first; ties broken by most recent timestamp.
-    same = [t for t in prior_trials if str(t.get("family", "")).lower() == family.lower()]
-    if not same:
-        return ""
-
-    def _f1(t: dict[str, Any]) -> float:
-        try:
-            return float(t.get("f1")) if t.get("f1") is not None else -1.0
-        except (TypeError, ValueError):
-            return -1.0
-
-    # Stable two-pass sort: most recent first within F1 ties, F1 desc overall.
-    same.sort(key=lambda t: t.get("timestamp", ""), reverse=True)
-    same.sort(key=lambda t: _f1(t), reverse=True)
-    lines = [f"PRIOR-LAUNCH EVIDENCE for {family} (newest+highest-F1 first):"]
-    for t in same:
-        spec = t.get("spec") or {}
-        # Compact spec rendering — same format the short-term memory uses
-        spec_parts: list[str] = []
-        for k in sorted(spec.keys()):
-            v = spec[k]
-            if isinstance(v, float):
-                vs = f"{v:.2e}" if abs(v) < 0.01 or abs(v) >= 10000 else f"{v:g}"
-            elif isinstance(v, (list, tuple)):
-                vs = "[" + ",".join(str(x) for x in v) + "]"
-            else:
-                vs = str(v)
-            spec_parts.append(f"{k}={vs}")
-        f1 = t.get("f1")
-        f1_str = f"F1={f1:.4f}" if isinstance(f1, (int, float)) else f"({t.get('outcome', '?')})"
-        lines.append(f"  - {f1_str}  spec: {', '.join(spec_parts)}")
-        hyp = (t.get("hypothesis") or "").strip()
-        if hyp:
-            lines.append(f"      prior hypothesis: {hyp}")
-        conclusion = _extract_conclusion(t.get("analysis") or "")
-        if conclusion:
-            lines.append(f"      prior verdict   : {conclusion}")
-    lines.append(
-        "\nUse this evidence: write a hypothesis that proposes a SPECIFIC move "
-        "vs. the prior best (e.g. 'try lr=5e-6 to test if the 0.7976 best can "
-        "be pushed via slower training') rather than a generic baseline statement. "
-        "Pay attention to the prior verdicts — if a hypothesis was already refuted, "
-        "do not re-test the same direction; pivot to a different parameter or value.\n"
-    )
-    return "\n".join(lines) + "\n"
-
-
 def _extract_hypothesis(raw_spec: Any, fallback: str, max_len: int = 240) -> str:
-    """Pull the 'hypothesis' field from an LLM JSON response.
+    """Pull the LLM's reasoning string from a JSON response.
 
-    Falls back to `fallback` when the LLM omitted the key, returned a
-    non-string, or the response wasn't a dict. Truncates excessively long
-    hypotheses so they don't bloat the prompt context downstream.
+    Accepts both the new 'why' field (current schema) and the legacy
+    'hypothesis' field (back-compat with cross-launch memory entries written
+    under the old schema). Falls back to `fallback` when neither is present.
+    Truncates excessively long values so they don't bloat prompts downstream.
     """
     if not isinstance(raw_spec, dict):
         return fallback
-    value = raw_spec.get("hypothesis")
+    value = raw_spec.get("why")
+    if not isinstance(value, str) or not value.strip():
+        value = raw_spec.get("hypothesis")
     if not isinstance(value, str):
         return fallback
     value = value.strip()

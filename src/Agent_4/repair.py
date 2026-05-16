@@ -16,6 +16,10 @@ def _find_flexible_span(code: str, target: str) -> tuple[int, int] | None:
     if idx != -1:
         return idx, idx + len(target)
     pattern = re.escape(target.strip()).replace(r"\ ", r"[ \t]+").replace(r"\n", r"\s*")
+    # Repair LLMs frequently emit target snippets with the wrong quote style
+    # (e.g. train_df['target'] when the actual code uses train_df["target"]).
+    # Python treats ' and " as equivalent, so let either match.
+    pattern = re.sub(r"['\"]", "[\"']", pattern)
     match = re.search(pattern, code, re.MULTILINE)
     return (match.start(), match.end()) if match else None
 

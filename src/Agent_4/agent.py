@@ -77,6 +77,13 @@ TOTAL_TIME_BUDGET_SECONDS = int(os.environ.get("AGENT4_TOTAL_TIME_BUDGET_SECONDS
 # has the whole window to explore + revisit whichever families it finds
 # promising. After the sweep deadline, we go straight to final submission.
 SWEEP_DURATION_SECONDS = int(os.environ.get("AGENT4_SWEEP_DURATION_SECONDS", str(45 * 60)))
+# Phase A (EXPLORE) → Phase B (MAXIMISE F1) transition point inside the sweep.
+# At time.time() < started_at + PHASE_B_FRACTION * SWEEP_DURATION_SECONDS, the
+# planner sees a Phase-A goal header (explore). After that, it sees a Phase-B
+# header (drill / optimise). The LLM still picks the family freely from the
+# eligible list — the hard gate only changes the goal framing, not the choice.
+# Default 0.55 → 24.75 min of a 45-min sweep is exploration, the rest is drill.
+PHASE_B_FRACTION = float(os.environ.get("AGENT4_PHASE_B_FRACTION", "0.55"))
 SWEEP_SAMPLE_ROWS = int(os.environ.get("AGENT4_SWEEP_SAMPLE_ROWS", "2000"))
 # Final submission trains on a 5k sample (>= 2.5x the sweep sample). The
 # 5k retrain gives the final model more data than the per-trial 2k seen
@@ -670,12 +677,13 @@ def execute_family(
                     f"[orchestrator-generated] LLM-proposed spec matched a "
                     f"refuted prior trial; mutated to a new spec."
                 )
-            # Preserve the original LLM hypothesis at the end so the audit
-            # trail has both perspectives.
-            hypothesis = (
-                f"{hypothesis} | Original LLM hypothesis: "
-                f"{original_llm_hypothesis}"
-            )
+            # The analyst evaluates whatever hypothesis text it receives — if
+            # we append the original LLM hypothesis here, the analyst reads
+            # both and tends to evaluate the experiment against the wrong
+            # intent (the LLM's, not the orchestrator's mutated one). So we
+            # keep the analyst-facing hypothesis pure (the orchestrator's
+            # description of what actually ran). The original LLM hypothesis
+            # is still on disk in <run_dir>/spec_response.txt for audit.
         # ------------------------------------------------------------------
         if hypothesis:
             # Surface the hypothesis live in the terminal so the "research
@@ -1019,6 +1027,10 @@ def main(
             f"from {short_term.path}"
         )
         print(f"[Memory] By family: {fam_str}  |  {best_str}")
+        print(
+            "[Memory] Scope: spec proposer ONLY (family-filtered). "
+            "Planner sees this-launch state only — no cross-launch memory."
+        )
     else:
         print("[Memory] No prior-launch memory found — starting fresh.")
     atexit.register(short_term.save)
@@ -1044,6 +1056,8 @@ def main(
     # straight to the final-submission step even if some families are still
     # untried.
     sweep_deadline = min(started_at + SWEEP_DURATION_SECONDS, overall_deadline)
+    phase_b_start_ts = started_at + PHASE_B_FRACTION * SWEEP_DURATION_SECONDS
+    _phase_b_announced = False
 
     # Prepare the sweep-planner LLM (a small fast model is fine; falls back
     # to deterministic round-robin if the planner can't be reached).
@@ -1093,6 +1107,14 @@ def main(
             if remaining < RUN_START_BUFFER_SECONDS:
                 print(f"[Sweep] Only {int(remaining)}s left in sweep window; closing sweep.")
                 break
+            current_phase = "B" if time.time() >= phase_b_start_ts else "A"
+            if current_phase == "B" and not _phase_b_announced:
+                _phase_b_announced = True
+                print(
+                    f"[Sweep] *** PHASE A → PHASE B transition at "
+                    f"{int(time.time() - started_at)}s elapsed. "
+                    f"Goal switches from EXPLORE to MAXIMISE F1. ***"
+                )
 
             # Build a planner caller that uses round-robin as fallback when the
             # planner LLM is unavailable.
@@ -1122,7 +1144,17 @@ def main(
                     time_remaining_seconds=remaining,
                     start_buffer_seconds=RUN_START_BUFFER_SECONDS,
                     planner_system_prompt=SWEEP_PLANNER_SYSTEM,
-                    prior_launch_memory=short_term.planner_summary(),
+                    current_phase=current_phase,
+                    # Cross-launch memory is intentionally NOT passed to the
+                    # planner — the 14B model was drowning in 20-trial detail
+                    # and anchoring on prior-launch winners (picking the same
+                    # family 3+ times). The planner now sees ONLY this
+                    # launch's state. The spec proposer still gets its
+                    # family-filtered prior_launch_trials separately, so the
+                    # research history is preserved at the level that uses it
+                    # (hyperparameter choice), not where it confuses (family
+                    # selection).
+                    prior_launch_memory="",
                 )
 
             # Append a compact line to the decision log + dump the full prompt+raw on the side.
@@ -1146,7 +1178,16 @@ def main(
             )
 
             if decision.action == "stop":
-                break
+                # The planner is told never to stop on its own — only the
+                # wall-clock deadline ends the sweep. If the LLM proposed a
+                # stop anyway (e.g. it hallucinated the rule back from prior
+                # training), log it and continue the loop. The deadline check
+                # at the top of the `while` already handles real termination.
+                print(
+                    "[Sweep Planner] Ignoring 'stop' action — sweep continues "
+                    "until the wall-clock deadline. Re-querying planner..."
+                )
+                continue
             if decision.action == "skip_family_permanently":
                 if decision.family_key and decision.family_key in family_state:
                     family_state[decision.family_key].skipped_permanently = True
@@ -1310,10 +1351,31 @@ def main(
                 print(f"[Kaggle] Submission failed: {kaggle_result.get('error', 'unknown error')}")
     write_json(os.path.join(os.path.dirname(__file__), "runs", "overall_best.json"), overall_summary)
     print(
-        "[Overall Best] "
+        "[Sweep Best] "
         f"family={best_overall['family']} | run={best_overall['best_run_index']} | "
         f"metrics={best_overall['best_metrics']}"
     )
+    # Surface the actual retrain outcome (not the sweep-time best) so a human
+    # reading the live log knows whether the final submission landed cleanly,
+    # what F1 it actually scored on the 5K retrain, and where the CSV is.
+    final_res = overall_summary.get("final_submission_result", {})
+    if final_submission_success and os.path.exists(public_best_submission):
+        retrain_metrics = final_res.get("metrics") or {}
+        retrain_f1 = retrain_metrics.get("f1")
+        f1_str = f"{retrain_f1:.4f}" if isinstance(retrain_f1, (int, float)) else "n/a"
+        print(
+            f"[Final Submission ✓] f1={f1_str} (5K retrain) | "
+            f"sweep_best={best_overall['best_metrics'].get('f1', 'n/a')} | "
+            f"csv={public_best_submission}"
+        )
+    elif final_payload is None:
+        print(f"[Final Submission ✗] Failed to prepare payload: {final_error}")
+    else:
+        err_tail = (final_res.get("error") or final_res.get("stderr") or "")[-300:]
+        print(
+            f"[Final Submission ✗] CSV not written or invalid. "
+            f"Expected: {public_best_submission}\n  error tail: {err_tail}"
+        )
     cleanup_phase_data_dirs(phase_data_dirs)
 
 

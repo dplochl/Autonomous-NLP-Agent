@@ -185,21 +185,44 @@ class ShortTermMemory:
                     f"(0 ok, {len(failures)} fail)"
                 )
 
-        # --- per-trial detail with hypothesis, spec, outcome ---
+        # --- per-trial detail GROUPED BY FAMILY ---
+        # The previous chronological interleave produced adjacent records like
+        # "[ts] CNN F1=0.6720 / [ts] RoBERTa (code_gen_failed)" and the planner
+        # LLM was conflating the CNN F1 onto the next RoBERTa decision. By
+        # grouping per-trial detail under a family header, we make it
+        # syntactically impossible for the LLM to grab a neighbouring family's
+        # F1 — within a family block, every F1 belongs to that family.
         lines.append("")
-        lines.append("Per-trial detail (newest first — hypothesis → spec → F1):")
-        for r in prior:
-            ts = (r.get("timestamp") or "")[:19]
-            fam = r.get("family", "?")
-            outcome = r.get("outcome", "?")
-            f1 = r.get("f1")
-            f1_str = f"F1={f1:.4f}" if isinstance(f1, (int, float)) else f"({outcome})"
-            spec_inline = _format_spec_inline(r.get("spec") or {})
-            hyp = (r.get("hypothesis") or "").strip()
-            lines.append(f"  [{ts}]  {fam:<14}  {f1_str}")
-            if hyp:
-                lines.append(f"    hypothesis: {hyp}")
-            lines.append(f"    spec      : {spec_inline}")
+        lines.append(
+            "Per-trial detail, grouped by family (within each family, "
+            "newest first). EVERY F1 in a block belongs to that family — "
+            "do not borrow F1 numbers across blocks."
+        )
+        # Sort families the same way as the aggregate above (best F1 desc).
+        for fam in sorted(by_family, key=lambda f: -max((r.get("f1") or -1) for r in by_family[f])):
+            recs_sorted = sorted(
+                by_family[fam],
+                key=lambda r: r.get("timestamp", ""),
+                reverse=True,
+            )
+            lines.append("")
+            lines.append(f"--- {fam} trials ({len(recs_sorted)}) ---")
+            for r in recs_sorted:
+                ts = (r.get("timestamp") or "")[:19]
+                outcome = r.get("outcome", "?")
+                f1 = r.get("f1")
+                # Tag every row with the family AGAIN so even line-by-line
+                # reads can't mis-attribute.
+                f1_str = (
+                    f"{fam} F1={f1:.4f}" if isinstance(f1, (int, float))
+                    else f"{fam} ({outcome}, no F1)"
+                )
+                spec_inline = _format_spec_inline(r.get("spec") or {})
+                hyp = (r.get("hypothesis") or "").strip()
+                lines.append(f"  [{ts}]  {f1_str}")
+                if hyp:
+                    lines.append(f"    hypothesis: {hyp}")
+                lines.append(f"    spec      : {spec_inline}")
 
         return "\n".join(lines)
 

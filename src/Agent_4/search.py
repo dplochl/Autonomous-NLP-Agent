@@ -9,9 +9,10 @@ import os
 import random
 from typing import Any
 
-from generate_spec import _extract_hypothesis, _format_prior_launch_trials
+from generate_spec import _extract_hypothesis
 from json_utils import extract_json_object
-from prompts import SEARCH_SYSTEM
+from generate_spec import build_proposer_user_prompt
+from prompts import SPEC_PROPOSER_SYSTEM
 from validate_spec import validate_spec
 
 
@@ -437,82 +438,44 @@ def propose_next_spec(
     stale_changed_keys = []
     if latest_success is not None and repeated_match is not None:
         stale_changed_keys = _changed_tunable_keys(module, repeated_match["spec"], latest_success["spec"])
-    phase_rules = (
-        "- this is the family sweep phase, so explore different regions of the parameter space\n"
-        "- the runner uses a 2k labeled sample split 80/20 for training/validation\n"
-        "- change at least 2 tunable keys; pick more if your hypothesis "
-        "genuinely calls for it (no penalty for going to 3, 4, or more — "
-        "the only rule is that EVERY key you change must be named in "
-        "changed_keys and described in the hypothesis)\n"
-        "- across the limited per-family trial budget, cover model-capacity "
-        "keys and optimization keys when relevant instead of nudging only "
-        "one key repeatedly\n"
-        "- examples of coherent multi-knob moves when your hypothesis "
-        "calls for them: capacity + regularization (e.g. max_len + dropout), "
-        "capacity + optimization (e.g. max_len + learning_rate), or all three "
-        "when testing a joint effect — pick whatever size matches your theory\n"
-    )
-    # Decide whether to engage AGGRESSIVE EXPLORATION mode. Triggers when
-    # the most recent successful trials of this family clustered in a tight
-    # F1 band — i.e. small parameter changes are no longer moving the score.
-    # Also occasionally fire a "wild card" (a known extreme-region preset)
-    # to deliberately seed the agent with crazier configurations to learn from.
+    # AGGRESSIVE EXPLORATION mode (tight F1 band) + wild-card injection
+    # remain orchestrator-side. They surface as extra_rules in the prompt
+    # rather than narrative blocks the LLM can copy-paste.
     family_key_for_explore = getattr(module, "FAMILY_KEY", str(getattr(module, "FAMILY", "")).lower())
     in_explore_mode = _is_tight_band(trials)
     fire_wild_card = in_explore_mode and (random.random() < _WILD_CARD_PROBABILITY)
-    explore_block = (
-        _explore_block_for(family_key_for_explore, trials, force_wild=fire_wild_card) + "\n\n"
-        if in_explore_mode else ""
+
+    extra_rules: list[str] = []
+    if in_explore_mode:
+        extra_rules.append(
+            "AGGRESSIVE EXPLORATION mode: tight F1 band detected — "
+            "make a LARGE coordinated move away from the anchor, not a small tweak."
+        )
+    if fire_wild_card:
+        extra_rules.append(
+            "Wild-card injection: try an extreme parameter region to break the plateau."
+        )
+    if repeated_f1 and stale_changed_keys:
+        extra_rules.append(
+            f"Last F1 matched a prior run — these key changes were stale: "
+            f"{', '.join(stale_changed_keys)}. Pick DIFFERENT keys."
+        )
+
+    prompt = build_proposer_user_prompt(
+        family=module.FAMILY,
+        family_spec_prompt=module.get_search_prompt(),
+        tunable_keys=tunable_keys,
+        anchor_spec=default_spec,
+        anchor_label="current best successful trial this launch",
+        session_trials=trials,
+        cross_launch_trials=prior_launch_trials,
+        data_context=data_context,
+        plateau_keys=sorted(stagnant_keys) if stagnant_keys else None,
+        extra_rules=extra_rules or None,
     )
 
-    prior_block = _format_prior_launch_trials(prior_launch_trials, module.FAMILY)
-    prompt = (
-        f"Propose the next {module.FAMILY} experiment spec.\n\n"
-        f"{module.get_search_prompt()}\n\n"
-        f"{prior_block}"
-        f"{explore_block}"
-        "Rules:\n"
-        "- keep the architecture family fixed\n"
-        "- keep the same overall prompt contract and pipeline shape\n"
-        f"- vary only these tunable keys: {', '.join(tunable_keys)}\n"
-        "- optimize against the best successful session trial, not the last run\n"
-        + ("- in AGGRESSIVE EXPLORATION mode, BREAK away from the best spec — large coordinated moves only\n"
-           if in_explore_mode else
-           "- keep the best successful spec as the default anchor and mutate it only slightly\n")
-        + f"{phase_rules}"
-        "- do not repeat an exact spec already tried in this session\n"
-        "- if a run timed out, reduce cost\n"
-        "- if a run crashed, simplify the risky parameter region\n"
-        "- if repeated runs get the same F1, switch to different tunable keys instead of repeating weak ones\n"
-        "- return one JSON object only — see the system prompt for the exact "
-        "three-field schema (hypothesis + changed_keys + spec keys). The "
-        "'changed_keys' list MUST contain every tunable key you intend to "
-        "modify vs. the prior best anchor below; any silent change will be "
-        "reset to the anchor value.\n\n"
-        f"Dataset context:\n{data_context}\n\n"
-        f"Family history:\n{history_summary}\n\n"
-        f"Session trials so far:\n{trial_summary}\n\n"
-        f"Best session trial so far:\n{json.dumps(best_trial, indent=2)}\n\n"
-        f"Stagnant keys from equal-F1 or same-prediction runs: {', '.join(sorted(stagnant_keys)) if stagnant_keys else 'none'}\n"
-        f"Preferred keys for the next move: {', '.join(active_tunable_keys)}\n"
-        f"Latest equal-F1 matched prior run: {repeated_match['run_index'] if repeated_match else 'none'}\n"
-        f"Latest equal-F1 changed keys to avoid repeating: {', '.join(stale_changed_keys) if stale_changed_keys else 'none'}\n"
-        f"Repeated best F1 detected: {'yes' if repeated_f1 else 'no'}\n"
-        f"Aggressive exploration mode: {'YES (tight F1 band detected)' if in_explore_mode else 'no'}\n"
-        f"Wild card injection: {'YES (try an extreme region)' if fire_wild_card else 'no'}\n\n"
-        "Prior-best anchor spec (your 'changed_keys' lists what you "
-        "intend to change FROM this; this is the prior best successful "
-        "trial, NOT the family default):\n"
-        f"{json.dumps(default_spec, indent=2)}\n"
-    )
-
-    # Spec search uses a moderately higher temperature than the rest of the
-    # agent for the same reason as generate_initial_spec: the output is
-    # constrained JSON, the validator clamps numerics, and determinism was
-    # anchoring the LLM on the best-trial spec. temp=0.5 balances exploration
-    # against hypothesis-spec alignment (temp=0.7 made the LLM's spec change
-    # more keys than its hypothesis text claimed, confounding the record).
-    raw_response = llm.respond(SEARCH_SYSTEM, prompt, temperature=0.5)
+    # Spec search uses temp=0.5 — same rationale as generate_initial_spec.
+    raw_response = llm.respond(SPEC_PROPOSER_SYSTEM, prompt, temperature=0.5)
     raw_spec = extract_json_object(raw_response)
     spec, issues = validate_spec(
         raw_spec=raw_spec,
