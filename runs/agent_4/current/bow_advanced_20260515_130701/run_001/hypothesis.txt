@@ -1,1 +1,0 @@
-Decreasing `char_max_features` from 20,000 to 15,000 and reducing `word_ngram_max` from 2 to 1 to test if a simpler feature set improves generalization. [orchestrator-added: char_ngram_min=2, word_max_features=18750]

@@ -1,1 +1,0 @@
-{"action":"try_family","family_key":"bow","reason":"It is the cheapest untried family, maximizing information gain per second."}

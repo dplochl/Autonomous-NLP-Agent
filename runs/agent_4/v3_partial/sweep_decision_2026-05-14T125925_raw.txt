@@ -1,1 +1,0 @@
-{"action":"try_family","family_key":"cnn","reason":"It is a cheap, untried family, which maximizes information gain per unit time spent."}

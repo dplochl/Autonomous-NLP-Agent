@@ -1,1 +1,0 @@
-{"action":"try_family","family_key":"bow_advanced","reason":"It is an untried family and carries the most information value."}

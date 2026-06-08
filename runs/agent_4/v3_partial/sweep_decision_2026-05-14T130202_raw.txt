@@ -1,1 +1,0 @@
-{"action":"try_family","family_key":"lstm","reason":"It is one of the cheapest untried families, maximizing exploration potential with the remaining time budget."}

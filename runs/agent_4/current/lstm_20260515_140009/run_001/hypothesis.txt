@@ -1,1 +1,0 @@
-Reducing max_vocab from 20000 to 14375, increasing hidden_dim from 128 to 256, and decreasing dropout from 0.3 to 0.2 to explore if a smaller vocabulary size with higher model capacity can improve performance over the previous F1=0.5965.

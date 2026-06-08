@@ -1,1 +1,0 @@
-Decreasing max_features from 20000 to 15000 and increasing min_df from 2 to 4 to test if a less complex model can achieve better performance compared to the prior best F1=0.7255.

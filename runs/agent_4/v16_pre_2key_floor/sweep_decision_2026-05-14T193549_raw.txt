@@ -1,5 +1,0 @@
-{
-  "action": "try_family",
-  "family_key": "embedding_dl",
-  "reason": "Untried families carry the most information value."
-}

@@ -1,5 +1,0 @@
-{
-  "action": "try_family",
-  "family_key": "cnn",
-  "reason": "Already succeeded, cheap to retry."
-}

@@ -1,1 +1,0 @@
-Reduce learning rate from 1.5e-05 to 1.0e-05 and increase max_len from 128 to 144 to test if a slower training rate with slightly longer sequences can improve F1 score beyond the previous best of 0.7742. [orchestrator-added: train_batch_size=13]

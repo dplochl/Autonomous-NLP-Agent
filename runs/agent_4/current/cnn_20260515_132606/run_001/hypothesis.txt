@@ -1,1 +1,0 @@
-Decrease the learning rate from 0.001 to 5e-6 to test if slower training can improve upon the prior best F1 of 0.5745. [orchestrator-added: channels=104, embedding_dim=104, max_len=35, max_vocab=14375]

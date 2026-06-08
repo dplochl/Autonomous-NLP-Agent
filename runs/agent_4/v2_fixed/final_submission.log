@@ -1,9 +1,0 @@
-success: True
-timed_out: False
-repair_attempts: 4
-
-[STDOUT]
-METRICS: {"f1": 0.7289, "accuracy": 0.775}
-
-
-[STDERR]

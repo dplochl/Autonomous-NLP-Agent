@@ -1,1 +1,0 @@
-{"action":"try_family","family_key":"cnn","reason":"The single code_gen_failed attempt is an expected failure rate, making a retry worthwhile to get a fresh draft."}

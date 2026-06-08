@@ -1,1 +1,0 @@
-{"action":"try_family","family_key":"bow_advanced","reason":"It is the cheapest untried family, providing high information gain to anchor the performance floor."}

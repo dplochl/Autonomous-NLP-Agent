@@ -1,1 +1,0 @@
-{"action":"try_family","family_key":"bow","reason":"Cheapest untried family, anchors a floor quickly."}

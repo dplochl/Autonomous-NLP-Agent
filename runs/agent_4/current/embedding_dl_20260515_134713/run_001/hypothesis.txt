@@ -1,1 +1,0 @@
-[fallback] LLM did not return a 'hypothesis' field; running the EmbeddingDL default spec to gather a measurement. [orchestrator-added: max_len=55, max_vocab=19375]

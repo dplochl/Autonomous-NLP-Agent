@@ -1,3 +1,0 @@
-```json
-{"action":"try_family","family_key":"bow_advanced","reason":"Already tried, but still in eligible list."}
-```

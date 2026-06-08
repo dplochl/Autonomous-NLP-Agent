@@ -1,3 +1,0 @@
-```json
-{"action":"try_family","family_key":"bertweet","reason":"Already has one trial, but revisiting a successful family with potential for improvement."}
-```
